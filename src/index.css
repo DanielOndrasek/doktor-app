@@ -240,3 +240,70 @@
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Dnes — povrch karet a nástup bloků
+ *
+ * Převzato z `crm/src/index.css` (`831f9ae6`) s řádkem Dnes; při převzetí
+ * tokenů bylo odložené. Modrý nádech `.home-surface` bral značkovou
+ * `hsl(211 100% 50%)` — tady jde z `--secondary`.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out both;
+}
+
+/* Světlý režim: karta, kterou „dokola" vykresluje měkký tmavý stín. V tmavém
+ * režimu je tenhle stín na téměř černém pozadí neviditelný, proto ho nahrazuje
+ * jemný světlý ring + záře okolo + horní lesk.
+ * `.home-surface` = podbarvený povrch, `.home-surface-plain` = vlastní `bg-card`. */
+.home-surface {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(0deg, hsl(var(--secondary) / 0.045), hsl(var(--secondary) / 0.045)),
+    hsl(var(--card));
+  box-shadow:
+    0 1px 3px rgba(20, 19, 31, 0.06),
+    0 10px 26px -10px rgba(20, 19, 31, 0.14);
+}
+
+.home-surface-plain {
+  border: 1px solid transparent;
+  box-shadow:
+    0 1px 3px rgba(20, 19, 31, 0.06),
+    0 10px 26px -10px rgba(20, 19, 31, 0.14);
+}
+
+.dark .home-surface,
+.dark .home-surface-plain {
+  border-color: hsl(0 0% 100% / 0.16);
+  background: hsl(var(--card));
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 0 0 1px hsl(0 0% 100% / 0.06),
+    0 12px 32px -14px rgba(0, 0, 0, 0.75);
+}
+
+.dark .home-surface:hover,
+.dark .home-surface-plain:hover {
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.08),
+    0 0 0 1px hsl(0 0% 100% / 0.1),
+    0 18px 40px -14px rgba(0, 0, 0, 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+  }
+}

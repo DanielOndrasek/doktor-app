@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Login, { RESET_PASSWORD_PATH } from "@/pages/Login";
 import ResetPassword from "@/pages/ResetPassword";
+import Today from "@/pages/Today";
+import { EMPTY_TODAY_SOURCE } from "@/lib/today";
 
 const queryClient = new QueryClient();
 
@@ -15,7 +17,7 @@ const queryClient = new QueryClient();
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
  * jde přes `RequireAuth` (session + MFA). Obrazovky (Dnes, Pošta, Úkoly,
  * Události, Kontakty, Nastavení) přijdou podle `docs/prevzeti-z-vividbooks.md`
- * — zatím je za přihlášením prázdno.
+ * — za přihlášením je zatím jen Dnes nad prázdným zdrojem.
  */
 export default function App() {
   return (
@@ -30,7 +32,8 @@ export default function App() {
               path="*"
               element={
                 <RequireAuth>
-                  <div className="min-h-screen" />
+                  {/* Dnes zatím nad prázdným zdrojem — signály přijdou s K2. */}
+                  <Today source={EMPTY_TODAY_SOURCE} />
                 </RequireAuth>
               }
             />
