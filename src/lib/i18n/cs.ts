@@ -180,6 +180,32 @@ export const cs = {
     },
   },
 
+  /** Úkoly — stavy a kanban (`src/components/kanban/`). */
+  ukoly: {
+    stavy: {
+      todo: "TODO",
+      probiha: "V procesu",
+      ceka: "Čekám",
+      hotovo: "Hotovo",
+      odlozeno: "Odloženo",
+      zruseno: "Zrušeno",
+    },
+    kanban: {
+      pridatUkol: "Přidat úkol",
+      zadneUkoly: "Žádné úkoly",
+      otevritUkol: "Otevřít úkol",
+      bezNazvu: "Bez názvu",
+      termin: "Termín",
+      poTerminu: "po termínu",
+      veSloupci: "ve sloupci",
+      den: "den",
+      dny: "dny",
+      dni: "dní",
+      presunutoDo: "Přesunuto do",
+      chybaPresunu: "Úkol se nepodařilo přesunout.",
+    },
+  },
+
   /** Výběr data (`ui/date-picker.tsx`). */
   datum: {
     vybratDatum: "Vybrat datum",
