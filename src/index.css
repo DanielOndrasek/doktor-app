@@ -1,0 +1,242 @@
+/* Inter se načítá v `index.html` (preconnect + stylesheet) dřív než bundle —
+ * viz komentář u `<link href=…fonts.googleapis.com…>` tam. Duplicitní @import
+ * by jen dvakrát tahal stejný font. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Tokeny vzhledu Doktora
+ *
+ * Kopie z vividbooks CRM ke commitu `831f9ae6`, přebarvená (viz
+ * `docs/prevzeti-z-vividbooks.md`). Struktura zůstala: neutrální inkoustový
+ * základ + jeden akcent. Akcent už není značkové indigo Vividbooks, ale
+ * klidná klinická modrozelená.
+ *
+ * Nepřebráno: tokeny `--deal-*` a `--pipeline-*` (zeď obchodu a pipeline
+ * obchodů = schéma `crm`) a paleta `neon-*` (vizuální identita Vividbooks).
+ *
+ * Všechny barvy jsou HSL triplety bez `hsl()` — tak je čte tailwind.config.ts.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 220 35% 98.8%;
+    --foreground: 222 32% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 32% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 32% 12%;
+
+    --primary: 222 30% 14%; /* inkoust (ne čistě černá — na bílé méně řeže) */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 196 78% 34%; /* akcent Doktora: klidná klinická modrozelená */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 28% 96.5%;
+    --muted-foreground: 220 12% 43%;
+
+    /* Hover/focus stavy položek menu (dropdown, command palette, nastavení).
+     * Neutrální světlá šedá, ne obarvená — obarvená vytahuje pozornost
+     * z obsahu, což je u obrazovky plné zpráv na obtíž. */
+    --accent: 220 16% 94%;
+    --accent-foreground: 222 32% 12%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 142 71% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
+    --ring: 196 78% 34%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 215 28% 11%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 193 74% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 22% 18%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 215 22% 18%;
+    --sidebar-ring: 193 74% 45%;
+
+    /* Posuvníky — sladěné s border/muted (světlý režim: jemný šedý proužek) */
+    --scrollbar-thumb: 220 16% 74%;
+    --scrollbar-thumb-hover: 220 18% 60%;
+    --scrollbar-track: 0 0% 100% / 0;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 96%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 9%;
+
+    --secondary: 193 74% 52%;
+    --secondary-foreground: 200 90% 8%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+
+    /* Viz světlou variantu — neutrální tmavá šedá pro hover/focus stavy. */
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 96%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 142 55% 42%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 193 74% 52%;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 193 74% 52%;
+    --sidebar-primary-foreground: 200 90% 8%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 193 74% 52%;
+
+    /* Posuvníky — tmavý palec (ne systémová světlá šedá) */
+    --scrollbar-thumb: 0 0% 26%;
+    --scrollbar-thumb-hover: 196 35% 42%;
+    --scrollbar-track: 0 0% 8% / 0.55;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Dynamické viewport jednotky (dvh) — mobilní prohlížeč vs. PWA
+ *
+ * V mobilním prohlížeči (mimo nainstalovanou PWA) `100vh` odpovídá viewportu
+ * BEZ zatažené lišty prohlížeče → celoobrazovkové layouty (`h-screen`,
+ * `min-h-screen`) přetékají pod lištu a obsah je oříznutý / skáče. `100dvh`
+ * se přizpůsobuje aktuální (dynamické) výšce viewportu, takže se app chová
+ * stejně v prohlížeči i ve standalone PWA.
+ *
+ * Globální override tady pokrývá všechny výskyty Tailwind tříd `h-screen` /
+ * `min-h-screen` bez nutnosti je přepisovat. Vrstva `utilities` drží stejnou
+ * specificitu jako původní třídy; `@supports` je pojistka pro staré
+ * prohlížeče (fallback zůstává 100vh z Tailwindu).
+ * ─────────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  @supports (height: 100dvh) {
+    .h-screen {
+      height: 100dvh;
+    }
+    .min-h-screen {
+      min-height: 100dvh;
+    }
+    #root {
+      min-height: 100dvh;
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * iOS Safari — zákaz auto-zoomu při fokusu inputu
+ *
+ * Když uživatel ťukne na formulářové pole, jehož computed `font-size` < 16px,
+ * mobilní Safari (a WebView v iOS) stránku automaticky přiblíží. Po zoomu už
+ * ale stránka není fixovaná na šířku viewportu — dá se scrollovat do stran
+ * a layout vypadá rozbitě.
+ *
+ * Naše shadcn `<Input>` / `<Textarea>` už mají `text-base md:text-sm` (tj.
+ * 16px na mobilu), takže samy o sobě zoom nezpůsobují. Pravidlo níže je
+ * pojistka pro nativní `<input type="date" | "time" | "number">`, inline
+ * `<input>` / `<select>` bez naší UI komponenty a pro místa, kde někdo přebije
+ * default `text-base` na `text-sm` přímo na inputu.
+ *
+ * Jen pod `md` breakpointem (≤ 767px) — na desktopu zoom-on-focus neexistuje
+ * a jemnější typografie formulářů má zůstat.
+ *
+ * `!important` je tu schválně: Tailwind utility (`text-sm`, `text-xs`, …) má
+ * specifičnost `(0,1,0)`, kdežto typový selektor `input` jen `(0,0,1)` — bez
+ * `!important` by ho utilita roztroušená přímo na inputu přebila a iOS by zase
+ * začal zoomovat. Nejde o stylovou preferenci, ale o prevenci rozbitého
+ * layoutu na mobilu. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Posuvníky — úzký pruh stejný v celé app; transparentní „okraj“ palce
+ * = stejný vzhled na bg-muted i bg-background. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: hsl(var(--scrollbar-track));
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--scrollbar-thumb));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--scrollbar-thumb-hover));
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

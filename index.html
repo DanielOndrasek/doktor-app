@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Doktor</title>
+    <meta name="description" content="Pošta, úkoly a kontakty na jednom místě." />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Téma před prvním paintem. Bez toho dostane <html> barvy z OS, a jakmile
+         se `ThemeHost` dostane k uloženému nastavení, přepne se → viditelný
+         záblesk. Klíč musí sedět s `THEME_STORAGE_KEY` v
+         `src/lib/theme.ts`. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("doktor:theme");
+          var dark =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          root.classList.remove("light", "dark");
+          root.classList.add(dark ? "dark" : "light");
+        } catch (e) {
+          /* localStorage nedostupné — platí výchozí světlé téma z CSS */
+        }
+      })();
+    </script>
+
+    <!-- Inter musí začít tahat dřív než bundle, jinak se po načtení `index.css`
+         přeformátuje už vykreslený text. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
