@@ -50,7 +50,7 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/` | ☐ |
 | Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/` | ☐ |
 | Přehled práce agenta | `AgentRunsHistory.tsx`, vzor `agent_commands` | `src/components/runs/` | ☐ |
-| Přihlášení | Supabase Auth, `components/mfa/*`, stránky Auth/Reset | `src/lib/supabase/`, `src/components/auth/` | ☐ |
+| Přihlášení | Supabase Auth, `components/mfa/*`, stránky Auth/Reset | `src/lib/supabase/`, `src/components/auth/`, `src/pages/{Login,ResetPassword}.tsx` | ☑ |
 | Disk | `components/google/*` (Picker, `drive.file`), funkce `drive-access-token` | `src/components/google/` | ☐ |
 | Gmail OAuth | funkce `gmail-auth`, `gmail-callback`, `gmail-*` | `supabase/functions/` | ☐ |
 
@@ -220,6 +220,41 @@ a kdo ji ukládá, zapíše `stav_zdroj = klik` (pravidlo 4).
 což na dotyku nefunguje. Stack v `CLAUDE.md` říká `@dnd-kit (kanban)`, takže
 `useDraggable` / `useDroppable` / `DragOverlay`; klik zůstává klikem díky prahu
 6 px, na dotyku se tah spouští po 180 ms.
+
+### Přihlášení (20. 9. 2026)
+
+CRM mělo čtyři přihlašovací stránky podle role (makléř, klient, sysadmin,
+whitelabel) a MFA jen pro sysadmin panel. Doktor má jednoho uživatele a MFA
+povinné pro všechno (plán, oddíl 9) — z toho plyne většina rozhodnutí.
+
+**Přeneseno:**
+
+| Odkud | Kam | Poznámka |
+|---|---|---|
+| `integrations/supabase/{client,env}.ts` | `src/lib/supabase/{client,env}.ts` | `db.schema: "doktor"` místo `"crm"`; bez `createClient<Database>` — typy se generují až v K2 ze skutečného schématu; env podle `.env.example` (`VITE_SUPABASE_ANON_KEY`) |
+| `lib/mfa.ts` | `src/lib/supabase/mfa.ts` | beze změny chování |
+| `lib/passwordPolicy.ts`, `withAsyncTimeout.ts`, `networkErrors.ts` | `src/lib/supabase/passwordPolicy.ts`, `timeouts.ts` | texty do slovníku; anglická hláška se nepřebrala |
+| `components/mfa/MfaChallengeForm.tsx`, `MfaManage.tsx` | `src/components/auth/` | `sonner` → `useToast`; barvy ikon z tokenů (`text-success`, `text-warning`) |
+| `components/mfa/SysAdminMfaGate.tsx` | `src/components/auth/MfaGate.tsx` | brána pro celou aplikaci, ne jen pro sysadmin; obal přes `AuthShell` místo pevných zinc barev |
+| `components/SysAdminGuard.tsx` | `src/components/auth/RequireAuth.tsx` | bez `profiles.is_sysadmin`; poslouchá `onAuthStateChange` (odhlášení v jiné kartě) |
+| `pages/AdminAuth.tsx` + `pages/ClientAuth.tsx` | `src/pages/Login.tsx` | jeden formulář; obnova hesla přes `supabase.auth.resetPasswordForEmail` — CRM volalo edge funkci `send-password-reset-email` (Resend, šablony a log v `crm`) |
+| `pages/ResetPassword.tsx` | `src/pages/ResetPassword.tsx` | obě varianty recovery flow (PKCE `?code=` i implicit hash) zůstaly |
+| obal karty z `ClientAuth` | `src/components/auth/AuthShell.tsx` | nové: jeden obal pro všechny čtyři obrazovky |
+
+**Nepřebráno:** `SysAdminLogin.tsx`, `PasswordChangeRequired.tsx` (vynucená
+změna hesla po založení adminem — Doktor účty nezakládá), `OAuthCallback.tsx`,
+`fetchEffectiveAppRoles` / `rolesIncludeCrmStaff` / `resolveClientEntry`
+(role a přesměrování podle nich), `profiles.must_change_password`,
+`playLoginJingle`, `ClientPortalLocaleContext`, `LoginAurora`, `VividbooksLogo`,
+odkazy na zásady a obchodní podmínky.
+
+**Routy** v `App.tsx`: `/prihlaseni` a `/reset-hesla` veřejné, všechno ostatní
+za `RequireAuth` (session → MFA → obsah). Za přihlášením je zatím prázdná
+stránka — obrazovky přijdou s dalšími řádky.
+
+**Co si tohle žádá od Supabase (O3):** zapnuté TOTP MFA v Auth, `password_min_length = 12`
+(stejně jako `MIN_PASSWORD_LENGTH`), redirect URL `<doména>/reset-hesla` v allow-listu
+a e-mailovou šablonu obnovy hesla. Bez O3 a O4 se přihlásit nedá — zapsáno v `notes.md`.
 
 ## Nepřebírat
 

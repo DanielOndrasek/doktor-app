@@ -32,3 +32,9 @@ pole nemá. A `KanbanCard` je projekce řádku `ukoly`; mapování napíše obra
 ale řádek Komponenty pošty nese `EmailTemplatesDialog`. Dialog je props-driven
 (`EmailTemplate` v `lib/email/compose.ts`); kde se šablony uloží, je otázka pro K2
 vedle `podpisy` a `pravidla`.
+
+**20. 9. 2026 — přihlášení (O3, O4).** Řádek Přihlášení převzatý; kód čeká na projekt
+Supabase. Až bude (O3): zapnout TOTP MFA v Auth, nastavit `password_min_length = 12`,
+přidat `<doména>/reset-hesla` do redirect allow-listu (O4) a doplnit e-mailovou šablonu
+obnovy hesla. Účet uživatele se zakládá ručně v Supabase — aplikace registraci nemá
+a mít nebude.
