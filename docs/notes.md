@@ -43,3 +43,9 @@ a mít nebude.
 `onUploadImage`; kam, není rozhodnuté. Pravidlo 5 mluví o tělech a přílohách, obrázek
 podpisu je něco mezi — nejjednodušší je nechat ho na enginu vedle příloh (`upload_id`
 + veřejná URL), ať Supabase drží jen `podpisy.html`. Rozhodnout s O3.
+
+**20. 9. 2026 — signály pro Dnes (K2).** `crm.today_signals()` v `831f9ae6` není (jen
+volání a typ), takže vzor je tvar řádku, ne SQL. Pro K2 to znamená napsat funkci
+`doktor.dnes()` od nuly nad `polozky` (P1, čeká na odpověď), `ukoly` (po termínu)
+a `udalosti` (dnes) — a `signal_dismiss` s odložením o 7 dní. Tvar výstupu je
+v `src/lib/today.ts`.

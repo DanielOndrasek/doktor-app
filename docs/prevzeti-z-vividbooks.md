@@ -44,10 +44,10 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Komponenty pošty | `src/components/email/*` (Inbox, Compose, RichEditor, FolderNav, Templates, SignaturePreview, WorkPanel, RecipientsInput) | `src/components/email/` | ☑ |
 | Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☑ |
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
-| Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☐ |
+| Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☑ |
 | Úkoly | `pages/crm/VbTasksPage.tsx`, `components/tasks/*` | `src/pages/Tasks.tsx`, `src/components/tasks/` | ☐ |
 | Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☑ |
-| Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/` | ☐ |
+| Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/`, `src/lib/today.ts` | ☑ |
 | Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/` | ☐ |
 | Přehled práce agenta | `AgentRunsHistory.tsx`, vzor `agent_commands` | `src/components/runs/` | ☐ |
 | Přihlášení | Supabase Auth, `components/mfa/*`, stránky Auth/Reset | `src/lib/supabase/`, `src/components/auth/`, `src/pages/{Login,ResetPassword}.tsx` | ☑ |
@@ -113,7 +113,8 @@ asistenta, loaderu, přihlašovací aurory a „výhry obchodu“, styly pro Lea
 docx-preview, šablony smluv a výběr oblasti pro report.
 
 **Odloženo na jejich řádek**, ne odstřiženo — patří k oblasti, která se ještě nepřebírá:
-`.animate-fade-in-up` a `.home-surface*` (Dnes), `.animate-task-complete-out` (Úkoly).
+`.animate-task-complete-out` (Úkoly). `.animate-fade-in-up` a `.home-surface*` přišly
+s řádkem Dnes.
 `.signature-surface` se nakonec nepřebral: používal ho jen starší
 `components/SignatureEditor.tsx`, který se nebere (viz Podpisy).
 
@@ -284,6 +285,53 @@ nemá testovací běh. Jsou to čisté funkce, přenesou se, až běh bude.
 
 `EmailCompose` napojení už má: `signatureHtml={emailSignatureToEditorHtml(podpis.html)}`.
 Výběr podpisu podle schránky (`vychozi_pro_schranku`, `odeslat_z`) je K3.3 a čeká na O5.
+
+### Kontext u e-mailu (20. 9. 2026)
+
+`components/vividbooks/CrmEmailContext.tsx` → `src/components/email/EmailContext.tsx`.
+Zůstal tvar (pruh nad zprávou, `extractEmails`, vynechání vlastních adres, „Úkol z mailu"
+vpravo); obsah je podle K3.8 — **kdo to je, poslední zprávy, otevřené úkoly** — místo
+školy, stavu v Kabinetu, licencí a otevřeného obchodu.
+
+| Bylo | Je | Proč |
+|---|---|---|
+| dotazy do `v_person_list`, `v_school_list`, `db_deals` | prop `load(emails) → EmailContextData` | schéma `crm`; kontakty přijdou s K4.1, do té doby může kontext skládat engine |
+| `insert` do `db_deal_wall_posts` | prop `onCreateTask({ title, contactId })` | zeď obchodu; úkol patří do `ukoly` se `zdroj = email` |
+| `useMailAccount().emailAddress` | prop `ownEmails` | jeden zapisovač; adresy schránek zná volající |
+| `<Link to="/databaze/osoba/…">` | volitelný `href` v datech | karta kontaktu je K4 |
+| `StagePill`, `subjectShort` (Kabinet) | — | nepřebírá se |
+
+`extractEmails` je v `lib/email/html.ts` (komponenta nemá exportovat funkce — lint
+`react-refresh`). Zapojení: `EmailInbox` má slot `renderContext(detail)`.
+
+### Dnes (20. 9. 2026)
+
+`pages/HomePage.tsx` měl osm sekcí; zůstala jedna — **Čemu se dnes věnovat**. Kostra
+stránky (`src/pages/Today.tsx`) je kontejner se sekcemi, další (připnuté pohledy K4.2,
+události K3.7) se do ní přidají.
+
+**Přeneseno:** `components/home/TodaySignals.tsx` a `EvidenceChips.tsx` →
+`src/components/home/`; vzor `crm.today_signals()` / `signal_dismiss` → `src/lib/today.ts`
+(tvar signálu a `TodaySource` s `load` / `dismiss`); CSS `.animate-fade-in-up`
+a `.home-surface*` (odložené z řádku Vzhled; modrý nádech z `--secondary`).
+
+**Kategorie** jsou z K3.5 — `p1`, `termin`, `udalost`, `odpoved` — místo `trial`,
+`obnova`, `email`, `potencial`, `faktura`, `licence`, `nabidka`. Naléhavost 1–4 zůstala,
+barvy z tokenů (`destructive`, `warning`, `secondary`, ztlumená).
+
+**Nepřebráno:** `VbAssistantHero` (AI asistent), `VbEarningsCard` (provize),
+`NewsStrip`, `SequenceApprovals`, `OpportunitiesBoard`, `PortfolioSection`
+(obchody, sekvence, portfolio = `crm`), `CallRecordingsInbox` (řádek Zápisy),
+`page-aurora-soft`. V `TodaySignals`: volání RPC (data chodí propsy `signals` /
+`onDismiss` / `onAction`), přepínač Moje · Všichni (jeden uživatel), sbalený pruh
+„Administrativa", slučování faktur po splatnosti jednoho odběratele, mezipaměť
+v `sessionStorage` (patří tomu, kdo načítá), navigace na `/obchody` a `/databaze`
+(akce nesou `href`).
+
+**SQL `crm.today_signals()` v commitu `831f9ae6` není** — ve stromu je jen její volání
+a typ v `integrations/supabase/types.ts`. Vzorem je tedy tvar řádku a trojice
+hotovo · odložit · nerelevantní; výpočet nad `polozky`, `ukoly` a `udalosti` se napíše
+v K2 od nuly. Do té doby `EMPTY_TODAY_SOURCE` drží Dnes v prázdném stavu.
 
 ## Nepřebírat
 
