@@ -330,7 +330,6 @@ export const cs = {
     nacteniSelhalo: "Přehled se nepodařilo načíst.",
     filtr: "Filtr:",
     zrusitFiltr: "zrušit",
-    nalehavost: "naléhavost",
     hotovo: "Hotovo",
     odlozit: "Odložit o 7 dní",
     nerelevantni: "Nerelevantní",

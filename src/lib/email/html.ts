@@ -96,3 +96,10 @@ const EMAIL_SANITIZE: DOMPurifyConfig = {
 export function sanitizeEmailHtml(html: string): string {
   return String(DOMPurify.sanitize(html || "", EMAIL_SANITIZE));
 }
+
+/** Vytáhne e-mailové adresy z hlavičky „Jméno <adresa>, …“. */
+export function extractEmails(header: string | null | undefined): string[] {
+  if (!header) return [];
+  const found = header.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+  return Array.from(new Set(found.map((e) => e.toLowerCase())));
+}

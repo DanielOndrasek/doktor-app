@@ -4,13 +4,7 @@ import { ListTodo, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
-
-/** Vytáhne e-mailové adresy z hlavičky „Jméno <adresa>, …“. */
-export function extractEmails(header: string | null | undefined): string[] {
-  if (!header) return [];
-  const found = header.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
-  return Array.from(new Set(found.map((e) => e.toLowerCase())));
-}
+import { extractEmails } from "@/lib/email/html";
 
 /** Kdo to je, poslední zprávy, otevřené úkoly (K3.8). Skládá volající. */
 export interface EmailContextData {
