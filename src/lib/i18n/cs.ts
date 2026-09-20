@@ -107,6 +107,20 @@ export const cs = {
 
     podpis: {
       nahled: "Podpis e-mailu",
+      rezimPodpis: "Podpis",
+      rezimHtml: "HTML kód",
+      obrazek: "Obrázek",
+      smazat: "Smazat",
+      nahravamObrazek: "nahrávám obrázek…",
+      ulozit: "Uložit podpis",
+      placeholder: "Sem vlož podpis z pošty (Ctrl+V) – zůstane formátování i obrázky.",
+      htmlPlaceholder: '<table><tr><td><b>Jméno Příjmení</b><br>Oddělení<br><a href="https://example.cz">example.cz</a></td></tr></table>',
+      napoveda:
+        "Podpis se přidá na konec každého e-mailu. V režimu HTML kód můžeš vložit hotový podpis od grafika.",
+      obrazekVelky: "Obrázek je větší než 3 MB.",
+      obrazekNenahran: "Obrázek se nepodařilo nahrát.",
+      obrazkyBezUloziste: "Obrázky ze schránky zůstanou v podpisu vložené — úložiště zatím není propojené.",
+      obrazkyZahozeny: (n: number) => `${n} obrázků nešlo zachovat a z podpisu vypadly.`,
     },
 
     editor: {
