@@ -41,12 +41,12 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Vzhled, tokeny | `src/index.css`, `tailwind.config.ts`, `WhitelabelThemeHost` | `src/index.css`, `tailwind.config.ts`, `src/components/ThemeHost.tsx` | ☑ |
 | Kontrakt pošty | `src/lib/email/types.ts` (`MailboxClient`) | `src/lib/email/types.ts` | ☑ |
 | Gmail klient | `src/lib/email/gmailMailbox.ts` | `src/lib/email/gmailMailbox.ts` | ☐ |
-| Komponenty pošty | `src/components/email/*` (Inbox, Compose, RichEditor, FolderNav, Templates, SignaturePreview, WorkPanel, RecipientsInput) | `src/components/email/` | ☐ |
+| Komponenty pošty | `src/components/email/*` (Inbox, Compose, RichEditor, FolderNav, Templates, SignaturePreview, WorkPanel, RecipientsInput) | `src/components/email/` | ☑ |
 | Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☐ |
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
 | Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☐ |
 | Úkoly | `pages/crm/VbTasksPage.tsx`, `components/tasks/*` | `src/pages/Tasks.tsx`, `src/components/tasks/` | ☐ |
-| Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☐ |
+| Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☑ |
 | Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/` | ☐ |
 | Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/` | ☐ |
 | Přehled práce agenta | `AgentRunsHistory.tsx`, vzor `agent_commands` | `src/components/runs/` | ☐ |
@@ -116,9 +116,9 @@ docx-preview, šablony smluv a výběr oblasti pro report.
 `.signature-surface` (Podpisy), `.animate-fade-in-up` a `.home-surface*` (Dnes),
 `.animate-task-complete-out` (Úkoly).
 
-**Až se bude přebírat Úkoly a Pošta**, čeká na remapování na tokeny Doktora:
-`TaskDetailDialogChrome.tsx` a `TaskContextPreviewCards.tsx` sahají na `--deal-*`,
-`EmailCompose.tsx` na jednu barvu z `neon-*`.
+**Až se bude přebírat Úkoly**, čeká na remapování na tokeny Doktora:
+`TaskDetailDialogChrome.tsx` a `TaskContextPreviewCards.tsx` sahají na `--deal-*`.
+(`EmailCompose.tsx` sahal na `neon-*` jen u tlačítka AI, které se nepřebralo.)
 
 **`WhitelabelThemeHost` → `ThemeHost.tsx`.** Zůstal koncept „jediný zapisovač tématu na
 `<html>`“ (plus `src/lib/theme.ts` a skript v `index.html`, který třídu nastaví před
@@ -140,6 +140,86 @@ Kopie je doslovná včetně jmen metod. Tři odchylky:
 `trashMessage`, `deleteFolder` a `createFolder` v kontraktu podle pravidla 3 zůstaly.
 Zbytek souboru je proti zdroji znak po znaku shodný — dá se ověřit `diff`em proti
 `crm/src/lib/email/types.ts` v commitu `831f9ae6`.
+
+### Komponenty pošty (20. 9. 2026)
+
+Přebráno 12 souborů: osm jmenovaných v tabulce a čtyři, které si táhnou
+(`EmailListItem`, `SaveAsTemplateDialog`, `EmailSignatureNode`, `emailFolders`).
+
+**Přeneseno spolu s nimi:**
+
+| Co | Kam | Proč |
+|---|---|---|
+| `lib/emailWallUtils.ts` (jen `parseEmailFromHeader`, `emailInitials`, `avatarColorClass`, `escapeForHtmlSrcDoc`, `sanitizeEmailHtml`) | `src/lib/email/html.ts` | jméno „wall" bylo zavádějící — je to obecná práce s HTML e-mailu; bez sanitizace se cizí HTML do iframu dávat nesmí. Zbytek souboru (`postProcessEmailDocument`, `buildEmailIframeSrcDoc`, `groupGmailByThread`, …) zůstal ve zdroji. |
+| — | `src/lib/email/compose.ts` | nové: tvary mezi oknem psaní a volajícím (`ComposeSendRequest`, `AttachmentUploadRef`, `EmailTemplate`, `EmailRecipientSuggestion`) |
+| tiptap (`@tiptap/react`, `starter-kit`, `extension-{underline,text-align,text-style,image,table,link}`) | závislost | RichEditor je v tabulce jmenovitě |
+| dompurify | závislost | sanitizace těla zprávy |
+
+**Nepřebráno:** `EmailQuickActions.tsx` (slučovací pole nad obchody a školami
++ AI návrh) a `ScheduledEmailsButton.tsx` (fronta `crm.scheduled_emails`,
+odesílá samo).
+
+**Odstřižené uvnitř převzatých souborů.** Každá položka kvůli pravidlu z `CLAUDE.md`
+nebo kvůli schématu `crm`; místo importu je vždy prop, aby obrazovky K3 dosadily
+Doktorovu vrstvu:
+
+| Bylo | Je | Pravidlo |
+|---|---|---|
+| `useMailbox()` z `hooks/useMailAccount` (účty v `crm`) | `EmailInbox` dostává `mailbox: MailboxClient` propsem | 1 — jeden zapisovač |
+| `mailbox.send(...)` přímo z Compose | prop `onSend(ComposeSendRequest)` | 1 |
+| `fileToBase64` + `attachments: [{ data }]` při odeslání | prop `onUploadAttachment(file) → { uploadId }`, k odeslání jdou `uploadIds` | 2 — příloha odkazem |
+| stažení přílohy dekódováním base64 v prohlížeči | prop `onOpenAttachment` | 2 |
+| tlačítko „Smazat", `trashMessage`, zakládání a mazání složek v `EmailFolderNav` | pryč | 3 — nic se nemaže |
+| „Později" + `handleSchedule` + `scheduleOptions` | pryč | 8 — nic se neodesílá samo |
+| „Napsat text AI" (`email-text-assist`) | pryč | žádné volání modelu z aplikace |
+| `fillTemplateFields`, `greetingFor`, `mergeContext` (`lib/vividbooks/templateFields`) | šablona se vloží tak, jak je | schéma `crm` |
+| `ownerToRecipientOptions` (vlastníci nemovitosti), role Vlastník/Kupující/Nájemník/Zájemce | `recipientSuggestions` se skupinou, řazení abecedně | schéma `crm` |
+| `searchEmailRecipients` z `lib/partySearch` | prop `onSearchRecipients` | schéma `crm` — adresář přijde s řádkem Karta kontaktu |
+| šablony z `email_templates`, bucket `template-attachments`, `is_shared`, „Moje", `author_name`, RPC `email_template_used` | propsy `templates`, `onSaveTemplate`, `onDeleteTemplate`, `onTemplateUsed` | schéma `crm`; jeden uživatel; sklad příloh je K4 |
+| podpis z `profiles.email_signature` | prop `signatureHtml` | řádek Podpisy |
+| `CrmEmailContext` v detailu | slot `renderContext(detail)` | řádek Kontext u e-mailu |
+| `EmailWorkPanel`: tři sloupce z `email_waiting`, `email_tracking`, `scheduled_emails` | jeden sloupec „Čeká na mou odpověď" z propsu `waiting` | schéma `crm`; sledovací pixel a naplánované odeslání sem nepatří; zdroj dat řeší Dnes (K3.5) |
+| `toast` ze `sonner` | `useToast` z převzatého kitu | sonner se nepřebral (UI kit) |
+| avatar z náhodného odstínu `hsl(hash % 360, …)` | `avatarColorClass` z palety | ladí s tokeny ve světlém i tmavém režimu |
+
+Kontrakt `MailboxClient` zůstal nedotčený: `MailSendRequest.attachments` (base64)
+v něm je, ale okno psaní ho nepoužívá. Jak `uploadIds` dojedou do enginu, rozhodne
+`engineMailbox.ts` (K3.2).
+
+Nezměněné proti zdroji: `EmailSignaturePreview`, `EmailSignatureNode`
+(jen třída `vb-email-signature` → `doktor-email-signature`), `EmailRichEditor`
+(jen texty do slovníku).
+
+### Kanban (20. 9. 2026)
+
+Přebráno jako **tvar**, ne jako data: mřížka sloupců, sloupec s proužkem
+a počtem, karta s názvem na dva řádky a patičkou, zvýraznění podle stáří ve
+sloupci, optimistický přesun s návratem při chybě, odložená kostra načítání.
+Spolu s tím `hooks/useDelayedLoading.ts`.
+
+**Sloupce** jsou stavy úkolu z `CLAUDE.md`: TODO · V procesu · Čekám · Hotovo ·
+Odloženo (`zruseno` sloupec nemá). `DEAL_STAGES` (Lead → Předání) a
+`dealPipelinePalette.ts` se nepřebraly; proužky berou barvy z tokenů
+(akcent, varování, úspěch, ztlumené).
+
+**Karta** (`KanbanCard` v `types.ts`) je projekce řádku `ukoly`: název, termín
+relativně s absolutním datem v `title`, priorita, kontakt, oblast, stáří ve sloupci.
+Typy tabulek přijdou generované z Supabase (K2) — kanban na nich nezávisí, řádek
+na kartu přemapuje obrazovka Úkoly.
+
+**Odstřižené:** načítání z `db_deals` (stránkování po 1 000, joiny, profily makléřů,
+RPC `kanban_deal_counts`), fast-path pro `?deal=`, filtry `brokerFilter` /
+`dealFilter` / `vbPipeline`, `SaleDealDetail`, `VbDealDetail`, `DealFormDialog`,
+`DealStageActionsDialog`, `recordDealStageKanbanWallPost`, provize a náklady
+(`formatCzk`, `calculateDealNetCommission`), vlastník, tipař, makléř s avatarem,
+škola, štítky z Kabinetu, typ akvizice, konec ZS, sdílení s kolegy, odkaz na
+`/obchody`. Data přicházejí propsem `cards`, změna stavu jde přes `onMove` —
+a kdo ji ukládá, zapíše `stav_zdroj = klik` (pravidlo 4).
+
+**`@dnd-kit` místo nativního drag & drop.** CRM přetahuje přes `dataTransfer`,
+což na dotyku nefunguje. Stack v `CLAUDE.md` říká `@dnd-kit (kanban)`, takže
+`useDraggable` / `useDroppable` / `DragOverlay`; klik zůstává klikem díky prahu
+6 px, na dotyku se tah spouští po 180 ms.
 
 ## Nepřebírat
 

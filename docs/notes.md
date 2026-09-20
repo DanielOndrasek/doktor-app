@@ -20,3 +20,15 @@ rozhodlo" tamtéž. Pro K3 dál platí, že se čeká na O3 a O4.
 takže `calendar.tsx` a `date-picker.tsx` jsou přepsané na v9. Až se bude přebírat Úkoly
 a Události, jejich pickery (`TaskDeadlinePicker` a spol.) budou chtít stejné přepsání —
 v8 API (`fromDate`, `toDate`, `captionLayout="buttons"`) v tomhle repozitáři neexistuje.
+
+**20. 9. 2026 — komponenty pošty a kanban.** Řádky 5 a 9 převzaté; odchylky v oddílu
+„Co se při kopírování rozhodlo". Dvě věci čekají na další řádky: `EmailCompose`
+posílá přílohy jako `uploadIds` (ne base64), takže `engineMailbox.ts` (K3.2) musí
+rozhodnout, jak se `upload_id` dostane do `send` — kontrakt `MailboxClient` na to
+pole nemá. A `KanbanCard` je projekce řádku `ukoly`; mapování napíše obrazovka
+Úkoly (K3.6), až budou typy z K2.
+
+**20. 9. 2026 — šablony zpráv (K2).** Schéma `doktor` v plánu nemá tabulku šablon,
+ale řádek Komponenty pošty nese `EmailTemplatesDialog`. Dialog je props-driven
+(`EmailTemplate` v `lib/email/compose.ts`); kde se šablony uloží, je otázka pro K2
+vedle `podpisy` a `pravidla`.
