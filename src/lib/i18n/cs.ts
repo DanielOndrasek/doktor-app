@@ -305,6 +305,49 @@ export const cs = {
     },
   },
 
+  /** Kontext u otevřené zprávy (`src/components/email/EmailContext.tsx`). */
+  kontext: {
+    nazev: "Kontext",
+    hledam: "Hledám v kontaktech…",
+    neznamy: "odesílatel není v kontaktech",
+    nenacten: "Kontext se nepodařilo načíst.",
+    posledniZpravy: "Poslední zprávy",
+    otevreneUkoly: "Otevřené úkoly",
+    zadneZpravy: "žádné dřívější zprávy",
+    zadneUkoly: "žádné otevřené úkoly",
+    ukolZMailu: "Úkol z mailu",
+    ukolNazev: (subject: string) => `Vyřídit e-mail: ${subject}`,
+    ukolZalozen: "Úkol založen",
+    ukolNezalozen: "Úkol se nepodařilo založit.",
+    bezPredmetu: "(bez předmětu)",
+  },
+
+  /** Dnes (`src/pages/Today.tsx`, `src/components/home/`). */
+  dnes: {
+    titulek: "Dnes",
+    cemuSeVenovat: "Čemu se dnes věnovat",
+    nicNalehaveho: "Nic naléhavého. Pošta, úkoly i události jsou v pořádku.",
+    nacteniSelhalo: "Přehled se nepodařilo načíst.",
+    filtr: "Filtr:",
+    zrusitFiltr: "zrušit",
+    nalehavost: "naléhavost",
+    hotovo: "Hotovo",
+    odlozit: "Odložit o 7 dní",
+    nerelevantni: "Nerelevantní",
+    urg: {
+      1: "urgentní",
+      2: "vysoká",
+      3: "střední",
+      4: "nízká",
+    },
+    kategorie: {
+      p1: "Priorita 1",
+      termin: "Úkoly po termínu",
+      udalost: "Dnešní události",
+      odpoved: "Čeká na odpověď",
+    },
+  },
+
   /** Výběr data (`ui/date-picker.tsx`). */
   datum: {
     vybratDatum: "Vybrat datum",
