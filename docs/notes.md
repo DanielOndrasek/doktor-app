@@ -38,3 +38,8 @@ Supabase. Až bude (O3): zapnout TOTP MFA v Auth, nastavit `password_min_length 
 přidat `<doména>/reset-hesla` do redirect allow-listu (O4) a doplnit e-mailovou šablonu
 obnovy hesla. Účet uživatele se zakládá ručně v Supabase — aplikace registraci nemá
 a mít nebude.
+
+**20. 9. 2026 — obrázky v podpisu (K3.3).** `SignatureEditor` nahrává obrázky přes
+`onUploadImage`; kam, není rozhodnuté. Pravidlo 5 mluví o tělech a přílohách, obrázek
+podpisu je něco mezi — nejjednodušší je nechat ho na enginu vedle příloh (`upload_id`
++ veřejná URL), ať Supabase drží jen `podpisy.html`. Rozhodnout s O3.

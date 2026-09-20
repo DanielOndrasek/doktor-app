@@ -42,7 +42,7 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Kontrakt pošty | `src/lib/email/types.ts` (`MailboxClient`) | `src/lib/email/types.ts` | ☑ |
 | Gmail klient | `src/lib/email/gmailMailbox.ts` | `src/lib/email/gmailMailbox.ts` | ☐ |
 | Komponenty pošty | `src/components/email/*` (Inbox, Compose, RichEditor, FolderNav, Templates, SignaturePreview, WorkPanel, RecipientsInput) | `src/components/email/` | ☑ |
-| Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☐ |
+| Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☑ |
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
 | Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☐ |
 | Úkoly | `pages/crm/VbTasksPage.tsx`, `components/tasks/*` | `src/pages/Tasks.tsx`, `src/components/tasks/` | ☐ |
@@ -113,8 +113,9 @@ asistenta, loaderu, přihlašovací aurory a „výhry obchodu“, styly pro Lea
 docx-preview, šablony smluv a výběr oblasti pro report.
 
 **Odloženo na jejich řádek**, ne odstřiženo — patří k oblasti, která se ještě nepřebírá:
-`.signature-surface` (Podpisy), `.animate-fade-in-up` a `.home-surface*` (Dnes),
-`.animate-task-complete-out` (Úkoly).
+`.animate-fade-in-up` a `.home-surface*` (Dnes), `.animate-task-complete-out` (Úkoly).
+`.signature-surface` se nakonec nepřebral: používal ho jen starší
+`components/SignatureEditor.tsx`, který se nebere (viz Podpisy).
 
 **Až se bude přebírat Úkoly**, čeká na remapování na tokeny Doktora:
 `TaskDetailDialogChrome.tsx` a `TaskContextPreviewCards.tsx` sahají na `--deal-*`.
@@ -255,6 +256,34 @@ stránka — obrazovky přijdou s dalšími řádky.
 **Co si tohle žádá od Supabase (O3):** zapnuté TOTP MFA v Auth, `password_min_length = 12`
 (stejně jako `MIN_PASSWORD_LENGTH`), redirect URL `<doména>/reset-hesla` v allow-listu
 a e-mailovou šablonu obnovy hesla. Bez O3 a O4 se přihlásit nedá — zapsáno v `notes.md`.
+
+### Podpisy (20. 9. 2026)
+
+**Přeneseno:** `lib/emailSignature.ts` → `src/lib/email/signature.ts`
+a `lib/emailSignaturePaste.ts` → `src/lib/email/signaturePaste.ts`, obojí beze změny
+chování; `components/vividbooks/EmailSignatureEditor.tsx` →
+`src/components/email/SignatureEditor.tsx`.
+
+CRM má editory dva. Tabulka jmenuje ten z `vividbooks/` (novější, dva režimy Podpis ·
+HTML kód, používá ho ProfilePage); starší `components/SignatureEditor.tsx` (tři režimy,
+`useSignatureImageUpload` nad storage, jediný uživatel `.signature-surface`) se nebere.
+Knihovna `emailSignaturePaste.ts` patřila k tomu staršímu — přebírá se stejně, protože
+její `rehostSignatureImages` je lepší než `materializeImages` z novějšího editoru (umí
+`blob:`, ruší `srcset`, má záložní chování bez úložiště), a editor ji teď používá.
+
+| Bylo | Je | Proč |
+|---|---|---|
+| `supabase.storage.from("company-assets").upload(...)` | prop `onUploadImage: SignatureImageUploader` | kam se obrázky podpisu ukládají, rozhodne K3.3 (engine, nebo úložiště); bez propu zůstanou malé `data:` obrázky vložené, větší vypadnou s hláškou |
+| `Segmented` z `components/reports/Viz.tsx` | `ToggleGroup` z kitu | primitivum z kitu místo vlastní komponenty (CLAUDE.md, „Čeho se vyvarovat") |
+| `toast` ze `sonner` | `useToast` | sonner se nepřebral |
+| texty včetně „z CRM (pracovní plocha, nabídky, hromadné oslovení)" | `cs.posta.podpis.*` | slovník |
+| `profiles.email_signature` | `podpisy.html` (jen v komentářích) | schéma `doktor` |
+
+Testy `emailSignature.test.ts` a `emailSignaturePaste.test.ts` zůstaly ve zdroji — repozitář
+nemá testovací běh. Jsou to čisté funkce, přenesou se, až běh bude.
+
+`EmailCompose` napojení už má: `signatureHtml={emailSignatureToEditorHtml(podpis.html)}`.
+Výběr podpisu podle schránky (`vychozi_pro_schranku`, `odeslat_z`) je K3.3 a čeká na O5.
 
 ## Nepřebírat
 
