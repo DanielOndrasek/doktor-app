@@ -185,3 +185,15 @@ s Interem; bez sítě spadne na `cursive`). Navigace je postranní lišta z CRM 
 (viz převzetí). V railu je jen iniciála „S" — celý podpis by se do 56 px nevešel; kdyby měl
 být vidět celý, jde rail rozšířit nebo podpis otočit svisle.
 
+**21. 9. 2026 — mimo etapu na přání: Kontakty (K4.1) a „Rozpracováno v Claude".** Uživatel
+si vyžádal adresář s minimálním CRM a přehled aktivních projektů Clauda dřív než K3.8/K3.9.
+Uděláno jako `/kontakty` (`ContactSource` nad `kontakty`, `poznamky`, `ukoly`) a sekce na
+Dnes nad `ukoly.claude_projekt` + `fronta_claude`. Pravidla pro zápis Claudem jsou
+v `docs/most-claude.md`. Data naplněna přes Supabase MCP: schránka ÚVN, 44 organizací,
+174 kontaktů se 198 adresami z `mail_kontakty`, 6 úkolů projektu „Doktor — aplikace".
+`polozky` se neseedovaly (bez Message-ID by kolidovaly s během).
+
+**Co zůstává na enginu (blokuje Poštu, e-maily u kontaktu, kalendáře):** REST `/api/v1`
+podle `zadani-k2-schema-a-rest.md` část B. Engine je jiný repozitář (`uvn-mail-mcp`) —
+do této session ho jde přidat přes `add_repo`, pak lze REST napsat tady.
+

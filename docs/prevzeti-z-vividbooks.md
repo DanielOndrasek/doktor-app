@@ -42,7 +42,7 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Kontrakt pošty | `src/lib/email/types.ts` (`MailboxClient`) | `src/lib/email/types.ts` | ☑ |
 | Komponenty pošty | `src/components/email/*` (Inbox, Compose, RichEditor, FolderNav, Templates, SignaturePreview, WorkPanel, RecipientsInput) | `src/components/email/` | ☑ |
 | Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☑ |
-| Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
+| Karta kontaktu | `pages/VbPersonDetailPage.tsx` (tvar), `components/vividbooks/EntityDetailShell.tsx` (primitiva), `components/database/PeopleTab.tsx`, `PersonFormDialog.tsx` (tvar) | `src/pages/Contacts.tsx`, `src/components/contacts/` | ☑ minimální CRM (21. 9.); `ActivityTimeline`, `ActivityPanel`, `EntityWall` ne |
 | Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☑ |
 | Navigace (postranní lišta) | `components/AdminLayout.tsx` (rail `w-14`, ikony s tooltipy, mobilní FAB + Sheet, patička s motivem) | `src/components/AppShell.tsx` | ☑ |
 | Úkoly — detail a zakládání | `components/tasks/TaskDeadlinePicker.tsx`, `TaskDetailDialogChrome.tsx`, `components/vividbooks/ActivityDialog.tsx` (tvar formuláře) | `src/components/tasks/` | ☑ |
@@ -442,6 +442,34 @@ Databáze · Reporty). Nepřebráno: `animate-glow-pulse`, počet nepřečtenýc
 s `mail_stats` z enginu), `UserMenu` s avatarem (uživatel je jeden — tlačítko Odhlásit), otevírání
 nativní pošty na mobilu. Značka: místo loga N1 iniciála podpisu „S" (`font-signature`,
 Dancing Script z Google Fonts vedle Interu); celý podpis „Suchánek" je na přihlášení.
+
+### Kontakty — adresář a minimální CRM (21. 9. 2026)
+
+K4.1 přitažené do K3 na přání. Z CRM přebráno jako **tvar**, ne kód: `EntityDetailShell.tsx`
+→ `src/components/contacts/DetailPrimitives.tsx` (`DetailCard`, `SectionTitle`, `Group`,
+`Field`, `FactGrid`, `EditToggle`, `Chip`, `InfoRow`, `Placeholder`; `--deal-*` → `card` /
+`border`, barvy čipů → tokeny), `VbPersonDetailPage.tsx` → `ContactDetail.tsx` (hlavička
+s iniciálami, přehled údajů / formulář za Upravit, řádky s ikonou), `PeopleTab.tsx` →
+`ContactList.tsx` (seznam místo tabulky), `PersonFormDialog.tsx` → `ContactDialog.tsx`.
+
+| V CRM | V Doktorovi | Proč |
+|---|---|---|
+| `EntityDetailShell` se záložkami a `ResizableDetailPanels` | dva sloupce karet, na mobilu seznam ↔ karta | jedna obrazovka, ne workspace obchodu |
+| `ActivityTimeline` (web, webináře, mailing), `ActivityPanel`, `EntityWall` | `poznamky` jako časová osa + otevřené `ukoly` | zdroje CRM neexistují; historie kontaktu je pošta (engine) a poznámky |
+| škola, role Kabinetu, souhlasy, `db_people` | `kontakty`, `kontakt_adresy`, `kontakt_telefony`, `organizace`, `stitky` | schéma `doktor` |
+| tabulka se sloupci, filtry, hromadné akce | seznam s hledáním (jméno, tituly, adresa přes vztah) | jeden uživatel, 200 kontaktů |
+| e-maily z `db_emails` | text „načte engine, až bude propojený" | `mail_search` podle adres = K2.3 |
+
+`ContactSource` (`src/lib/contacts.ts`): `list(search)`, `get`, `create`, `update`,
+`addAddress`, `addPhone`, `notes`, `addNote`, `openTasks`, `organizations`. Organizace se
+zakládá podle názvu při uložení karty. Úkol ke kontaktu jde přes `TaskDialog`
+s `contactId` (→ `ukoly.kontakt_id`).
+
+### Rozpracováno v Claude (21. 9. 2026)
+
+Není z CRM. Sekce na Dnes (`src/components/home/ClaudeProjects.tsx`,
+`src/lib/claudeProjects.ts`) nad `ukoly.claude_projekt` a `fronta_claude`; pravidla zápisu
+jsou v `docs/most-claude.md`.
 
 ## Nepřebírat
 

@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { ClaudeProjects } from "@/components/home/ClaudeProjects";
 import { TodaySignals } from "@/components/home/TodaySignals";
+import { TASKS_PATH } from "@/components/AppShell";
+import type { ClaudeWorkSource } from "@/lib/claudeProjects";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import type { Signal, TodaySource } from "@/lib/today";
 
 /**
- * Dnes (K3.5): čemu se dnes věnovat. Připnuté pohledy přijdou s K4.2.
+ * Dnes (K3.5): čemu se dnes věnovat a co je rozpracované v Claude
+ * (`ClaudeProjects`, na přání 21. 9.). Připnuté pohledy přijdou s K4.2.
  *
  * Převzato z `pages/HomePage.tsx` (vividbooks CRM, `831f9ae6`) jako kostra:
  * kontejner se sekcemi. Nepřebráno: `VbAssistantHero` (AI asistent),
@@ -16,7 +20,7 @@ import type { Signal, TodaySource } from "@/lib/today";
  * schéma `crm`) a `CallRecordingsInbox` (vlastní řádek Zápisy). Aurora
  * v pozadí (`page-aurora-soft`) je značka Vividbooks.
  */
-export default function Today({ source }: { source: TodaySource }) {
+export default function Today({ source, claudeWork }: { source: TodaySource; claudeWork: ClaudeWorkSource }) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -58,6 +62,7 @@ export default function Today({ source }: { source: TodaySource }) {
           }}
           onAction={(_signal, action) => navigate(action.href)}
         />
+        <ClaudeProjects source={claudeWork} tasksHref={TASKS_PATH} />
       </div>
     </main>
   );

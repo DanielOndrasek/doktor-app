@@ -1,0 +1,77 @@
+# Most do Clauda: jak Claude čte a zapisuje do schématu `doktor`
+
+Aplikace nevolá žádný model (CLAUDE.md, Stack). „Most do Clauda“ z plánu je obráceně:
+**Claude přes MCP** čte poštu z enginu (`mcp__UVN_Email__*`) a zapisuje metadata
+do Supabase (`mcp__Supabase__execute_sql` / `apply_migration`), aplikace to jen ukazuje.
+Tenhle dokument říká, co smí Claude zapsat, kam a jak, aby to aplikace i RLS unesly.
+Až vzniknou MCP nástroje na enginu (K2.4: `polozka_zapis`, `ukol_zalozit`, …), budou
+dělat totéž; do té doby jde přímý SQL přes Supabase MCP.
+
+## Dvě spojení, jeden uživatel
+
+| Spojení | K čemu | Co nikdy |
+|---|---|---|
+| Engine `uvn-mail-mcp` (MCP `UVN_Email`) | index pošty, těla, přílohy, kalendáře, adresář (`mail_search`, `mail_get`, `mail_thread`, `mail_kontakty`, `cal_*`) | posílat ven rodná čísla; mazat; odesílat bez potvrzení |
+| Supabase projekt `doktor` (MCP `Supabase`, ref `dwwwdeagnqiibwraxyjx`) | metadata: `polozky`, `ukoly`, `udalosti`, `kontakty`, `poznamky`, `behy`, `fronta_claude`, `audit` | těla zpráv, bajty a text příloh (pravidlo 5); rodná čísla (pravidlo 7) |
+
+Každý řádek má `user_id`. Uživatel je zatím jeden — id se zjistí
+`select id from auth.users where email = '…'` a dosadí do každého insertu. Supabase MCP
+běží jako service role a RLS obchází, proto je `user_id` **povinnost Clauda**, ne databáze.
+
+## Idempotence — každý zápis nese `zdroj_id`
+
+| Tabulka | Klíč | Tvar `zdroj_id` |
+|---|---|---|
+| `polozky` | `(schranka_id, message_id)` | RFC Message-ID z `mail_get` (ne `ref`, ten se přesunem mění) |
+| `ukoly` | `(user_id, zdroj_id)` | `email:<message_id>`, `claude:<projekt>:<slug>`, `plaud:<id nahrávky>` |
+| `udalosti` | `(user_id, zdroj_id)` | `email:<message_id>:<index návrhu>` |
+| `poznamky` | `(user_id, zdroj_id)` | `plaud:<id>`, `claude:<session>:<n>` |
+| `kontakty` | `id = md5('doktor:kontakt:' || klíč)::uuid` | klíč = `prijmeni|jmeno` bez diakritiky; adresy `unique (user_id, hodnota)` |
+
+Vždy `insert … on conflict do nothing` (nebo `do update` jen u sloupců, které Claude vlastní).
+Rozepsaný text uživatele (`polozky.rozepsano_telo`) se **nikdy** nepřepisuje (E3).
+
+## Stav se odvozuje ze schránky (pravidlo 4)
+
+`polozky.stav` a `ukoly.stav` mají `stav_zdroj in ('klik', 'schranka', 'beh')`:
+
+- Claude v běhu zapisuje `stav_zdroj = 'beh'`.
+- Když engine vidí odpověď odeslanou z Mailu nebo iPhonu, položka se uzavře
+  se `stav_zdroj = 'schranka'` — to přijde s K2.6 na enginu, Claude to nesimuluje.
+- Klik uživatele v aplikaci (`stav_zdroj = 'klik'`) má přednost; běh ho nepřepisuje.
+
+## Co běh třídění (skill `email-triage`) zapíše místo artefaktu „Schránka“
+
+1. `behy`: jeden řádek na běh (`zacatek`, `stav = 'bezi'` → `hotovo` / `chyba`, `pocty`).
+2. `polozky`: na zprávu jeden řádek — `schranka_id`, `message_id`, `vlakno`, `ref_cache`,
+   `od`, `od_email`, `predmet`, `datum`, `kategorie`, `priorita 1–3`, `stav`, `co_resit`,
+   `navrh_predmet`, `navrh_telo`, `komu[]`, `kopie[]`, `prilohy_meta` (jen názvy, typy,
+   velikosti, SHA), `kontakt_id` (podle `kontakt_adresy.hodnota = od_email`), `beh_id`.
+3. `ukoly`: sliby a termíny z pošty — `zdroj = 'email'`, `zdroj_id = 'email:<message_id>'`,
+   `polozka_id`, `kontakt_id`; `claude_projekt`, když úkol patří do rozpracovaného projektu.
+4. `udalosti`: návrhy termínů — `stav = 'novy'`, `kolize` z `cal_free`; **nikdy** `cal_pridat`
+   (do kalendáře jen kliknutím v aplikaci).
+5. `audit`: `kdo = 'beh'`, nástroj, parametry bez těl.
+
+Souhrn běhu zůstává v chatu; „Dnes“ ho neukazuje, ukazuje `dnes()`.
+
+## Rozpracováno v Claude
+
+Sekce na Dnes čte `ukoly` s vyplněným `claude_projekt` (ne hotovo / zruseno) a počet
+řádků `fronta_claude` ve stavu `ceka` / `bezi`. Projekt tedy existuje, dokud má otevřený
+úkol. Když Claude začne na něčem pracovat, založí úkol se `zdroj = 'claude'`,
+`claude_projekt = '<název projektu>'`, `zdroj_id = 'claude:<projekt>:<slug>'`; po dokončení
+ho přepne na `hotovo` (`stav_zdroj = 'beh'`). Dlouhé požadavky jdou do `fronta_claude`
+(`druh`, `vstup`, `stav`, `vysledek`).
+
+## Co se 21. 9. naplnilo
+
+- `schranky`: ÚVN (`stepan.suchanek@uvn.cz`). Gmail přibude, až bude adresa a účet na enginu.
+- `organizace` (44) a `kontakty` (174) se `kontakt_adresy` (198) z `mail_kontakty(limit 200)`:
+  tituly odděleny, jméno a příjmení podle seznamu českých křestních jmen, víc adres jedné
+  osoby sloučeno, organizace podle domény. `zdroj = 'adresar_enginu'`. Vlastní adresy
+  lékaře vynechány.
+- `ukoly` v projektu „Doktor — aplikace“: REST enginu, Gmail IMAP, běh do DB, kontakty,
+  Supabase dashboard, doména a CSP.
+- `polozky` **ne**: `mail_kontakty` ani `mail_search` nevrací Message-ID a bez něj by
+  seed kolidoval s budoucím během. První běh třídění je naplní správně.

@@ -33,6 +33,8 @@ Artefakt „Schránka“ se vypíná až po týdnu běhů bez ručních oprav v 
 - [`docs/prevzeti-z-vividbooks.md`](docs/prevzeti-z-vividbooks.md) — co se kopíruje
   z vividbooks CRM a co se z něj naopak nebere.
 - [`docs/prevzato/`](docs/prevzato/) — kontrakty chování převzaté ze Schránky (testy).
+- [`docs/most-claude.md`](docs/most-claude.md) — jak Claude přes MCP čte engine a zapisuje
+  metadata do `doktor` (idempotence, `stav_zdroj`, co běh třídění zapíše, Rozpracováno v Claude).
 - [`docs/notes.md`](docs/notes.md) — poznámky k věcem mimo aktuální etapu.
 - [`CLAUDE.md`](CLAUDE.md) — pravidla pro práci v tomto repozitáři.
 
@@ -68,7 +70,7 @@ npm run build
 ```
 
 Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
-Dnes (`/`) nad `dnes()`, Úkoly (`/ukoly`: kanban, seznam po termínech, kalendář, detail a zakládání) nad tabulkou `ukoly`, Události
+Dnes (`/`) nad `dnes()` se sekcí Rozpracováno v Claude, Úkoly (`/ukoly`: kanban, seznam po termínech, kalendář, detail a zakládání) nad tabulkou `ukoly`, Kontakty (`/kontakty`: adresář a minimální CRM), Události
 (`/udalosti`) nad `udalosti` se zápisem do kalendáře přes engine a Poštu (`/posta`) nad klientem enginu — bez `VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený.
 Kontext a zápisy čekají na své obrazovky. Databáze je Supabase projekt `doktor` (EU, `eu-west-1`);
 veřejné hodnoty pro `.env` jsou v `.env.example`, schéma v `supabase/migrations/`, typy

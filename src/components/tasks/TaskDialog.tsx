@@ -40,7 +40,7 @@ function formatDateTime(iso: string): string {
   return isValid(d) ? format(d, "d. M. yyyy HH:mm", { locale: csLocale }) : iso;
 }
 
-export type TaskDialogTarget = { mode: "new"; state: TaskState; dueDate?: string } | { mode: "edit"; id: string };
+export type TaskDialogTarget = { mode: "new"; state: TaskState; dueDate?: string; contactId?: string } | { mode: "edit"; id: string };
 
 interface TaskDialogProps {
   target: TaskDialogTarget | null;
@@ -122,7 +122,7 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
     }
     setSaving(true);
     try {
-      const saved = task ? await source.update(task, draft) : await source.create(draft);
+      const saved = task ? await source.update(task, draft) : await source.create({ ...draft, contactId: target?.mode === "new" ? (target.contactId ?? null) : null });
       toast({ title: task ? t.ulozen : t.zalozen });
       onSaved(saved);
       onClose();
