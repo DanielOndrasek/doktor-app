@@ -197,3 +197,16 @@ v `docs/most-claude.md`. Data naplněna přes Supabase MCP: schránka ÚVN, 44 o
 podle `zadani-k2-schema-a-rest.md` část B. Engine je jiný repozitář (`uvn-mail-mcp`) —
 do této session ho jde přidat přes `add_repo`, pak lze REST napsat tady.
 
+**21. 9. 2026 — klient enginu srovnaný se skutečnými nástroji.** Přes MCP `UVN_Email` jsem
+si přečetl skutečné signatury a tvary (`mail_search` → `{pocet, vysledky}` s `uryvek`,
+`prilohy` jako text; `mail_get` → `telo`, `message_id`; `mail_prilohy` → `{index, jmeno, typ,
+bajtu}`; `mail_folders` → `{result:[{name, special, flags}]}`; `mail_flag` s `priznak
+'seen'|'flagged'`; `mail_send` s `potvrzeni:'ODESLAT'` a bez příloh; `cal_calendars` → názvy;
+`cal_pridat` s `datum, cas, minut, potvrzeni:'PRIDAT'`). `engineMailbox.ts` a `events.ts`
+teď posílají přesně tohle; REST K2.3 je tenký obal 1:1 (zadání B.2 přepsáno). Co engine
+nezná (`schranka`, `skryta_kopie`, `html`, `prilohy`, `telo_html`, `priznaky` v seznamu,
+`neprectene`), se posílá jen když je vyplněné — pydantic by cizí parametr odmítl.
+
+Repozitář enginu není na GitHubu (jen `/opt/uvn-mail-mcp` na Hetzneru). Rozhodnuto: nahrát
+ho na GitHub, pak REST napsat dovnitř. Do té doby Pošta hlásí „engine není propojený".
+

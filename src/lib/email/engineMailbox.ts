@@ -26,9 +26,9 @@ import type {
  * `mail_send`, `mail_draft`, `mail_folders`, `mail_stats`, `upload`),
  * tvary odpovědí jsou z K1 (`mail_move` → `{ok, novy_ref, slozka,
  * message_id}`; `mail_get(ref, format)`; `prilohy: [{zdroj, …}]`;
- * `{ok:false, duvod}` při odmítnutí). Co K1 nezadává — názvy polí seznamu
- * zpráv a stránkování — je v `Wire*` typech níže na jednom místě, aby se
- * s K2.3 doladilo jedním zásahem.
+ * `{ok:false, duvod}` při odmítnutí). Tvary jsou 1 : 1 s nástroji enginu,
+ * jak je vidí MCP (21. 9. 2026) — REST je tenký obal; co engine zatím nemá,
+ * je ve `Wire*` typech níže označené jako K2.3.
  *
  * Co tenhle klient **nedělá**, protože to zakazuje `CLAUDE.md`:
  * - `trashMessage`, `deleteFolder`, `createFolder` jsou v kontraktu, ale
@@ -104,51 +104,73 @@ export interface EngineMailbox extends MailboxClient {
 }
 
 /* ── Drátové tvary ─────────────────────────────────────────────────────────
- * Pojmenování podle enginu (česky, `snake_case`). Pole, která K1 nezadává,
- * jsou tady jen jednou; s K2.3 se upraví tady, ne v obrazovkách.
+ * Přesně podle nástrojů enginu, jak je vidí MCP 21. 9. 2026 (`mail_search`,
+ * `mail_get`, `mail_prilohy`, `mail_folders`, `mail_flag`, `mail_move`,
+ * `mail_send`, `mail_draft`, `mail_stats`). REST K2.3 je tenký obal 1 : 1
+ * nad nástroji (zadání K2, část B), takže tvary jsou tytéž. Co engine zatím
+ * nemá (`upload`, `mail_priloha_odkaz`, `prilohy` u `mail_send`, `telo_html`,
+ * `neprectene`), je označené jako volitelné a čeká na K2.3.
  * ──────────────────────────────────────────────────────────────────────── */
 
+/** Řádek z `mail_search.vysledky` i hlavička z `mail_get`. */
 interface WireMessage {
   ref: string;
-  vlakno: string;
+  id?: number;
+  /** `YYYY-MM-DDTHH:MM` bez zóny — místní čas serveru. */
+  datum: string;
+  smer?: "sent" | "received" | string;
   od: string;
   komu: string;
+  kopie?: string;
   predmet: string;
-  datum: string;
-  /** Epocha v ms. */
-  datum_ms: number;
-  ukazka: string;
-  priznaky: string[];
+  vlakno: string;
+  /** Názvy příloh oddělené čárkou; prázdné = bez příloh. */
+  prilohy?: string;
+  uryvek?: string;
+  /** IMAP FLAGS oddělené čárkou (`\Seen,\Flagged`) — dnes jen z `mail_najdi`, K2.3 i tady. */
+  priznaky?: string;
   schranka?: string;
 }
 
 interface WireSearchResult extends WireEnvelope {
-  zpravy: WireMessage[];
-  dalsi_strana: string | null;
-  celkem: number;
+  pocet: number;
+  vysledky: WireMessage[];
+}
+
+interface WireMessageDetail extends WireEnvelope, WireMessage {
+  message_id: string;
+  /** Očištěný text (`plne_telo = true`). */
+  telo?: string;
+  /** Sanitizované HTML (ÚKOL 36) — až ho engine vrátí, čtečka ho vezme. */
+  telo_html?: string;
 }
 
 interface WireAttachment {
   index: number;
-  nazev: string;
+  jmeno: string;
   typ: string;
-  velikost: number;
+  bajtu: number;
+  druh?: string;
+  cist_umim?: boolean;
 }
 
-interface WireMessageDetail extends WireEnvelope {
-  zprava: WireMessage & {
-    message_id: string;
-    telo_html?: string;
-    telo_text?: string;
-    prilohy: WireAttachment[];
-  };
+interface WireAttachments extends WireEnvelope {
+  pocet: number;
+  prilohy: WireAttachment[];
+}
+
+interface WireFolder {
+  name: string;
+  allowed: boolean;
+  special: "" | "sent" | "drafts" | string;
+  flags: string[];
 }
 
 interface WireFolders extends WireEnvelope {
-  standardni: string[];
-  vlastni: { id: string; nazev: string }[];
+  result: WireFolder[];
 }
 
+/** Přesun vrací nový ref (ÚKOL 35). */
 interface WireMove extends WireEnvelope {
   novy_ref: string;
   slozka: string;
@@ -156,12 +178,17 @@ interface WireMove extends WireEnvelope {
 }
 
 interface WireSend extends WireEnvelope {
+  message_id?: string;
+  priznak_nastaven?: boolean;
+  ulozeno_do_sent?: boolean;
+  /** `mail_draft`: ref uloženého konceptu (K2.3). */
   ref?: string;
-  odeslano?: number;
 }
 
 interface WireStats extends WireEnvelope {
-  neprectene: number;
+  zprav_celkem?: number;
+  /** K2.3 — dnes `mail_stats` nepřečtené nevrací. */
+  neprectene?: number;
 }
 
 interface WireAttachmentLink extends WireEnvelope {
@@ -183,35 +210,58 @@ const STANDARD_FOLDER_TO_ENGINE: Record<string, string> = {
   archive: "_Triage/Vyřízeno",
 };
 
+const STANDARD_FOLDER_NAMES = new Set(Object.values(STANDARD_FOLDER_TO_ENGINE));
+
 function engineFolder(folderId: string, archiveFolder: string): string | undefined {
   if (folderId === "all") return undefined;
   if (folderId === "archive") return archiveFolder;
   return STANDARD_FOLDER_TO_ENGINE[folderId] ?? folderId;
 }
 
+/** `\Seen,\Flagged,NonJunk` → značky kontraktu (`UNREAD`, `STARRED`). */
+function labelsOf(priznaky: string | undefined, smer: string | undefined): string[] {
+  const flags = new Set((priznaky ?? "").split(",").map((f) => f.trim()));
+  const labels: string[] = [];
+  // Bez informace o příznacích (seznam z indexu) zprávu neoznačujeme jako nepřečtenou —
+  // lepší nic než všechno tučně.
+  if (priznaky !== undefined && !flags.has("\\Seen")) labels.push("UNREAD");
+  if (flags.has("\\Flagged")) labels.push("STARRED");
+  if (smer === "sent") labels.push("SENT");
+  return labels;
+}
+
+/** `2026-09-21T11:28` bez zóny → epocha v ms (místní čas prohlížeče = čas lékaře). */
+function epochMs(datum: string): string {
+  const ms = Date.parse(datum);
+  return String(Number.isNaN(ms) ? 0 : ms);
+}
+
 function toListMessage(m: WireMessage): MailListMessage {
   return {
     id: m.ref,
     threadId: m.vlakno,
-    snippet: m.ukazka ?? "",
+    snippet: m.uryvek ?? "",
     from: m.od,
     to: m.komu,
     subject: m.predmet ?? "",
     date: m.datum,
-    internalDate: String(m.datum_ms ?? Date.parse(m.datum) ?? 0),
-    labelIds: m.priznaky ?? [],
+    internalDate: epochMs(m.datum),
+    labelIds: labelsOf(m.priznaky, m.smer),
   };
 }
 
 function toAttachmentMeta(a: WireAttachment): MailAttachmentMeta {
-  return { filename: a.nazev, mimeType: a.typ, size: a.velikost, attachmentId: String(a.index) };
+  return { filename: a.jmeno, mimeType: a.typ, size: a.bajtu, attachmentId: String(a.index) };
+}
+
+/** Jen vyplněné klíče — engine odmítne parametr, který nezná (pydantic). */
+function compact(payload: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0)));
 }
 
 export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbox {
   const mailbox = options.mailbox ?? "all";
   const archiveFolder = options.archiveFolder ?? "_Triage/Vyřízeno";
-
-  const schranky = mailbox === "all" ? undefined : [mailbox];
 
   const engine: EngineClient = createEngineClient({
     baseUrl: options.baseUrl,
@@ -221,50 +271,54 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
   /** `POST /api/v1/{tool}` s JSON tělem — tvar 1 : 1 s nástrojem enginu. */
   const call = engine.call;
 
+  // ÚVN je výchozí schránka enginu; `schranka` se posílá jen pro Gmail (ÚKOL 44).
+  const schranka = mailbox === "gmail" ? "gmail" : undefined;
+
   const notExposed = async (): Promise<never> => {
     throw new EngineError("not_exposed", cs.posta.engine.nevystaveno);
   };
 
-  const sendPayload = (request: EngineSendRequest) => ({
-    schranka: mailbox === "all" ? undefined : mailbox,
-    odeslat_z: request.sendFrom,
-    komu: request.to,
-    kopie: request.cc ?? [],
-    skryta_kopie: request.bcc ?? [],
-    predmet: request.subject,
-    telo: request.body,
-    html: request.isHtml,
-    vlakno: request.threadId,
-    in_reply_to: request.inReplyTo,
-    references: request.references,
-    podpis_id: request.signatureId,
-    prilohy: (request.uploadIds ?? []).map((id) => ({ zdroj: "upload", id })),
-    // Odeslání je vždy za potvrzením uživatele v aplikaci (pravidlo 8);
-    // engine chce potvrzení explicitně, ne implicitně.
-    potvrzeni: true,
-  });
+  const sendPayload = (request: EngineSendRequest) =>
+    compact({
+      schranka,
+      komu: request.to,
+      kopie: request.cc,
+      // K2.3: skryta_kopie, html, odeslat_z, podpis_id, prilohy — dnes engine nezná, proto jen když jsou.
+      skryta_kopie: request.bcc,
+      predmet: request.subject,
+      telo: request.body,
+      html: request.isHtml ? true : undefined,
+      odpoved_na_message_id: request.inReplyTo,
+      odeslat_z: request.sendFrom,
+      podpis_id: request.signatureId,
+      prilohy: (request.uploadIds ?? []).map((id) => ({ zdroj: "upload", id })),
+    });
 
   async function moveMessage(messageId: string, folderId: string): Promise<EngineMoveResult> {
-    const data = await call<WireMove>("mail_move", {
-      ref: messageId,
-      slozka: engineFolder(folderId, archiveFolder),
-    });
-    return { newRef: data.novy_ref, folder: data.slozka, messageId: data.message_id };
+    const data = await call<WireMove>("mail_move", compact({ schranka, ref: messageId, slozka: engineFolder(folderId, archiveFolder) }));
+    return { newRef: data.novy_ref ?? messageId, folder: data.slozka, messageId: data.message_id };
+  }
+
+  async function search(payload: Record<string, unknown>): Promise<WireMessage[]> {
+    const data = await call<WireSearchResult>("mail_search", compact({ schranka, ...payload }));
+    return data.vysledky ?? [];
   }
 
   async function listMessages(params: MailListParams): Promise<MailListPage> {
-    const data = await call<WireSearchResult>("mail_search", {
-      schranky,
+    const limit = params.maxResults ?? 25;
+    const offset = Number(params.pageToken ?? 0) || 0;
+    // `jen_neprectene` engine nemá — filtr nepřečtených přijde s K2.3 (index nezná FLAGS).
+    const zpravy = await search({
       slozka: engineFolder(params.folderId, archiveFolder),
-      dotaz: params.search?.trim() || undefined,
-      jen_neprectene: params.unreadOnly || undefined,
-      strana: params.pageToken ?? undefined,
-      limit: params.maxResults,
+      dotaz: params.search?.trim(),
+      limit,
+      offset,
     });
+    const more = zpravy.length >= limit;
     return {
-      emails: (data.zpravy ?? []).map(toListMessage),
-      nextPageToken: data.dalsi_strana ?? null,
-      resultSizeEstimate: data.celkem ?? 0,
+      emails: zpravy.map(toListMessage),
+      nextPageToken: more ? String(offset + limit) : null,
+      resultSizeEstimate: offset + zpravy.length + (more ? 1 : 0),
     };
   }
 
@@ -274,16 +328,18 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     listMessages,
 
     async getMessage(messageId): Promise<MailMessageDetail> {
-      // HTML tělo sanitizuje server (ÚKOL 36); `oboji` dá i text pro čtečku.
-      const data = await call<WireMessageDetail>("mail_get", { ref: messageId, format: "oboji" });
-      const z = data.zprava;
+      const z = await call<WireMessageDetail>("mail_get", compact({ schranka, ref: messageId, plne_telo: true }));
       const html = z.telo_html?.trim();
+      // Seznam příloh je zvlášť (`mail_prilohy`); volá se jen když zpráva nějaké má.
+      const attachments = z.prilohy?.trim()
+        ? ((await call<WireAttachments>("mail_prilohy", compact({ schranka, ref: messageId }))).prilohy ?? []).map(toAttachmentMeta)
+        : [];
       return {
         ...toListMessage(z),
         messageId: z.message_id,
-        body: html || z.telo_text || "",
+        body: html || z.telo || z.uryvek || "",
         bodyType: html ? "html" : "text",
-        attachments: (z.prilohy ?? []).map(toAttachmentMeta),
+        attachments,
       };
     },
 
@@ -292,20 +348,17 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     },
 
     async attachmentLink(messageId, attachment) {
-      const data = await call<WireAttachmentLink>("mail_priloha_odkaz", {
-        ref: messageId,
-        index: Number(attachment.attachmentId),
-      });
+      const data = await call<WireAttachmentLink>("mail_priloha_odkaz", compact({ schranka, ref: messageId, index: Number(attachment.attachmentId) }));
       if (!data.url) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
       return data.url;
     },
 
     async setRead(messageId, read) {
-      await call("mail_flag", { ref: messageId, priznak: "\\Seen", nastavit: read });
+      await call("mail_flag", compact({ schranka, ref: messageId, priznak: "seen", nastavit: read }));
     },
 
     async setStarred(messageId, starred) {
-      await call("mail_flag", { ref: messageId, priznak: "\\Flagged", nastavit: starred });
+      await call("mail_flag", compact({ schranka, ref: messageId, priznak: "flagged", nastavit: starred }));
     },
 
     trashMessage: notExposed,
@@ -321,16 +374,24 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     },
 
     async listFolders(): Promise<MailFolderLayout> {
-      const data = await call<WireFolders>("mail_folders", { schranky });
-      const folders: MailFolderRef[] = (data.vlastni ?? []).map((f) => ({ id: f.id, name: f.nazev }));
-      return { standardFolderIds: data.standardni?.length ? data.standardni : ["inbox"], folders };
+      const data = await call<WireFolders>("mail_folders", compact({ schranka }));
+      const all = (data.result ?? []).filter((f) => f.allowed !== false && !f.flags?.includes("\\Noselect"));
+      const names = new Set(all.map((f) => f.name));
+      const standardFolderIds = ["inbox"];
+      if (all.some((f) => f.special === "sent")) standardFolderIds.push("sent");
+      if (all.some((f) => f.special === "drafts")) standardFolderIds.push("drafts");
+      if (names.has(archiveFolder)) standardFolderIds.push("archive");
+      const folders: MailFolderRef[] = all
+        .filter((f) => !STANDARD_FOLDER_NAMES.has(f.name) && f.name !== archiveFolder && !f.special)
+        .map((f) => ({ id: f.name, name: f.name }));
+      return { standardFolderIds, folders };
     },
 
     createFolder: notExposed,
     deleteFolder: notExposed,
 
     async unreadCount() {
-      const data = await call<WireStats>("mail_stats", { schranky });
+      const data = await call<WireStats>("mail_stats", compact({ schranka }));
       return data.neprectene ?? 0;
     },
 
@@ -343,14 +404,16 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     },
 
     async sendWithUploads(request): Promise<MailSendResult> {
-      const data = await call<WireSend>("mail_send", sendPayload(request));
-      return { sentVia: "engine", total: data.odeslano ?? request.to.length };
+      // Odeslání je vždy za potvrzením uživatele v aplikaci (pravidlo 8);
+      // engine chce potvrzení výslovně, a to řetězcem.
+      await call<WireSend>("mail_send", { ...sendPayload(request), potvrzeni: "ODESLAT" });
+      return { sentVia: "engine", total: request.to.length };
     },
 
     async saveDraft(request) {
-      const data = await call<WireSend>("mail_draft", sendPayload(request));
-      if (!data.ref) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
-      return { ref: data.ref };
+      const { skryta_kopie: _bcc, html: _html, odeslat_z: _from, podpis_id: _sig, prilohy: _att, ...draft } = sendPayload(request);
+      const data = await call<WireSend>("mail_draft", draft);
+      return { ref: data.ref ?? "" };
     },
 
     async upload(file, name) {
@@ -361,13 +424,14 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     },
 
     async findByContacts(params: MailContactSearchParams): Promise<MailContactSearchResult> {
-      // Index podle adres, okamžité, včetně archivů (plán 4.1).
-      const data = await call<WireSearchResult>("mail_search", {
-        schranky,
-        adresy: params.contactEmails,
-        limit: params.maxResults,
-      });
-      return { emails: (data.zpravy ?? []).map(toListMessage), contactEmails: params.contactEmails };
+      // `odesilatel` bere jednu adresu; víc adres = víc dotazů, sloučené podle ref.
+      const limit = params.maxResults ?? 20;
+      const seen = new Map<string, WireMessage>();
+      for (const email of params.contactEmails.slice(0, 5)) {
+        for (const m of await search({ odesilatel: email, limit })) seen.set(m.ref, m);
+      }
+      const merged = [...seen.values()].sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, limit);
+      return { emails: merged.map(toListMessage), contactEmails: params.contactEmails };
     },
   };
 

@@ -150,43 +150,66 @@ projde s vygenerovanými typy bez `as never`.
 6. **Limity:** 60 požadavků/min na uživatele, `upload` 20 MB na soubor (= `MAX_PRILOHY_MB`),
    `mail_search` `limit ≤ 100`.
 
-### B.2 Cesty a tvary
+### B.2 Cesty a tvary — tenký obal 1 : 1 nad nástroji (rozhodnuto 21. 9.)
 
-`POST /api/v1/<nastroj>` s JSON tělem, **jméno cesty = jméno MCP nástroje**, tělo = jeho parametry.
-Tvary níže jsou to, co aplikace **dnes posílá a čte** (`src/lib/email/engineMailbox.ts`, typy
-`Wire*`). Kde K1 něco zadává (`novy_ref`, `format`, `prilohy[]`, `{ok:false, duvod}`), platí K1;
-zbytek je návrh a K2.3 ho může přejmenovat — pak se změní `Wire*` na jednom místě.
+`POST /api/v1/<nastroj>` s JSON tělem, **jméno cesty = jméno MCP nástroje, tělo = jeho
+parametry, odpověď = jeho výsledek** (zabalený do `{ok: true, …}`, když ho nástroj sám nemá).
+Aplikace se přizpůsobila skutečným tvarům nástrojů, jak je MCP vrací 21. 9. 2026
+(`src/lib/email/engineMailbox.ts`, `src/lib/events.ts`), takže REST nic nepřejmenovává
+a nepřekládá. Překlad id složek z kontraktu (`inbox` → `INBOX`, `archive` → `_Triage/Vyřízeno`)
+dělá aplikace. Nástroje, které se vystavují beze změny:
 
-| Cesta | Vstup | Výstup (`ok: true` +) |
+`mail_search`, `mail_get`, `mail_thread`, `mail_prilohy`, `mail_priloha`, `mail_folders`,
+`mail_flag`, `mail_move`, `mail_stats`, `mail_najdi`, `mail_kontakty`, `mail_send`, `mail_draft`,
+`mail_preposlat`, `cal_calendars`, `cal_events`, `cal_free`, `cal_pridat`.
+
+Co aplikace posílá navíc a nástroj to dnes **nezná** (pydantic by odmítl) — proto se to
+posílá jen když je vyplněné a K2.3 to má doplnit:
+
+| Nástroj | Nový parametr | Význam |
 |---|---|---|
-| `mail_search` | `schranky?: string[]` (bez = všechny), `slozka?: string` (název u enginu; bez = všechny), `dotaz?`, `jen_neprectene?: bool`, `adresy?: string[]` (hledání podle kontaktu), `strana?: string` (token), `limit?: int` | `zpravy: [{ref, vlakno, od, komu, predmet, datum (ISO), datum_ms, ukazka, priznaky: string[] (`UNREAD`, `STARRED`, `INBOX`, `SENT`, `ANSWERED`, `FORWARDED`), schranka}]`, `dalsi_strana: string|null`, `celkem: int` |
-| `mail_get` | `ref`, `format: 'text'|'html'|'oboji'` | `zprava: {…jako v seznamu, message_id, telo_html?, telo_text?, odkazy: [{text, url}], prilohy: [{index, nazev, typ, velikost, sha}]}` — HTML sanitizované na serveru (ÚKOL 36) |
-| `mail_thread` | `ref` nebo `vlakno` | `zpravy: [...]` seřazené podle data |
-| `mail_folders` | `schranky?` | `standardni: string[]` (id z kontraktu: `inbox, starred, important, sent, drafts, spam, trash, archive` — jen ty, které schránka má), `vlastni: [{id, nazev}]` |
-| `mail_flag` | `ref`, `priznak: '\\Seen'|'\\Flagged'`, `nastavit: bool` | — |
-| `mail_move` | `ref`, `slozka` (název u enginu, `INBOX` povolený cíl) | `novy_ref, slozka, message_id` (ÚKOL 35) |
-| `mail_stats` | `schranky?` | `neprectene: int`, `posledni_sync: ISO`, per schránka |
-| `mail_najdi` | `schranka`, `message_id` | `ref, slozka` (hledá všude, ÚKOL 35) |
-| `stav_vlaken` | `polozky: [{message_id, schranka}]` | podle ÚKOLU 38 |
-| `mail_send` | `schranka?`, `odeslat_z?`, `komu: string[]`, `kopie: string[]`, `skryta_kopie: string[]`, `predmet`, `telo`, `html: bool`, `vlakno?`, `in_reply_to?`, `references?`, `podpis_id?`, `prilohy: [{zdroj:'upload', id} | {zdroj:'zprava', ref, index} | {zdroj:'disk', file_id}]`, `potvrzeni: true`, `potvrzeni_jine_schranky?: bool` | `odeslano: int`, `ref` (v Sent), `message_id` |
-| `mail_draft` | totéž bez `potvrzeni` | `ref` (v Drafts) |
-| `mail_preposlat` | `ref`, `komu`, `telo?`, `prilohy?` (výchozí: původní) | jako `mail_send` |
-| `upload` | **multipart**, pole `soubor` (jeden soubor), `Content-Type` z klienta | `upload_id, nazev, velikost, typ` — uložené ve skladu enginu s TTL 24 h, dokud se nepoužije v `mail_send`/`mail_draft` |
-| `mail_priloha_odkaz` | `ref`, `index` | `url` — **podepsaný odkaz s TTL 10 min**, `GET` bez JWT, `Content-Disposition` podle typu; stream ze skladu, ne base64 |
-| `cal_calendars` | — | `kalendare: [{id, nazev}]` (tři vrstvy — jména z CalDAV, ne z konfigurace) |
-| `cal_pridat` | `kalendar_id`, `nazev`, `zacatek`, `konec?`, `celodenni`, `misto?`, `popis?`, `polozka_id?`, `zdroj_id` (id řádku `udalosti` — druhé kliknutí nezaloží duplikát), `potvrzeni: true` | `kal_uid` — **jen na kliknutí** z aplikace; volá `EventSource.add` |
-| `cal_free` | `zacatek`, `konec` | `kolize: [{nazev, zacatek, konec, kalendar}]` — tím se plní `udalosti.kolize` |
-| `podpisy_seznam` | — | `podpisy: [{id, nazev, jazyk}]` — čte z Supabase přes service role; HTML si aplikace bere sama přes RLS |
+| `mail_search`, `mail_get`, `mail_folders`, `mail_move`, `mail_stats`, `mail_send`, `mail_draft` | `schranka: 'gmail'` | Gmail jako druhá schránka (ÚKOL 44); ÚVN zůstává výchozí a neposílá se |
+| `mail_search` | — | `jen_neprectene` engine nemá (index nezná FLAGS); nepřečtené se poznají až z `priznaky` — přidat `priznaky` do řádků `vysledky` (`\Seen,\Flagged,…` jako u `mail_najdi`) |
+| `mail_get` | — | přidat `telo_html` (sanitizované, ÚKOL 36) vedle `telo`; aplikace ho vezme přednostně |
+| `mail_send` | `skryta_kopie: string[]`, `html: bool`, `odeslat_z`, `podpis_id`, `prilohy: [{zdroj:'upload', id}]` | skrytá kopie, HTML tělo, „Odeslat z" (varování `jina_schranka`), podpis, přílohy odkazem (ÚKOL 37) |
+| `mail_draft` | `ref` ve výsledku | ref uloženého konceptu |
+| `mail_stats` | `neprectene` ve výsledku | počet nepřečtených v INBOXu |
+| `cal_pridat` | `kal_uid` ve výsledku (nebo `uid`) | UID založené události pro `udalosti.kal_uid` |
 
-Nevystaveno na REST (a nikdy): `trash`, `delete_folder`, `create_folder`, jakýkoli `expunge`.
+Co aplikace posílá **přesně jako nástroj čeká** (kontrola pro K2.3, ať se to nerozejde):
+`mail_search {slozka, dotaz, limit, offset}` → `{pocet, vysledky:[{ref, id, datum, smer, od,
+komu, kopie, predmet, vlakno, prilohy (názvy čárkou), uryvek}]}`; `mail_get {ref, plne_telo:true}`
+→ `{…, message_id, telo}`; `mail_prilohy {ref}` → `{prilohy:[{index, jmeno, typ, bajtu}]}`;
+`mail_folders` → `{result:[{name, allowed, special, flags}]}`; `mail_flag {ref, priznak:
+'seen'|'flagged', nastavit}`; `mail_move {ref, slozka}` → `{novy_ref, slozka, message_id}` (ÚKOL 35);
+`mail_send {komu, kopie, predmet, telo, odpoved_na_message_id, potvrzeni:'ODESLAT'}`;
+`cal_calendars` → `{kalendare: string[]}` (název = id); `cal_pridat {kalendar, nazev, datum,
+cas, minut, celodenni, misto, zdroj_id, potvrzeni:'PRIDAT'}`.
+
+**Nové cesty**, které nástroje nemají a REST je přidá:
+
+| Cesta | Vstup | Výstup |
+|---|---|---|
+| `upload` | **multipart**, pole `soubor` (jeden soubor) | `upload_id, nazev, velikost, typ` — sklad enginu s TTL 24 h, dokud se nepoužije v `mail_send`/`mail_draft` |
+| `mail_priloha_odkaz` | `ref`, `index` | `url` — **podepsaný odkaz s TTL 10 min**, `GET` bez JWT, stream bajtů z `mail_priloha_soubor` (server-side, ne přes klienta), `Content-Disposition` podle typu |
+| `podpisy_seznam` | — | `podpisy: [{id, nazev, jazyk}]` — čte z Supabase přes service role |
+| `stav_vlaken` | `polozky: [{message_id, schranka}]` | podle ÚKOLU 38 (pravidlo 4) |
+
+Nevystaveno na REST (a nikdy): `trash`, `delete_folder`, `create_folder`, jakýkoli `expunge`,
+`mail_priloha_soubor` (base64 přes klienta), `mail_sync`, `kb_*`, `archiv_*`, `mail_audit`.
 Žádná cesta nevrací tělo přílohy jako base64.
+
+**Implementace (návrh, až bude repozitář enginu na GitHubu):** FastAPI router `rest_api.py`
+vedle MCP serveru, sdílí registr nástrojů (`call_tool(name, args)`), middleware: JWT/JWKS
+(cache 1 h), `aal2`, allow-list `sub`, CORS pro doménu aplikace a `localhost:5173`, limit
+60/min, audit. Jeden soubor, žádná duplikace logiky nástrojů.
 
 ### B.3 Kde to sedí ke kódu aplikace
 
 | Aplikace | Volá |
 |---|---|
-| `engineMailbox.listMessages` | `mail_search` s `slozka` přeloženou z `inbox/sent/drafts/archive` na `INBOX/Sent/Drafts/_Triage/Vyřízeno` — překlad je v aplikaci; **nebo** ať `mail_search` přijme id z kontraktu a přeloží sám — rozhodnout v K2.3, aplikace se přizpůsobí na jednom místě |
-| `engineMailbox.getMessage` | `mail_get(format='oboji')` |
+| `engineMailbox.listMessages` | `mail_search {slozka, dotaz, limit, offset}` — překlad id složek je v aplikaci (rozhodnuto 21. 9.); stránkování přes `offset` |
+| `engineMailbox.getMessage` | `mail_get {ref, plne_telo}` + `mail_prilohy {ref}` když zpráva přílohy má |
 | `moveToFolder` / `archiveMessage` | `mail_move`; archiv = `_Triage/Vyřízeno` |
 | `sendWithUploads` / `saveDraft` | `mail_send` / `mail_draft` s `prilohy[{zdroj:'upload'}]` |
 | `upload` | `upload` multipart |

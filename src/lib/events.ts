@@ -82,12 +82,30 @@ type UdalostRow = Pick<
   polozky: Pick<Database["doktor"]["Tables"]["polozky"]["Row"], "predmet" | "od" | "od_email"> | null;
 };
 
-/** Tvary odpovědí enginu (zadání K2, část B.2). Když K2.3 řekne jinak, mění se jen tady. */
+/**
+ * Tvary nástrojů enginu (MCP, 21. 9. 2026): `cal_calendars` → `{pocet, kalendare: string[]}`
+ * (názvy kalendářů iCloud; název je i id), `cal_pridat(kalendar, nazev, datum, cas, minut,
+ * celodenni, misto, popis, potvrzeni = "PRIDAT", zdroj_id)` → `{ok, uid?}` (K2.3 ať vrací `kal_uid`).
+ */
 interface WireCalendars extends WireEnvelope {
-  kalendare?: { id: string; nazev: string }[];
+  pocet?: number;
+  kalendare?: string[];
 }
 interface WireCalAdd extends WireEnvelope {
   kal_uid?: string;
+  uid?: string;
+}
+
+/** `zacatek`/`konec` (ISO) → `datum`, `cas`, `minut` nástroje `cal_pridat`. */
+function calArgs(event: EventProposal): { datum: string; cas: string; minut: number | undefined } {
+  const start = new Date(event.start);
+  const valid = !Number.isNaN(start.getTime());
+  const datum = valid ? `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}` : event.start.slice(0, 10);
+  if (event.allDay || !valid) return { datum, cas: "", minut: undefined };
+  const cas = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+  const end = event.end ? new Date(event.end) : null;
+  const minut = end && !Number.isNaN(end.getTime()) ? Math.max(5, Math.round((end.getTime() - start.getTime()) / 60000)) : undefined;
+  return { datum, cas, minut };
 }
 /** Prvek `udalosti.kolize` — `[{nazev, zacatek, konec, kalendar}]` z `cal_free`. */
 interface WireConflict {
@@ -171,33 +189,35 @@ export function createSupabaseEventSource(options: SupabaseEventSourceOptions): 
     async calendars() {
       if (!engine) return [];
       const data = await engine.call<WireCalendars>("cal_calendars");
-      return (data.kalendare ?? []).map((k) => ({ id: k.id, name: k.nazev }));
+      return (data.kalendare ?? []).map((name) => ({ id: name, name }));
     },
 
     async add(event, calendarId) {
       if (!engine) throw new EngineError("not_configured", cs.udalosti.engineNepropojen);
       if (event.state !== "novy") throw new Error(cs.udalosti.uzNeniNovy);
+      const { datum, cas, minut } = calArgs(event);
       const data = await engine.call<WireCalAdd>("cal_pridat", {
-        kalendar_id: calendarId,
+        kalendar: calendarId,
         nazev: event.title,
-        zacatek: event.start,
-        konec: event.end ?? undefined,
+        datum,
+        cas,
+        ...(minut !== undefined ? { minut } : {}),
         celodenni: event.allDay,
-        misto: event.place ?? undefined,
-        polozka_id: event.itemId ?? undefined,
+        misto: event.place ?? "",
         zdroj_id: event.id,
         // Zápis do kalendáře je vždy z tlačítka (nikdy z běhu); engine chce
-        // potvrzení výslovně.
-        potvrzeni: true,
+        // potvrzení výslovně, a to řetězcem.
+        potvrzeni: "PRIDAT",
       });
-      if (!data.kal_uid) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
+      const calUid = data.kal_uid ?? data.uid;
+      if (!calUid) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
 
       const { error } = await client
         .from("udalosti")
-        .update({ stav: "pridano", kal_uid: data.kal_uid, kalendar: calendarId })
+        .update({ stav: "pridano", kal_uid: calUid, kalendar: calendarId })
         .eq("id", event.id);
       if (error) throw new Error(error.message);
-      return { calUid: data.kal_uid };
+      return { calUid };
     },
 
     async reject(event) {
