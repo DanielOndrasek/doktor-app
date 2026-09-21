@@ -173,8 +173,11 @@ ostatní větve dostanou náhled. Proměnné `VITE_SUPABASE_URL` a `VITE_SUPABAS
 nastavené pro production · preview · development (obě veřejné). První produkční nasazení
 `dpl_2fxxD5RULpoznKMG6FpAtnezoz7v` z commitu `20fef76`.
 
-Adresy: `https://doktor-app-danielondraseks-projects.vercel.app` (produkce),
-`https://doktor-app-git-main-danielondraseks-projects.vercel.app` (větev main).
+Adresy: `https://doktor-app.vercel.app` (produkce, krátký alias — používá se v prohlížeči
+i v `REST_CORS_ORIGINS` enginu), `https://doktor-app-danielondraseks-projects.vercel.app`
+(produkce, dlouhý alias), `https://doktor-app-git-main-danielondraseks-projects.vercel.app`
+(větev main). Engine musí v CORS znát každou adresu, ze které se aplikace otevírá — jinak
+preflight spadne s „No 'Access-Control-Allow-Origin' header" (stalo se 21. 9. večer).
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
