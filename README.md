@@ -48,7 +48,8 @@ npm run lint
 npm run build
 ```
 
-Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`) a za ním
-Dnes nad prázdným zdrojem — převzaté stavební kameny (UI kit, komponenty pošty,
-kanban, kontext) a klient enginu (`src/lib/email/engineMailbox.ts`) čekají na K2. Přihlášení a data čekají na rozhodnutí O3 (kde bude databáze) a O4
+Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
+Dnes (`/`, prázdný zdroj) a Poštu (`/posta`) nad klientem enginu — bez
+`VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený. Kanban, kontext a zápisy
+čekají na své obrazovky. Přihlášení a data čekají na rozhodnutí O3 (kde bude databáze) a O4
 (doména pod ověřeným OAuth projektem), viz `docs/rozhodnuti.md`.

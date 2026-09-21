@@ -63,7 +63,8 @@ v `831f9ae6` není; vzor je `agent_runs`.
 enginu a tvarům z K1. Co K1 nezadává, je v `Wire*` typech na jednom místě: názvy polí
 seznamu zpráv (`ref, vlakno, od, komu, predmet, datum, datum_ms, ukazka, priznaky`),
 stránkování (`strana` / `dalsi_strana`), složky (`standardni`, `vlastni`), `mail_stats`
-→ `neprectene`, `upload` → `upload_id`, a cesta `GET /api/v1/mail_priloha_soubor?ref&index`
-pro otevření přílohy. Až K2.3 řekne jinak, mění se jen `engineMailbox.ts`. Obrazovka Pošta
-(K3.2) ho zapojí přes `createEngineMailboxFromEnv(getToken)` a `onOpenAttachment` →
-`attachmentUrl`.
+→ `neprectene`, `upload` → `upload_id`, a `mail_priloha_odkaz` → `{url}` (krátkodobý podepsaný odkaz — bearer JWT se do `<a href>`
+nedá, proto odkaz podepisuje engine). Až K2.3 řekne jinak, mění se jen `engineMailbox.ts`. Obrazovka Pošta
+(`/posta`) ho zapojuje přes `createEngineMailboxFromEnv(getToken, schranka)`; bez
+`VITE_ENGINE_URL` ukáže pruh „engine není propojený". Podpis, adresář, šablony a kontext
+se do ní doplní, až budou zdroje z K2.
