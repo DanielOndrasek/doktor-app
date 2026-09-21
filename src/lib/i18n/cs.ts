@@ -347,6 +347,52 @@ export const cs = {
     },
   },
 
+  /** Zápisy z hovorů čekající na zařazení (`src/components/notes/`). */
+  zapisy: {
+    nazev: "Zápisy k zařazení",
+    hovor: "Hovor",
+    nejspis: (name: string) => `nejspíš ${name}`,
+    kontaktNerozpoznan: "kontakt nerozpoznán",
+    zaradit: "Zařadit",
+    kontakt: "Kontakt",
+    vHovoruZaznelo: (hint: string) => `· v hovoru zaznělo „${hint}“`,
+    hledatKontakt: "Jiný kontakt – hledat podle jména nebo organizace…",
+    zapis: "Zápis",
+    zapisPlaceholder: "Shrnutí se nepodařilo vytvořit – napiš zápis ručně nebo otevři přepis níže.",
+    ukolyZHovoru: "Úkoly z hovoru",
+    zobrazitPrepis: "Zobrazit celý přepis",
+    skrytPrepis: "Skrýt přepis",
+    nezaradit: "Nezařazovat",
+    nezaraditOtazka: "Nahrávku nezařazovat?",
+    nezaraditPopis: "Zmizí ze seznamu, přepis zůstane uložený.",
+    zavrit: "Zavřít",
+    zapsatKeKontaktu: "Zapsat ke kontaktu",
+    zapsano: "Zápis uložen ke kontaktu",
+    chybaZapisu: "Zápis se nepodařilo uložit.",
+    chybaNezarazeni: "Nahrávku se nepodařilo odložit.",
+  },
+
+  /** Přehled běhů a zásahů Clauda (`src/components/runs/`). */
+  behy: {
+    nazev: "Běhy a zásahy Clauda",
+    poslednich: (n: number) => `· posledních ${n}`,
+    bezZadani: "(bez zadání)",
+    zdroj: {
+      beh: "běh",
+      claude: "Claude",
+      app: "aplikace",
+    },
+    stav: {
+      bezi: "běží",
+      hotovo: "hotovo",
+      chyba: "chyba",
+    },
+    preskoceno: (n: number) => `přeskočeno ${n}`,
+    nacitamDetail: "Načítám…",
+    bezVysledku: "Z tohoto běhu nic nevzniklo.",
+    detailSelhal: "Detail běhu se nepodařilo načíst.",
+  },
+
   /** Výběr data (`ui/date-picker.tsx`). */
   datum: {
     vybratDatum: "Vybrat datum",
