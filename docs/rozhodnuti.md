@@ -7,16 +7,15 @@ věci se zapisují sem, ne do plánu. U každého rozhodnutí dopiš datum a jed
 |---|---|---|---|---|
 | O1 | Uvolnit pravidlo „data jen z téhož vlákna“ na tři úrovně (vlákno · týž pacient se shodou dvou údajů · slabá shoda jen v panelu) | Š | K4.7 | **rozhodnuto 21. 9.** |
 | O2 | Karty pacientů ne; vlákna o pacientovi jako „případ“ pod odesílajícím lékařem | Š | K4.1 | **rozhodnuto 21. 9.** |
-| O3 | Databáze: Supabase EU, nebo vše na Hetzneru | D | K2.1 | otevřeno — návrh níže |
-| O4 | Doména aplikace pod ověřeným Google OAuth projektem → **Gmail bez OAuth?** | D + Š | K2.1 | otevřeno — návrh níže |
+| O3 | Databáze: Supabase EU, nebo vše na Hetzneru | D | K2.1 | **rozhodnuto 21. 9.** |
+| O4 | Doména aplikace pod ověřeným Google OAuth projektem → Gmail bez OAuth | D + Š | K2.1 | **rozhodnuto 21. 9.** |
 | O5 | Seznam a názvy podpisů (podklad z K1.7) | Š | K3.3 | otevřeno |
 | O6 | Sjednotit úkoly s „Rozdělanou prací“ do jedné tabulky | Š + D | K2.5 | otevřeno |
 | O7 | Povolit úpravu a mazání vlastních událostí v kalendáři | Š | K5 | otevřeno |
 | O8 | API pojistka pro spadlý ranní běh, měsíční strop | D | K5 | otevřeno |
 | O9 | Které složky Disku sdílet se služebním účtem | Š | K4.4 | otevřeno |
 
-**O3 a O4 blokují všechno ostatní v této aplikaci** — bez databáze a bez domény pod
-ověřeným OAuth projektem nemá K3 kam ukládat a kam se přihlašovat.
+~~**O3 a O4 blokují všechno ostatní v této aplikaci**~~ — rozhodnuto 21. 9., K2.1 může začít.
 
 ## Rozhodnuto
 
@@ -32,23 +31,27 @@ pacient není kontakt aplikace a nemá v ní mít vlastní záznam — rodné č
 aplikace (pravidlo 7). Dopad: K4.1 (karta kontaktu ukazuje případy), schéma `pripady`
 v K2.2 zůstává podle oddílu 3 plánu.
 
-## Návrh k O3
-
-**Supabase EU (Frankfurt), samostatný projekt.** Auth + TOTP MFA + RLS + zálohy jsou
+**O3 — Supabase EU** (D, 21. 9. 2026). Samostatný projekt v regionu EU (Frankfurt). Auth + TOTP MFA + RLS + zálohy jsou
 hotové a přihlášení na nich stojí; v Supabase jsou jen metadata (pravidlo 5), těla, přílohy
 a rodná čísla zůstávají na enginu. Hetzner by znamenal provozovat Postgres, auth a zálohy
 vlastními silami před K1/K2. Podmínky: region EU, DPA se Supabase, a ověřit, jestli ÚVN
-nemá politiku k cloudu u dat se jmény pacientů. Čeká na ano od D.
+nemá politiku k cloudu u dat se jmény pacientů.
 
-## Návrh k O4
+**Engine na Hetzneru zůstává.** O3 rozhodovalo jen o databázi. Engine je dál jediný
+zapisovač nad schránkami a drží index, těla, přílohy a jejich text, MCP nástroje, kalendáře
+(`cal_*`), wiki a běhy. Supabase drží metadata (`polozky`, `ukoly`, `kontakty`, …), Auth
+s MFA a RLS. Rozdělení je v oddílu 1 plánu (těla zpráv, bajty příloh a text příloh zůstávají
+na enginu) a O3 ho nemění.
 
-**Zadání se změnilo (21. 9.):** Štěpán má osobní @gmail.com, ne účet ve Workspace. Interní
+**O4 — Gmail přes IMAP s heslem aplikace** (D + Š, 21. 9. 2026).
+
+Zadání se změnilo: Štěpán má osobní @gmail.com, ne účet ve Workspace. Interní
 aplikace (jak jede CRM) je tím pádem mimo — interní aplikaci může použít jen účet z téže
 organizace. Externí projekt s restricted scope (`gmail.modify`) vyžaduje ověření a CASA,
 kterým neprošel ani Vividbooks, ani Nemo. Režim Testing zneplatňuje refresh token po 7 dnech.
 Žádná OAuth cesta tedy bez ověření nevede.
 
-**Návrh: Gmail přes IMAP/SMTP s heslem aplikace, na enginu — stejně jako ÚVN.**
+**Rozhodnutí: Gmail přes IMAP/SMTP s heslem aplikace, na enginu — stejně jako ÚVN.**
 
 - Štěpán si v Google účtu zapne dvoufázové ověření a vygeneruje **heslo aplikace**
   (16 znaků). Žádný Cloud projekt, žádný consent screen, žádné ověření, žádná CASA.
@@ -61,7 +64,7 @@ kterým neprošel ani Vividbooks, ani Nemo. Režim Testing zneplatňuje refresh 
   `X-GM-THRID`, odeslané přes SMTP se samy ukládají do Sent.
 
 **Dopad na tabulku převzetí:** řádky „Gmail klient" (`gmailMailbox.ts`) a „Gmail OAuth"
-(`gmail-auth`, `gmail-callback`) přecházejí do **Nepřebírat** — byly pro OAuth cestu.
+(`gmail-auth`, `gmail-callback`) přešly do **Nepřebírat** — byly pro OAuth cestu.
 Tím padá i původní znění O4 (doména pod ověřeným projektem): subdoménu Doktor potřebuje
 jen pro Vercel a Supabase redirect, ne pro Google.
 
@@ -71,4 +74,4 @@ u osobních účtů časem omezit — dnes (2026) jsou dostupná a IMAP/SMTP se 
 změnilo, zbývá jen ověření externího projektu; (3) hesla aplikací nejsou k dispozici, když je
 2FA jen přes bezpečnostní klíč nebo Advanced Protection.
 
-Čeká na ano od D a od Š (Š musí heslo vygenerovat).
+Š vygeneruje heslo aplikace a předá ho do tajemství enginu — nikam jinam.

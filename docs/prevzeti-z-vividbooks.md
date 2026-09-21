@@ -40,7 +40,6 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | UI kit | `src/components/ui/*` | `src/components/ui/` | ☑ |
 | Vzhled, tokeny | `src/index.css`, `tailwind.config.ts`, `WhitelabelThemeHost` | `src/index.css`, `tailwind.config.ts`, `src/components/ThemeHost.tsx` | ☑ |
 | Kontrakt pošty | `src/lib/email/types.ts` (`MailboxClient`) | `src/lib/email/types.ts` | ☑ |
-| Gmail klient | `src/lib/email/gmailMailbox.ts` | `src/lib/email/gmailMailbox.ts` | ☐ |
 | Komponenty pošty | `src/components/email/*` (Inbox, Compose, RichEditor, FolderNav, Templates, SignaturePreview, WorkPanel, RecipientsInput) | `src/components/email/` | ☑ |
 | Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☑ |
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
@@ -52,7 +51,6 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Přehled práce agenta | `AgentRunsHistory.tsx`, vzor `agent_commands` | `src/components/runs/`, `src/lib/runs.ts` | ☑ |
 | Přihlášení | Supabase Auth, `components/mfa/*`, stránky Auth/Reset | `src/lib/supabase/`, `src/components/auth/`, `src/pages/{Login,ResetPassword}.tsx` | ☑ |
 | Disk | `components/google/*` (Picker, `drive.file`), funkce `drive-access-token` | `src/components/google/` | ☐ |
-| Gmail OAuth | funkce `gmail-auth`, `gmail-callback`, `gmail-*` | `supabase/functions/` | ☐ |
 
 **Pořadí:** UI kit a vzhled první (na nich stojí všechno ostatní), pak kontrakt pošty,
 pak přihlášení. Zbytek podle toho, kterou obrazovku z K3 zrovna stavíš.
@@ -382,8 +380,10 @@ Sekce se v Dnes zatím nezobrazuje — přijde s K3.9, až budou `behy`.
 - `task_gcal_sync` — jen jako vzor
 - embeddingy přes Gemini
 - záložky Používání, Skóre, Obchody
-- `api/email/imap.ts` **pro ÚVN** — se schránkou mluví jen engine. Pro další schránky
-  zůstává jako možnost.
+- `api/email/imap.ts` — se schránkami mluví jen engine, a to i s Gmailem.
+- **Gmail klient** (`gmailMailbox.ts`) a **Gmail OAuth** (`gmail-auth`, `gmail-callback`,
+  `gmail-*`) — původně řádky tabulky. Rozhodnutí O4 (21. 9.): Gmail jde přes IMAP s heslem
+  aplikace na enginu, bez OAuth. Aplikace ho vidí jako `schranka = gmail` v `engineMailbox`.
 
 ## Co CRM neumí a co musíme dodělat sami
 

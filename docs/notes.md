@@ -82,8 +82,14 @@ z tlačítka. `EventSource` v `src/lib/events.ts` čeká na K2: `load` = řádky
 Vlastní události a jejich úpravy jsou O7/K5. Nic z toho není z CRM — to mělo jen Google
 kalendář a `task_gcal_sync`, který se nepřebírá.
 
-**21. 9. 2026 — Gmail bez OAuth (návrh k O4).** Štěpán má osobní Gmail; interní aplikace
-ani neověřený externí projekt nejdou. Návrh: IMAP/SMTP s heslem aplikace na enginu, viz
-`rozhodnuti.md`. Pro engine (K1/K2) to znamená druhý IMAP účet a Gmail specifika (štítky,
+**21. 9. 2026 — Gmail bez OAuth (O4 rozhodnuto).** Štěpán má osobní Gmail; interní aplikace
+ani neověřený externí projekt nejdou. IMAP/SMTP s heslem aplikace na enginu, viz `rozhodnuti.md`. Pro engine (K1/K2) to znamená druhý IMAP účet a Gmail specifika (štítky,
 All Mail, `X-GM-THRID`); pro aplikaci nic — `engineMailbox` už `schranka = gmail` umí.
-Řádky Gmail klient a Gmail OAuth v tabulce převzetí by přešly do Nepřebírat.
+Řádky Gmail klient a Gmail OAuth v tabulce převzetí přešly do Nepřebírat.
+
+**21. 9. 2026 — O3 rozhodnuto, engine zůstává.** Supabase EU je jen databáze a přihlášení;
+engine na Hetzneru zůstává jediným zapisovačem nad schránkami (ÚVN i Gmail) a drží těla,
+přílohy, index, MCP, kalendáře, běhy. Co pro K2 čeká na enginu navíc: druhý IMAP účet pro
+Gmail (heslo aplikace v tajemstvích enginu), Gmail specifika (štítky, All Mail,
+`X-GM-THRID`). Pro Supabase: založit projekt (EU), zapnout TOTP, `password_min_length = 12`,
+redirect `<doména>/reset-hesla`, DPA.
