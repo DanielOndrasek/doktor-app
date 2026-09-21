@@ -119,8 +119,14 @@ vystavené v API projektu** a hostovaný generátor ho nevidí. Po každé dalš
 (jakmile bude schéma vystavené) a commit obojího.
 
 **Co zbývá udělat ručně v dashboardu Supabase** (přes MCP to nejde):
-1. Settings → API → *Exposed schemas*: přidat `doktor` — bez toho klient (`db.schema: "doktor"`)
-   dostane od PostgREST 404/406 a aplikace nenačte nic.
+1. ~~Settings → API → *Exposed schemas*: přidat `doktor`~~ — **hotovo 21. 9. 06:46 UTC**; důkaz
+   v logu PostgREST: „Schema cache loaded 23 Relations, 39 Relationships, 4 Functions" (předtím
+   0 Relations). Pozor: `generate_typescript_types` přes MCP se ptá Management API jen na
+   `public` (výchozí `included_schemas`), takže doktor nikdy neukáže — typy se generují CLI
+   s `--schema doktor`, nebo z lokální kopie přes postgres-meta jako dosud. „Exposed tables"
+   v novém UI počítá tabulky s právy pro `anon`; u nás je to záměrně 0 (práva jen
+   `authenticated` + `service_role`, migrace `funkce_bez_anon` sebrala anonu i EXECUTE).
+   Přepínač „Automatically expose new tables" vypnout — práva řídí migrace.
 2. Authentication → MFA: zapnout TOTP; Sign-in / Providers → Email: `password_min_length = 12`;
    URL configuration: site URL a redirect `<doména>/reset-hesla`.
 3. Organization → Legal: DPA se Supabase (podmínka O3).
