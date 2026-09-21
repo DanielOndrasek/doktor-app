@@ -166,3 +166,16 @@ v `prevzeti-z-vividbooks.md`. Obrazovka Úkoly má tři pohledy nad jedním `loa
 seznam · kalendář, hledání a `?ukol=` detail. Z K3.6 zbývá jen „úkol → iCloud Pracovní se
 Simčou na kliknutí" (`cal_pridat` + `ukoly.kal_uid`, až bude REST enginu).
 
+**21. 9. 2026 — nasazení na Vercel.** Tým „danielondrasek's projects" (`team_xQkhkQ7c4AKTGZIGdZqhH3mI`,
+plán Hobby), projekt `doktor-app` (`prj_EzkWeNt7MCA9qhoajFqjRKwFVjBw`) propojený
+s `DanielOndrasek/doktor-app`, produkční větev `main` — každý push do `main` se nasadí sám,
+ostatní větve dostanou náhled. Proměnné `VITE_SUPABASE_URL` a `VITE_SUPABASE_ANON_KEY` jsou
+nastavené pro production · preview · development (obě veřejné). První produkční nasazení
+`dpl_2fxxD5RULpoznKMG6FpAtnezoz7v` z commitu `20fef76`.
+
+Adresy: `https://doktor-app-danielondraseks-projects.vercel.app` (produkce),
+`https://doktor-app-git-main-danielondraseks-projects.vercel.app` (větev main).
+Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
+Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
+Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
+
