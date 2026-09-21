@@ -73,3 +73,11 @@ se do ní doplní, až budou zdroje z K2.
 v `src/lib/tasks.ts` čeká na K2 (`load` = řádky `ukoly` → `KanbanCard`, `move` = nový
 `stav` + `stav_zdroj = klik`). Bez „+" a bez detailu úkolu — obojí potřebuje zápis do
 `ukoly`. Seznam po termínech a kalendář jsou další dva pohledy téže obrazovky.
+
+**21. 9. 2026 — Události nad prázdným zdrojem (K3.7).** `/udalosti` ukazuje návrhy
+z mailů ve stavech nové · přidané · zamítnuté s kolizemi a zápisem do kalendáře jen
+z tlačítka. `EventSource` v `src/lib/events.ts` čeká na K2: `load` = řádky `udalosti`,
+`calendars` = vrstvy kalendářů (jména dodá engine, `cal_calendars` — tady se nevymýšlejí),
+`add` = `cal_pridat` + `kal_uid` + `stav = pridano`, `reject` = `stav = zamitnuto`.
+Vlastní události a jejich úpravy jsou O7/K5. Nic z toho není z CRM — to mělo jen Google
+kalendář a `task_gcal_sync`, který se nepřebírá.

@@ -417,11 +417,45 @@ export const cs = {
     detailSelhal: "Detail běhu se nepodařilo načíst.",
   },
 
+  /** Události — návrhy z mailů, kolize, zápis do kalendáře na kliknutí (`src/pages/Events.tsx`). */
+  udalosti: {
+    titulek: "Události",
+    nacteniSelhalo: "Události se nepodařilo načíst.",
+    bezZdroje: "Události se načtou, až bude K2 — návrhy z mailů tu zatím nejsou.",
+    zadne: {
+      novy: "Žádné nové návrhy událostí.",
+      pridano: "Zatím nic přidaného do kalendáře.",
+      zamitnuto: "Nic zamítnutého.",
+    },
+    stav: {
+      novy: "Nové",
+      pridano: "Přidané",
+      zamitnuto: "Zamítnuté",
+    },
+    celodenni: "celý den",
+    misto: "Místo",
+    zeZpravy: "Ze zprávy",
+    kalendar: "Kalendář",
+    vybratKalendar: "Vyberte kalendář",
+    kolize: "Kolize",
+    kolizeS: (n: number) => (n === 1 ? "1 kolize" : n >= 2 && n <= 4 ? `${n} kolize` : `${n} kolizí`),
+    bezKolize: "bez kolize",
+    pridatDoKalendare: "Přidat do kalendáře",
+    pridavam: "Zapisuji…",
+    zamitnout: "Zamítnout",
+    pridano: "Přidáno do kalendáře",
+    pridaniSelhalo: "Do kalendáře se to nepodařilo zapsat.",
+    zamitnuto: "Návrh zamítnut",
+    zamitnutiSelhalo: "Návrh se nepodařilo zamítnout.",
+    vKalendari: (name: string) => `v kalendáři ${name}`,
+  },
+
   /** Navigace aplikace (`src/components/AppShell.tsx`). */
   nav: {
     dnes: "Dnes",
     posta: "Pošta",
     ukoly: "Úkoly",
+    udalosti: "Události",
     odhlasit: "Odhlásit se",
   },
 
