@@ -53,9 +53,9 @@ npm run build
 ```
 
 Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
-Dnes (`/`) nad prázdným zdrojem, Úkoly (`/ukoly`, kanban) nad tabulkou `ukoly`, Události
+Dnes (`/`) nad `dnes()`, Úkoly (`/ukoly`, kanban) nad tabulkou `ukoly`, Události
 (`/udalosti`) nad `udalosti` se zápisem do kalendáře přes engine a Poštu (`/posta`) nad klientem enginu — bez `VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený.
 Kontext a zápisy čekají na své obrazovky. Databáze je Supabase projekt `doktor` (EU, `eu-west-1`);
 veřejné hodnoty pro `.env` jsou v `.env.example`, schéma v `supabase/migrations/`, typy
-v `src/types/database.ts`. `TaskSource` a `EventSource` už čtou a zapisují `ukoly` a `udalosti`;
-`TodaySource` se na `dnes()` zapojí v dalším kroku.
+v `src/types/database.ts`. `TodaySource`, `TaskSource` a `EventSource` čtou a zapisují `dnes()`, `ukoly`
+a `udalosti`; podpisy, adresář a kontext v Poště čekají na REST enginu (K2.3).

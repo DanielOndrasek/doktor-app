@@ -141,3 +141,10 @@ Přenos k enginu je teď společný: `src/lib/engine/client.ts` (`createEngineCl
 `{ok, duvod, chyba}`, `EngineError`); `engineMailbox` nad ním jen skládá payloady pošty.
 JWT pro engine dává `src/lib/supabase/token.ts`.
 
+**21. 9. 2026 — Dnes nad `dnes()` (K3.5).** `createSupabaseTodaySource()` volá `rpc("dnes")`
+a `rpc("signal_odlozit", {p_klic, p_akce})`; řádek → `Signal` v `toSignal` (`akce` jsonb
+obranně, `urg`/`kat` mimo číselník se zahodí). Generované typy funkcí neznají nullabilitu
+(`termin`, `href` jsou ve skutečnosti volitelné) — řeší se přetypováním v `toSignal`, ne
+ručním zásahem do `database.ts`. Tím jsou všechny tři zdroje (Dnes, Úkoly, Události) na
+databázi; na dashboard zbývá vystavit schéma `doktor` v API, jinak nic z toho nenačte.
+

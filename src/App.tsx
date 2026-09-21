@@ -17,10 +17,12 @@ import { createEngineClientFromEnv } from "@/lib/engine/client";
 import { createSupabaseEventSource } from "@/lib/events";
 import { createSupabaseTaskSource } from "@/lib/tasks";
 import { getAccessToken } from "@/lib/supabase/token";
-import { EMPTY_TODAY_SOURCE } from "@/lib/today";
+import { createSupabaseTodaySource } from "@/lib/today";
 
 const queryClient = new QueryClient();
 
+/** Dnes: signály z `doktor.dnes()`, odkládání přes `doktor.signal_odlozit()`. */
+const todaySource = createSupabaseTodaySource();
 /** Úkoly čtou a zapisují `ukoly` přes supabase-js pod RLS (K2.2 hotové). */
 const taskSource = createSupabaseTaskSource();
 /** Události: `udalosti` pod RLS; kalendáře přes engine, dokud není propojený, jde návrhy jen zamítat. */
@@ -30,7 +32,7 @@ const eventSource = createSupabaseEventSource({ engine: createEngineClientFromEn
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
  * jde přes `RequireAuth` (session + MFA). Obrazovky (Dnes, Pošta, Úkoly,
  * Události, Kontakty, Nastavení) přijdou podle `docs/prevzeti-z-vividbooks.md`
- * — za přihlášením je Dnes (prázdný zdroj), Úkoly nad `ukoly`, Události nad `udalosti` a Pošta nad enginem.
+ * — za přihlášením je Dnes nad `dnes()`, Úkoly nad `ukoly`, Události nad `udalosti` a Pošta nad enginem.
  */
 export default function App() {
   return (
@@ -47,8 +49,8 @@ export default function App() {
                 <RequireAuth>
                   <AppShell>
                     <Routes>
-                      {/* Dnes zatím nad prázdným zdrojem — signály přijdou s K2. */}
-                      <Route path={TODAY_PATH} element={<Today source={EMPTY_TODAY_SOURCE} />} />
+                      {/* Dnes nad `dnes()`; odložení signálu jde do `signaly_odlozene`. */}
+                      <Route path={TODAY_PATH} element={<Today source={todaySource} />} />
                       <Route path={MAIL_PATH} element={<Mail />} />
                       {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}
                       <Route path={TASKS_PATH} element={<Tasks source={taskSource} />} />

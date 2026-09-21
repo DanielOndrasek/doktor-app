@@ -192,7 +192,7 @@ Nevystaveno na REST (a nikdy): `trash`, `delete_folder`, `create_folder`, jakýk
 | `upload` | `upload` multipart |
 | `attachmentLink` | `mail_priloha_odkaz` |
 | `EventSource.calendars` / `add` | `cal_calendars` / `cal_pridat`; `reject` je jen zápis do `udalosti` přes RLS — **hotovo** (`createSupabaseEventSource`; bez `VITE_ENGINE_URL` kalendáře prázdné, jde jen zamítat) |
-| `TodaySource` | `doktor.dnes()` / `doktor.signal_odlozit()` přes supabase-js (A.4), ne REST |
+| `TodaySource` | `doktor.dnes()` / `doktor.signal_odlozit()` přes supabase-js (A.4), ne REST — **hotovo** (`createSupabaseTodaySource`) |
 | `TaskSource` | `ukoly` přes supabase-js; `move` = `update stav, stav_zdroj='klik'` — **hotovo** (`createSupabaseTaskSource`) |
 
 **Hotovo, když (B):** `curl` s platným JWT (aal2) na `mail_search` vrátí zprávy z obou schránek,
