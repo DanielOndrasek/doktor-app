@@ -44,6 +44,21 @@ npm install
 npm run dev
 ```
 
+### Nasazení na Vercel
+
+`vercel.json` říká Vercelu, že jde o Vite, přepisuje všechny cesty na `index.html`
+(klientský router: `/posta`, `/ukoly?ukol=…`, `/reset-hesla`) a přidává bezpečnostní
+hlavičky a cache pro `assets/`. Postup, jednorázově:
+
+1. vercel.com → Add New → Project → Import `DanielOndrasek/doktor-app`, větev `main`.
+   Framework Preset se načte z `vercel.json`, nic neměnit.
+2. Environment Variables: `VITE_SUPABASE_URL` a `VITE_SUPABASE_ANON_KEY` z `.env.example`
+   (obě veřejné). `VITE_ENGINE_URL` až bude REST enginu (K2.3). Service key ani heslo
+   k databázi sem nepatří.
+3. Deploy. Každý další push do `main` se nasadí sám.
+4. Supabase → Authentication → URL Configuration: Site URL = adresa nasazení,
+   Redirect URLs = `<adresa>/reset-hesla`. Bez toho odkaz na obnovu hesla vede jinam.
+
 Kontrola před dokončením etapy (viz `CLAUDE.md`):
 
 ```bash
