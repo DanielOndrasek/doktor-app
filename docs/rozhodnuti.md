@@ -31,7 +31,7 @@ pacient není kontakt aplikace a nemá v ní mít vlastní záznam — rodné č
 aplikace (pravidlo 7). Dopad: K4.1 (karta kontaktu ukazuje případy), schéma `pripady`
 v K2.2 zůstává podle oddílu 3 plánu.
 
-**O3 — Supabase EU** (D, 21. 9. 2026). Samostatný projekt v regionu EU (Frankfurt). Auth + TOTP MFA + RLS + zálohy jsou
+**O3 — Supabase EU** (D, 21. 9. 2026). Samostatný projekt v regionu EU — založen 21. 9. jako `doktor` (ref `dwwwdeagnqiibwraxyjx`) v `eu-west-1` (Irsko), ne ve Frankfurtu; podmínka EU platí. Auth + TOTP MFA + RLS + zálohy jsou
 hotové a přihlášení na nich stojí; v Supabase jsou jen metadata (pravidlo 5), těla, přílohy
 a rodná čísla zůstávají na enginu. Hetzner by znamenal provozovat Postgres, auth a zálohy
 vlastními silami před K1/K2. Podmínky: region EU, DPA se Supabase, a ověřit, jestli ÚVN

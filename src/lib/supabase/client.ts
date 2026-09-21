@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { getSupabaseEnv } from "./env";
 import { cs } from "@/lib/i18n/cs";
+import type { Database } from "@/types/database";
 
 const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY, isConfigured } = getSupabaseEnv();
 
@@ -20,14 +21,14 @@ const EFFECTIVE_SUPABASE_ANON_KEY = isConfigured ? SUPABASE_ANON_KEY : "not-conf
  * Jediný klient Supabase v aplikaci. Tabulky Doktora žijí ve schématu
  * `doktor` (oddíl 3 plánu), proto `db.schema`.
  *
- * Bez generických typů: `Database` se generuje ze schématu
- * (`supabase gen types typescript > src/types/database.ts`), a to až
- * v K2, kdy schéma existuje. Do té doby by ručně psaný typ byl fantazie.
+ * `Database` je generovaný ze schématu (`src/types/database.ts`, viz
+ * CLAUDE.md — typy se generují, nepíší ručně). Po každé migraci se
+ * přegeneruje a commitne spolu s ní.
  *
  * Převzato z `crm/src/integrations/supabase/client.ts` (vividbooks CRM,
  * commit `831f9ae6`); tam bylo `schema: "crm"`.
  */
-export const supabase = createClient(EFFECTIVE_SUPABASE_URL, EFFECTIVE_SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database>(EFFECTIVE_SUPABASE_URL, EFFECTIVE_SUPABASE_ANON_KEY, {
   db: { schema: "doktor" },
   auth: {
     storage: localStorage,

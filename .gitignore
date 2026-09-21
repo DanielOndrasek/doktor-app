@@ -10,3 +10,6 @@ dist/
 npm-debug.log*
 .vercel/
 coverage/
+
+# Supabase CLI
+supabase/.temp/

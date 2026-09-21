@@ -98,3 +98,28 @@ proti plánu je v A.3 **k odsouhlasení**, ne rozhodnutých: `ukoly.stav_zmenen`
 `ukoly.stav_zdroj`, `udalosti.zdroj_id`, tabulka `signaly_odlozene`, tabulka `sablony`.
 Bez odsouhlasení se do migrace nedostanou a aplikace nechá pole prázdné. Otevřená volba
 v B.3: kdo překládá id složek z kontraktu (`inbox`) na názvy enginu (`INBOX`) — dnes aplikace.
+
+**21. 9. 2026 — schéma `doktor` je v Supabase.** Projekt `doktor`, ref `dwwwdeagnqiibwraxyjx`,
+org Daniel Ondrášek, region `eu-west-1` (Irsko — O3 psalo Frankfurt, EU platí), Postgres 17.
+Aplikováno 10 migrací z `supabase/migrations/` (9 schématu + `advisory_search_path_rls_indexy`,
+která řeší nálezy advisorů: pevný `search_path` u šesti funkcí, politiky s `(select auth.uid())`
+místo `auth.uid()` pro každý řádek, 21 indexů nad cizími klíči). Security advisor po ní hlásí
+nic, performance jen INFO „unused index" (databáze je prázdná). Totéž ověřeno lokálně na
+Postgres 16 se zástupným `auth` schématem: RLS, insert-only audit, `stav_zmenen`, `dnes()`,
+`signal_odlozit()`.
+
+`src/types/database.ts` je generovaný přes postgres-meta z lokální kopie schématu (stejný
+generátor, jaký používá `supabase gen types`), protože schéma `doktor` zatím **není
+vystavené v API projektu** a hostovaný generátor ho nevidí. Po každé další migraci znovu:
+`supabase gen types typescript --project-id dwwwdeagnqiibwraxyjx --schema doktor > src/types/database.ts`
+(jakmile bude schéma vystavené) a commit obojího.
+
+**Co zbývá udělat ručně v dashboardu Supabase** (přes MCP to nejde):
+1. Settings → API → *Exposed schemas*: přidat `doktor` — bez toho klient (`db.schema: "doktor"`)
+   dostane od PostgREST 404/406 a aplikace nenačte nic.
+2. Authentication → MFA: zapnout TOTP; Sign-in / Providers → Email: `password_min_length = 12`;
+   URL configuration: site URL a redirect `<doména>/reset-hesla`.
+3. Organization → Legal: DPA se Supabase (podmínka O3).
+4. Heslo k databázi nikam nepsat — aplikace ho nepotřebuje, engine dostane connection string
+   do svých secrets až v K2.3.
+

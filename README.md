@@ -12,7 +12,7 @@ engine `uvn-mail-mcp` je samostatný a jeho zadání pro fázi K1 je zde jen pro
 |---|---|---|---|
 | K0 | Opravy Schránky, které nečekají | artefakt | probíhá |
 | K1 | Engine: `novy_ref`, HTML tělo, přílohy, párování stavu, profil ze Sent | server | zadáno |
-| K2 | Databáze `doktor`, REST `/api/v1`, MCP nástroje | server + Supabase | O3, O4 rozhodnuto — může začít |
+| K2 | Databáze `doktor`, REST `/api/v1`, MCP nástroje | server + Supabase | K2.2 schéma aplikováno v Supabase (10 migrací, typy vygenerované); K2.3 REST čeká na engine |
 | **K3** | **Aplikace v1: Pošta, Podpisy, Přílohy, Dnes, Úkoly, Události, Kontext** | **tento repozitář** | **převzato: UI kit, vzhled, kontrakt pošty, komponenty pošty, kanban, přihlášení, podpisy, kontext, Dnes, zápisy, běhy** |
 | K4 | Aplikace v2: Kontakty, pohledy, sklad příloh, Disk, CardDAV | tento repozitář | — |
 | K5 | Dotažení, vypnutí artefaktu | — | — |
@@ -55,5 +55,7 @@ npm run build
 Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
 Dnes (`/`), Úkoly (`/ukoly`, kanban) a Události (`/udalosti`) nad prázdnými zdroji
 a Poštu (`/posta`) nad klientem enginu — bez `VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený.
-Kontext a zápisy čekají na své obrazovky. Přihlášení a data čekají na rozhodnutí O3 (kde bude databáze) a O4
-(doména pod ověřeným OAuth projektem), viz `docs/rozhodnuti.md`.
+Kontext a zápisy čekají na své obrazovky. Databáze je Supabase projekt `doktor` (EU, `eu-west-1`);
+veřejné hodnoty pro `.env` jsou v `.env.example`, schéma v `supabase/migrations/`, typy
+v `src/types/database.ts`. Zdroje dat (`TaskSource`, `EventSource`, `TodaySource`) se na tabulky
+zapojí v dalším kroku.
