@@ -40,7 +40,7 @@ function formatDateTime(iso: string): string {
   return isValid(d) ? format(d, "d. M. yyyy HH:mm", { locale: csLocale }) : iso;
 }
 
-export type TaskDialogTarget = { mode: "new"; state: TaskState } | { mode: "edit"; id: string };
+export type TaskDialogTarget = { mode: "new"; state: TaskState; dueDate?: string } | { mode: "edit"; id: string };
 
 interface TaskDialogProps {
   target: TaskDialogTarget | null;
@@ -80,7 +80,7 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
     if (!target) return;
     if (target.mode === "new") {
       setTask(null);
-      setDraft(emptyTaskDraft(target.state));
+      setDraft({ ...emptyTaskDraft(target.state), dueDate: target.dueDate ?? "" });
       return;
     }
     let cancelled = false;

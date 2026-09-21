@@ -283,6 +283,48 @@ export const cs = {
       nenalezen: "Úkol nenalezen — možná byl zrušen nebo patří někomu jinému.",
       bezZdroje: "Bez databáze nejde úkol uložit.",
     },
+    /** Přepínač pohledů obrazovky Úkoly. */
+    pohledy: { kanban: "Kanban", seznam: "Seznam", kalendar: "Kalendář" },
+    hledat: "Hledat úkol, kontakt, oblast…",
+    /** Seznam po termínech (`src/components/tasks/TaskList.tsx`). */
+    seznam: {
+      otevrene: "Otevřené",
+      hotovoTitle: "Dokončené za posledních 14 dní",
+      buckety: {
+        overdue: "Po termínu",
+        today: "Dnes",
+        tomorrow: "Zítra",
+        week: "Tento týden",
+        later: "Později",
+        nodate: "Bez termínu",
+        done: "Hotovo",
+      },
+      nicTuNeni: "Nic tu není",
+      hotovoAria: "Hotovo",
+      vratitMeziOtevrene: "Vrátit mezi otevřené",
+      preplanovat: "Přeplánovat",
+      presuny: { dnes: "Dnes", zitra: "Zítra", za3dny: "Za 3 dny", zaTyden: "Za týden", za2tydny: "Za 2 týdny" },
+      presunutoNaDnes: "Přesunuto na dnes",
+      presunutoO: (days: number) => `Přesunuto o ${days} d`,
+      presunutoNa: (date: string) => `Přesunuto na ${date}`,
+      presunSelhal: "Termín se nepodařilo změnit.",
+      dniPoTerminu: (days: number) => `${days} d po termínu`,
+      presunoutVseNaDnes: "přesunout vše na dnes",
+      potvrditPresunVse: (n: number) => `Přesunout všech ${n} úkolů po termínu na dnešek?`,
+      dalsich: (n: number, zbyva: number) => `Dalších ${n} z ${zbyva}`,
+    },
+    /** Kalendář týden / měsíc (`src/components/tasks/TaskCalendar.tsx`). */
+    kalendar: {
+      dnes: "Dnes",
+      predchozi: "Předchozí",
+      dalsi: "Další",
+      tyden: "Týden",
+      mesic: "Měsíc",
+      dny: ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"],
+      pridatNaDen: "Přidat úkol na tento den",
+      dalsich: (n: number) => `+${n} dalších`,
+      napoveda: "Úkol přetáhněte myší na jiný den. Do kalendáře iCloud se úkol zapíše jen na kliknutí.",
+    },
     /** Výběr termínu s časem (`src/components/tasks/TaskDeadlinePicker.tsx`). */
     terminVyber: {
       vybratDatum: "Vybrat datum",

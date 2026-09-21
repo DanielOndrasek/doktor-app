@@ -40,6 +40,8 @@ export interface KanbanCard {
   id: string;
   /** `ukoly.nazev` */
   title: string;
+  /** `ukoly.popis` — kanban ho neukazuje, seznam ano (dva řádky). */
+  description?: string | null;
   /** `ukoly.stav` */
   state: KanbanState;
   /** `ukoly.termin` — ISO datum nebo čas. */

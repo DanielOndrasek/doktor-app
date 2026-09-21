@@ -155,3 +155,8 @@ iCloud Pracovní se Simčou na kliknutí" (`cal_pridat` + `ukoly.kal_uid`, až b
 `EmailContext.onCreateTask` se dá zapojit na `taskSource.create({… source: "email",
 contactId, itemId})`, až Pošta dostane kontext z K2.3.
 
+**21. 9. 2026 — seznam po termínech a kalendář (K3.6).** Z `VbTasksPage.tsx`, rozepsané
+v `prevzeti-z-vividbooks.md`. Obrazovka Úkoly má tři pohledy nad jedním `load`: kanban ·
+seznam · kalendář, hledání a `?ukol=` detail. Z K3.6 zbývá jen „úkol → iCloud Pracovní se
+Simčou na kliknutí" (`cal_pridat` + `ukoly.kal_uid`, až bude REST enginu).
+

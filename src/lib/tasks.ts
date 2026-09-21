@@ -70,6 +70,8 @@ export interface TaskSource {
   create: (input: TaskCreateInput) => Promise<TaskDetail>;
   /** Změna stavu z dialogu je taky klik: zapíše `stav_zdroj = klik`. */
   update: (task: TaskDetail, draft: TaskDraft) => Promise<TaskDetail>;
+  /** Přeplánování ze seznamu nebo přetažením v kalendáři: jen `termin`, čas zůstává. */
+  reschedule: (card: KanbanCardData, dueDate: string) => Promise<void>;
 }
 
 export function emptyTaskDraft(state: TaskState = "todo"): TaskDraft {
@@ -100,14 +102,15 @@ export const EMPTY_TASK_SOURCE: TaskSource = {
   update: async () => {
     throw new Error(cs.ukoly.detail.bezZdroje);
   },
+  reschedule: async () => {},
 };
 
 /** Sloupce, které tabule čte. `zruseno` na tabuli nepatří, proto se nenačítá. */
-const TASK_COLUMNS = "id, nazev, stav, termin, cas, priorita, oblast, stav_zmenen, kontakty (jmeno, prijmeni)" as const;
+const TASK_COLUMNS = "id, nazev, popis, stav, termin, cas, priorita, oblast, stav_zmenen, kontakty (jmeno, prijmeni)" as const;
 
 type UkolRow = Pick<
   Database["doktor"]["Tables"]["ukoly"]["Row"],
-  "id" | "nazev" | "stav" | "termin" | "cas" | "priorita" | "oblast" | "stav_zmenen"
+  "id" | "nazev" | "popis" | "stav" | "termin" | "cas" | "priorita" | "oblast" | "stav_zmenen"
 > & {
   kontakty: Pick<Database["doktor"]["Tables"]["kontakty"]["Row"], "jmeno" | "prijmeni"> | null;
 };
@@ -196,6 +199,7 @@ export function toCard(row: UkolRow): KanbanCardData | null {
   return {
     id: row.id,
     title: row.nazev,
+    description: row.popis,
     state: row.stav,
     due: dueOf(row),
     priority: row.priorita,
@@ -231,6 +235,11 @@ export function createSupabaseTaskSource(client: typeof supabase = supabase): Ta
         .from("ukoly")
         .update({ stav: to, stav_zdroj: "klik" })
         .eq("id", card.id);
+      if (error) throw new Error(error.message);
+    },
+
+    async reschedule(card, dueDate) {
+      const { error } = await client.from("ukoly").update({ termin: dueDate }).eq("id", card.id);
       if (error) throw new Error(error.message);
     },
 

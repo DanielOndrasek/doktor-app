@@ -45,7 +45,7 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
 | Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☑ |
 | Úkoly — detail a zakládání | `components/tasks/TaskDeadlinePicker.tsx`, `TaskDetailDialogChrome.tsx`, `components/vividbooks/ActivityDialog.tsx` (tvar formuláře) | `src/components/tasks/` | ☑ |
-| Úkoly — seznam po termínech, kalendář | `pages/crm/VbTasksPage.tsx` (buckety Po termínu · Dnes · Zítra · Tento týden · Později · Bez termínu, týden/měsíc) | `src/pages/Tasks.tsx` | ☐ |
+| Úkoly — seznam po termínech, kalendář | `pages/crm/VbTasksPage.tsx` (buckety Po termínu · Dnes · Zítra · Tento týden · Později · Bez termínu, týden/měsíc) | `src/pages/Tasks.tsx`, `src/components/tasks/TaskList.tsx`, `TaskCalendar.tsx`, `src/lib/taskDue.ts` | ☑ |
 | Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☑ |
 | Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/`, `src/lib/today.ts` | ☑ |
 | Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/`, `src/lib/notes.ts` | ☑ |
@@ -403,6 +403,31 @@ Tři zdroje, dvě kopie a jeden tvar:
 `create` bere `user_id` ze session (RLS `with check`), `zdroj = rucne`; `update` zapisuje
 `stav_zdroj = klik`, když se změnil stav. Otevření detailu je `?ukol=<id>` — stejný odkaz
 dává karta kanbanu, `dnes()` i úkol z e-mailu.
+
+### Úkoly — seznam po termínech a kalendář (21. 9. 2026)
+
+`pages/crm/VbTasksPage.tsx` (251 řádků, jedna stránka) → tři soubory: `src/lib/taskDue.ts`
+(`bucketOf`, `iso`, `splitDue`), `src/components/tasks/TaskList.tsx` (řádek a sekce po
+bucketech), `src/components/tasks/TaskCalendar.tsx` (týden / měsíc) a přepínač pohledů
+s hledáním v `src/pages/Tasks.tsx`. Přebráno **beze změny logiky**: `BUCKETS` a `bucketOf`,
+kolečko hotovo, termín s „N d po termínu", přeplánování z nabídky Dnes · Zítra · Za 3 dny ·
+Za týden · Za 2 týdny, poznámka na dva řádky, „přesunout vše na dnes" nad třemi po termínu,
+stránkování 25 / +50, prázdný stav s tlačítkem, `calDays`, `byDay` seřazené podle času,
+nativní drag & drop na den, limit 14 / 4 s „+N dalších", „+" v rohu dne, optimistický
+zápis s načtením znovu při chybě (`patch`), pohled v `localStorage`.
+
+| V CRM | V Doktorovi | Proč |
+|---|---|---|
+| RPC `task_feed(p_scope, p_owner, p_done_days)` nad zdí obchodu | `TaskSource.load` (tytéž karty jako kanban) + `reschedule`; Hotovo = `stav_zmenen` ≤ 14 dní zpět, počítá se v klientu | datová vrstva úkolů je v Nepřebírat |
+| `is_completed` / `completed_at` | `stav = hotovo` ↔ `todo`, přes `move` (`stav_zdroj = klik`) | stavy úkolu z `CLAUDE.md` |
+| Moje / Všichni / kolega, `profiles` | — | jeden uživatel; RLS |
+| AI plán dne (`tasks-ai`, `sessionStorage`), AI návrh řešení (`DealSummaryDialog`) | — | žádné volání modelu z aplikace |
+| typy aktivit (ikony, filtr, barvy v kalendáři) | priorita jako štítek, stav jako štítek; barvy jen po termínu / hotovo / ostatní | úkol není událost |
+| škola / osoba / obchod s hodnotou, místo, Meet | kontakt, oblast | vazby přijdou z běhu |
+| `Trash2` mazání | — | nic se nemaže; `zruseno` se nastaví v detailu |
+| `toast` ze `sonner`, `confirm()` | `useToast`, `window.confirm` | jeden systém hlášek |
+| barvy `red-600`, `emerald-600`, `sky`, `violet`, `#fff5d6` | `destructive`, `success`, `secondary`, `warning/10` | tokeny Doktora, tmavý režim zdarma |
+| věta „zapisují se i do Google Kalendáře" | „do kalendáře iCloud se úkol zapíše jen na kliknutí" | pravidlo: do kalendáře jen na kliknutí, přes engine |
 
 ## Nepřebírat
 
