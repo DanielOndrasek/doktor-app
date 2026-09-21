@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { EmailInbox } from "@/components/email/EmailInbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
+import { loadMailboxes } from "@/lib/mailboxes";
 import { getAccessToken } from "@/lib/supabase/token";
 
 const MAILBOX_STORAGE_KEY = "doktor:posta-schranka";
@@ -30,6 +32,14 @@ export default function Mail() {
 
   // Klient je levný; nový vzniká jen při přepnutí schránky.
   const mailbox = useMemo(() => createEngineMailboxFromEnv(getAccessToken, mailboxId), [mailboxId]);
+
+  // „Odeslat z": schránky z `schranky` (K3.3). Předvolba pro nový e-mail = schránka, ve které se dívám.
+  const { data: mailboxes = [] } = useQuery({ queryKey: ["schranky"], queryFn: () => loadMailboxes() });
+  const senders = useMemo(
+    () => mailboxes.map((m) => ({ address: m.adresa, label: `${cs.posta.schranky[m.typ]} · ${m.adresa}` })),
+    [mailboxes],
+  );
+  const defaultSender = mailboxId === "all" ? undefined : mailboxes.find((m) => m.typ === mailboxId)?.adresa;
 
   const switchMailbox = (next: string) => {
     if (!MAILBOXES.includes(next as EngineMailboxId)) return;
@@ -80,6 +90,8 @@ export default function Mail() {
           key={mailboxId}
           mailbox={mailbox}
           compose={{
+            senders,
+            defaultSender,
             onSend: async (request) => {
               if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);
               const result = await mailbox.sendWithUploads(request);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useEditor } from "@tiptap/react";
 import {
+  AlertTriangle,
   ChevronDown,
   FileIcon,
   Loader2,
@@ -19,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeSearch } from "@/lib/utils";
@@ -27,6 +29,7 @@ import type {
   AttachmentUploadRef,
   ComposeSendRequest,
   EmailRecipientSuggestion,
+  EmailSenderOption,
   EmailTemplate,
   EmailTemplateDraft,
 } from "@/lib/email/compose";
@@ -61,6 +64,13 @@ export interface EmailComposeSharedProps {
    * (řádek „Podpisy" — tabulka `podpisy`); CRM si ho tady tahalo z `profiles`.
    */
   signatureHtml?: string | null;
+  /**
+   * Schránky, ze kterých jde odeslat („Odeslat z", K3.3). Bez nich se řádek
+   * neukáže a engine odešle z výchozí schránky.
+   */
+  senders?: EmailSenderOption[];
+  /** Adresa předvybraná pro nový e-mail — schránka, ve které se uživatel právě dívá. */
+  defaultSender?: string;
   /** Návrhy adresátů z kontextu (účastníci vlákna, kontakt u položky). */
   recipientSuggestions?: EmailRecipientSuggestion[];
   /** Hledání v adresáři pro našeptávač adres. */
@@ -91,6 +101,11 @@ interface EmailComposeProps extends EmailComposeSharedProps {
   threadId?: string;
   inReplyTo?: string;
   references?: string;
+  /**
+   * Adresa schránky, do které přišla zpráva, na kterou se odpovídá. Je to
+   * předvolba „Odeslat z"; odpověď z jiné schránky hlásí varování (pravidlo 8).
+   */
+  replyMailbox?: string;
   /** Přepíše min. výšku editačního pole těla (kompaktní composer). */
   bodyMinHeightClass?: string;
   onClose: () => void;
@@ -132,7 +147,10 @@ export function EmailCompose({
   threadId,
   inReplyTo,
   references,
+  replyMailbox,
   signatureHtml,
+  senders,
+  defaultSender,
   recipientSuggestions,
   onSearchRecipients,
   templates,
@@ -153,6 +171,14 @@ export function EmailCompose({
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState(defaultSubject);
+  // „Odeslat z": u odpovědi schránka, kam zpráva přišla; u nové zprávy ta, ve které
+  // se uživatel dívá; jinak první v nabídce. Počítá se jednou při otevření okna.
+  const [sendFrom, setSendFrom] = useState<string>(() => {
+    const list = senders ?? [];
+    const preferred = replyMailbox ?? defaultSender;
+    return list.find((s) => s.address === preferred)?.address ?? list[0]?.address ?? "";
+  });
+  const otherMailbox = Boolean(replyMailbox && sendFrom && sendFrom !== replyMailbox);
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -263,6 +289,7 @@ export function EmailCompose({
         inReplyTo,
         references,
         uploadIds: uploadIds.length ? uploadIds : undefined,
+        sendFrom: sendFrom || undefined,
       });
       toast({ title: cs.posta.psani.odeslano });
       onSent?.();
@@ -292,6 +319,32 @@ export function EmailCompose({
       </div>
 
       <div className="flex-shrink-0 space-y-2 p-3">
+        {senders && senders.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label className="w-12 flex-shrink-0 text-xs text-muted-foreground">{cs.posta.psani.od}</label>
+            <Select value={sendFrom} onValueChange={setSendFrom} disabled={senders.length === 1}>
+              <SelectTrigger className="h-8 text-sm" aria-label={cs.posta.psani.odeslatZ}>
+                <SelectValue placeholder={cs.posta.psani.odeslatZ} />
+              </SelectTrigger>
+              <SelectContent>
+                {senders.map((s) => (
+                  <SelectItem key={s.address} value={s.address}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {otherMailbox && (
+          /* Pravidlo 8: odpověď z jiné schránky, než do které zpráva přišla, se neodmítá, ale hlásí. */
+          <p role="status" className="flex items-start gap-1.5 pl-14 text-xs text-warning">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+            <span>
+              {cs.posta.psani.varovaniJinaSchranka.replace("{prisla}", replyMailbox ?? "").replace("{odesila}", sendFrom)}
+            </span>
+          </p>
+        )}
         <div className="flex items-start gap-2">
           <span className="w-12 flex-shrink-0 pt-2 text-xs text-muted-foreground">{cs.posta.psani.komu}</span>
           <div className="min-w-0 flex-1">

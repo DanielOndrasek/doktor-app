@@ -27,6 +27,14 @@ export interface AttachmentUploadRef {
  */
 export interface ComposeSendRequest extends Omit<MailSendRequest, "attachments"> {
   uploadIds?: string[];
+  /** Adresa schránky, ze které se odesílá („Odeslat z", pravidlo 8) — engine ji dostane jako `odeslat_z`. */
+  sendFrom?: string;
+}
+
+/** Schránka v nabídce „Odeslat z" okna psaní. */
+export interface EmailSenderOption {
+  address: string;
+  label: string;
 }
 
 /** Návrh adresáta v našeptávači (kontakt, účastník vlákna). */

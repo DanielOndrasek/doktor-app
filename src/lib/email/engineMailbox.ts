@@ -69,10 +69,8 @@ export interface EngineMoveResult {
   messageId: string;
 }
 
-/** Co `send` / `saveDraft` navíc proti `ComposeSendRequest`: „Odeslat z" a podpis. */
+/** Co `send` / `saveDraft` navíc proti `ComposeSendRequest`: podpis (`sendFrom` je už v žádosti z okna psaní). */
 export interface EngineSendRequest extends ComposeSendRequest {
-  /** Adresa schránky, ze které se odesílá (`odeslat_z`). */
-  sendFrom?: string;
   /** `podpis_id` — podpis skládá engine, tělo ho nenese dvakrát. */
   signatureId?: string;
 }

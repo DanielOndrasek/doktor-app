@@ -114,7 +114,15 @@ export function EmailInbox({ mailbox, compose, onOpenAttachment, renderContext }
     threadId: string;
     inReplyTo: string;
     references: string;
+    /** Adresa naší schránky, do které zpráva přišla (předvolba „Odeslat z", pravidlo 8). */
+    arrivedAt?: string;
   } | null>(null);
+
+  /** Do které z našich schránek zpráva přišla — podle adres v „Komu". */
+  const arrivedAt = (d: MailMessageDetail): string | undefined => {
+    const to = d.to.toLowerCase();
+    return compose.senders?.find((s) => to.includes(s.address.toLowerCase()))?.address;
+  };
 
   // Rozložení schránky: které standardní složky server nabízí a vlastní složky.
   const [standardFolderIds, setStandardFolderIds] = useState<string[]>(["inbox"]);
@@ -285,6 +293,7 @@ export function EmailInbox({ mailbox, compose, onOpenAttachment, renderContext }
       threadId: detail.threadId,
       inReplyTo: detail.messageId,
       references: detail.messageId,
+      arrivedAt: arrivedAt(detail),
     });
     setComposing(true);
   };
@@ -297,6 +306,7 @@ export function EmailInbox({ mailbox, compose, onOpenAttachment, renderContext }
       threadId: detail.threadId,
       inReplyTo: detail.messageId,
       references: detail.messageId,
+      arrivedAt: arrivedAt(detail),
     });
     setComposing(true);
   };
@@ -349,6 +359,7 @@ export function EmailInbox({ mailbox, compose, onOpenAttachment, renderContext }
       threadId={replyData?.threadId}
       inReplyTo={replyData?.inReplyTo}
       references={replyData?.references}
+      replyMailbox={replyData?.arrivedAt}
       onClose={() => {
         setComposing(false);
         setReplyData(null);
