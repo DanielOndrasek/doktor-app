@@ -188,6 +188,15 @@ origin nefunguje) a „Stáhnout vše" po jedné — `lib/email/attachments.ts`,
 místo `onOpenAttachment`. (3) „Odeslat z" v okně psaní (K3.3) nad `schranky`; Gmail řádek
 `suchanekstepan@gmail.com` založen 21. 9. Gmail v seznamu je pomalý a bez úryvku, protože engine
 ho čte živě přes IMAP — náprava je ÚKOL 44 bod 3 (index Gmailu), zadáno serverovému Claudovi.
+
+**21. 9. 2026 večer — audit z enginu padal na právech.** `doktor.audit` byl prázdný, ačkoli
+Pošta běžela. V edge logu Supabase: `POST /rest/v1/audit` → 403 (`python-requests`, role
+`service_role`), v postgres logu „permission denied for table audit". Tabulky `audit` a `behy`
+neměly žádná práva pro `authenticated` ani `service_role` (ostatních 21 ano) — výchozí práva
+ze `schema_doktor` se na ně nepropsala, důvod nezjištěn. Migrace `prava_audit_behy`: explicitní
+`grant all on all tables` + `revoke update, delete, truncate on audit` (insert-only i pro
+service role). Ponaučení: po každé migraci ověřit `information_schema.role_table_grants`,
+ne jen advisory.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
