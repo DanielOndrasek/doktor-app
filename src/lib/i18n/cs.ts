@@ -343,7 +343,7 @@ export const cs = {
 
   /** Přihlášení, obnova hesla, MFA (`src/pages/Login.tsx`, `ResetPassword.tsx`, `src/components/auth/`). */
   prihlaseni: {
-    nazevAplikace: "Doktor",
+    nazevAplikace: "Suchánek",
     titulek: "Přihlášení",
     podtitulek: "Pošta, úkoly a kontakty na jednom místě.",
     email: "E-mail",
@@ -558,6 +558,9 @@ export const cs = {
     ukoly: "Úkoly",
     udalosti: "Události",
     odhlasit: "Odhlásit se",
+    otevritMenu: "Otevřít menu",
+    navigace: "Navigace",
+    prepnoutMotiv: "Přepnout světlý / tmavý režim",
   },
 
   /** Výběr data (`ui/date-picker.tsx`). */

@@ -179,3 +179,9 @@ Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkč
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
 
+**21. 9. 2026 — značka „Suchánek" a postranní lišta.** Na přání: název aplikace je „Suchánek"
+písmem podpisu (`font-signature` = Dancing Script 600/700, načítá se z Google Fonts spolu
+s Interem; bez sítě spadne na `cursive`). Navigace je postranní lišta z CRM `AdminLayout`
+(viz převzetí). V railu je jen iniciála „S" — celý podpis by se do 56 px nevešel; kdyby měl
+být vidět celý, jde rail rozšířit nebo podpis otočit svisle.
+

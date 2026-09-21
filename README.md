@@ -1,4 +1,4 @@
-# Doktor — aplikace
+# Doktor — aplikace („Suchánek")
 
 Vlastní aplikace pro e-mailovou schránku, CRM kontaktů, úkoly a přílohy, která nahrazuje
 artefakt „Schránka“ a propojuje poštu s Claudem přes MCP.

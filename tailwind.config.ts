@@ -22,6 +22,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        /* Značka „Suchánek" jako podpis; písmo se načítá v index.html. */
+        signature: ['"Dancing Script"', "cursive"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

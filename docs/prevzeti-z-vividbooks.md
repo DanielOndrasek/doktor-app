@@ -44,6 +44,7 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☑ |
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
 | Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☑ |
+| Navigace (postranní lišta) | `components/AdminLayout.tsx` (rail `w-14`, ikony s tooltipy, mobilní FAB + Sheet, patička s motivem) | `src/components/AppShell.tsx` | ☑ |
 | Úkoly — detail a zakládání | `components/tasks/TaskDeadlinePicker.tsx`, `TaskDetailDialogChrome.tsx`, `components/vividbooks/ActivityDialog.tsx` (tvar formuláře) | `src/components/tasks/` | ☑ |
 | Úkoly — seznam po termínech, kalendář | `pages/crm/VbTasksPage.tsx` (buckety Po termínu · Dnes · Zítra · Tento týden · Později · Bez termínu, týden/měsíc) | `src/pages/Tasks.tsx`, `src/components/tasks/TaskList.tsx`, `TaskCalendar.tsx`, `src/lib/taskDue.ts` | ☑ |
 | Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☑ |
@@ -428,6 +429,19 @@ zápis s načtením znovu při chybě (`patch`), pohled v `localStorage`.
 | `toast` ze `sonner`, `confirm()` | `useToast`, `window.confirm` | jeden systém hlášek |
 | barvy `red-600`, `emerald-600`, `sky`, `violet`, `#fff5d6` | `destructive`, `success`, `secondary`, `warning/10` | tokeny Doktora, tmavý režim zdarma |
 | věta „zapisují se i do Google Kalendáře" | „do kalendáře iCloud se úkol zapíše jen na kliknutí" | pravidlo: do kalendáře jen na kliknutí, přes engine |
+
+### Navigace — postranní lišta (21. 9. 2026)
+
+`components/AdminLayout.tsx` (828 řádků: auth, role, licence, banner trialu, webináře, PWA,
+flyout Nástroje, `UserMenu`) → `src/components/AppShell.tsx` jen jako **lišta**: tmavý rail
+`w-14` v barvách `sidebar`, ikony 24 px s tooltipem vpravo, aktivní položka `bg-white/10` +
+`text-sidebar-primary`, patička s přepínačem motivu, na mobilu plovoucí tlačítko vlevo dole
+a `Sheet` šířky `w-20` se stejným obsahem, obsah `md:ml-14` + `pt-[env(safe-area-inset-top)]`.
+Položky: Dnes · Pošta · Úkoly · Události (CRM: Dnes · Obchody · Lead Box · Úkoly · E-mail ·
+Databáze · Reporty). Nepřebráno: `animate-glow-pulse`, počet nepřečtených u E-mailu (přijde
+s `mail_stats` z enginu), `UserMenu` s avatarem (uživatel je jeden — tlačítko Odhlásit), otevírání
+nativní pošty na mobilu. Značka: místo loga N1 iniciála podpisu „S" (`font-signature`,
+Dancing Script z Google Fonts vedle Interu); celý podpis „Suchánek" je na přihlášení.
 
 ## Nepřebírat
 

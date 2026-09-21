@@ -28,7 +28,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
       <div className="relative z-10 w-full max-w-md">
         <Card className="border-border/50 bg-card/80 shadow-xl backdrop-blur-sm">
           <CardHeader className="space-y-3 pb-4 text-center">
-            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-secondary">
+            <div className="font-signature text-4xl font-semibold leading-none text-secondary" aria-label={cs.prihlaseni.nazevAplikace}>
               {cs.prihlaseni.nazevAplikace}
             </div>
             <div className="space-y-1">
