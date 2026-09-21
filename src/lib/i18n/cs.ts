@@ -118,12 +118,8 @@ export const cs = {
 
     /** Chyby klienta enginu (`src/lib/email/engineMailbox.ts`). */
     engine: {
-      neprihlasen: "Nejste přihlášeni.",
-      chybiAdresa: "Chybí adresa enginu (VITE_ENGINE_URL).",
       nevystaveno: "Tahle operace se v aplikaci nevystavuje — nic se nemaže.",
       prilohaOdkazem: "Příloha se předává odkazem, ne base64. Použijte odkaz na přílohu nebo nahrání na engine.",
-      sit: "Spojení s enginem selhalo.",
-      neplatnaOdpoved: "Engine vrátil nečekanou odpověď.",
     },
 
     podpis: {
@@ -213,6 +209,14 @@ export const cs = {
       dnu: "d",
       bezPredmetu: "(bez předmětu)",
     },
+  },
+
+  /** Přenos k enginu (`src/lib/engine/client.ts`) — společné pro poštu i kalendáře. */
+  engine: {
+    neprihlasen: "Nejste přihlášeni.",
+    chybiAdresa: "Chybí adresa enginu (VITE_ENGINE_URL).",
+    sit: "Spojení s enginem selhalo.",
+    neplatnaOdpoved: "Engine vrátil nečekanou odpověď.",
   },
 
   /** Úkoly — stavy a kanban (`src/components/kanban/`). */
@@ -421,7 +425,10 @@ export const cs = {
   udalosti: {
     titulek: "Události",
     nacteniSelhalo: "Události se nepodařilo načíst.",
-    bezZdroje: "Události se načtou, až bude K2 — návrhy z mailů tu zatím nejsou.",
+    bezZdroje: "Zatím žádné návrhy událostí — přibudou z běhů nad poštou.",
+    bezKalendaru: "Kalendáře zařídí engine — zatím není propojený, návrhy jde jen zamítnout.",
+    engineNepropojen: "Do kalendáře zapisuje engine — zatím není propojený.",
+    uzNeniNovy: "Tenhle návrh už není nový.",
     zadne: {
       novy: "Žádné nové návrhy událostí.",
       pridano: "Zatím nic přidaného do kalendáře.",

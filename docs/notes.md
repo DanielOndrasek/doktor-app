@@ -127,3 +127,17 @@ vystavené v API projektu** a hostovaný generátor ho nevidí. Po každé dalš
 4. Heslo k databázi nikam nepsat — aplikace ho nepotřebuje, engine dostane connection string
    do svých secrets až v K2.3.
 
+**21. 9. 2026 — Události nad `udalosti` (K3.7).** `createSupabaseEventSource({engine})` čte
+`udalosti` pod RLS (řazení `zacatek`, původ přes vztah `polozky` → předmět nebo odesílatel,
+`kolize` jsonb obranně), `reject` zapíše `stav = zamitnuto`. `calendars` = `cal_calendars`,
+`add` = `cal_pridat` (`kalendar_id, nazev, zacatek, konec, celodenni, misto, polozka_id,
+zdroj_id = id návrhu, potvrzeni: true`) a pak `stav = pridano, kal_uid, kalendar`. Když engine
+zapíše a update řádku selže, návrh zůstane „nový" — další kliknutí engine odmítne přes
+`zdroj_id` (nástroj `cal_pridat` vrací `{ok:false}`), takže duplikát nevznikne, ale řádek je
+nutné srovnat ručně; K2.3 ať vrací při shodě `zdroj_id` existující `kal_uid` místo odmítnutí.
+Bez `VITE_ENGINE_URL` jsou kalendáře prázdné, tlačítko Přidat je vypnuté a obrazovka to říká.
+
+Přenos k enginu je teď společný: `src/lib/engine/client.ts` (`createEngineClient`, obálka
+`{ok, duvod, chyba}`, `EngineError`); `engineMailbox` nad ním jen skládá payloady pošty.
+JWT pro engine dává `src/lib/supabase/token.ts`.
+

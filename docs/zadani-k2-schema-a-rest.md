@@ -174,7 +174,7 @@ zbytek je návrh a K2.3 ho může přejmenovat — pak se změní `Wire*` na jed
 | `upload` | **multipart**, pole `soubor` (jeden soubor), `Content-Type` z klienta | `upload_id, nazev, velikost, typ` — uložené ve skladu enginu s TTL 24 h, dokud se nepoužije v `mail_send`/`mail_draft` |
 | `mail_priloha_odkaz` | `ref`, `index` | `url` — **podepsaný odkaz s TTL 10 min**, `GET` bez JWT, `Content-Disposition` podle typu; stream ze skladu, ne base64 |
 | `cal_calendars` | — | `kalendare: [{id, nazev}]` (tři vrstvy — jména z CalDAV, ne z konfigurace) |
-| `cal_pridat` | `kalendar_id`, `nazev`, `zacatek`, `konec?`, `celodenni`, `misto?`, `popis?`, `polozka_id?` | `kal_uid` — **jen na kliknutí** z aplikace; volá `EventSource.add` |
+| `cal_pridat` | `kalendar_id`, `nazev`, `zacatek`, `konec?`, `celodenni`, `misto?`, `popis?`, `polozka_id?`, `zdroj_id` (id řádku `udalosti` — druhé kliknutí nezaloží duplikát), `potvrzeni: true` | `kal_uid` — **jen na kliknutí** z aplikace; volá `EventSource.add` |
 | `cal_free` | `zacatek`, `konec` | `kolize: [{nazev, zacatek, konec, kalendar}]` — tím se plní `udalosti.kolize` |
 | `podpisy_seznam` | — | `podpisy: [{id, nazev, jazyk}]` — čte z Supabase přes service role; HTML si aplikace bere sama přes RLS |
 
@@ -191,7 +191,7 @@ Nevystaveno na REST (a nikdy): `trash`, `delete_folder`, `create_folder`, jakýk
 | `sendWithUploads` / `saveDraft` | `mail_send` / `mail_draft` s `prilohy[{zdroj:'upload'}]` |
 | `upload` | `upload` multipart |
 | `attachmentLink` | `mail_priloha_odkaz` |
-| `EventSource.calendars` / `add` | `cal_calendars` / `cal_pridat`; `reject` je jen zápis do `udalosti` přes RLS |
+| `EventSource.calendars` / `add` | `cal_calendars` / `cal_pridat`; `reject` je jen zápis do `udalosti` přes RLS — **hotovo** (`createSupabaseEventSource`; bez `VITE_ENGINE_URL` kalendáře prázdné, jde jen zamítat) |
 | `TodaySource` | `doktor.dnes()` / `doktor.signal_odlozit()` přes supabase-js (A.4), ne REST |
 | `TaskSource` | `ukoly` přes supabase-js; `move` = `update stav, stav_zdroj='klik'` — **hotovo** (`createSupabaseTaskSource`) |
 

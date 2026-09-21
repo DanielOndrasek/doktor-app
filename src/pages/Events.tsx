@@ -114,6 +114,9 @@ export default function Events({ source }: { source: EventSource }) {
           {!loading && events.length === 0 ? (
             <span className="text-xs text-muted-foreground">{cs.udalosti.bezZdroje}</span>
           ) : null}
+          {!loading && calendars.length === 0 && counts.novy > 0 ? (
+            <span className="text-xs text-warning">{cs.udalosti.bezKalendaru}</span>
+          ) : null}
         </div>
 
         {loading ? (

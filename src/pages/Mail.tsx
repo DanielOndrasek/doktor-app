@@ -5,7 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
-import { supabase } from "@/lib/supabase/client";
+import { getAccessToken } from "@/lib/supabase/token";
 
 const MAILBOX_STORAGE_KEY = "doktor:posta-schranka";
 const MAILBOXES: EngineMailboxId[] = ["all", "uvn", "gmail"];
@@ -19,14 +19,6 @@ function readMailbox(): EngineMailboxId {
   }
 }
 
-/** JWT ze Supabase pro engine; `null` = nepřihlášen (RequireAuth sem bez session nepustí). */
-async function getToken(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
-}
-
 /**
  * Pošta (K3.2): sjednocená schránka s přepínačem nad `engineMailbox`.
  * Podpis, adresář, šablony a kontext přijdou, až budou jejich zdroje z K2 —
@@ -37,7 +29,7 @@ export default function Mail() {
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
 
   // Klient je levný; nový vzniká jen při přepnutí schránky.
-  const mailbox = useMemo(() => createEngineMailboxFromEnv(getToken, mailboxId), [mailboxId]);
+  const mailbox = useMemo(() => createEngineMailboxFromEnv(getAccessToken, mailboxId), [mailboxId]);
 
   const switchMailbox = (next: string) => {
     if (!MAILBOXES.includes(next as EngineMailboxId)) return;

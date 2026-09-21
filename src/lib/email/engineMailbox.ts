@@ -1,5 +1,6 @@
 import { cs } from "@/lib/i18n/cs";
 import type { ComposeSendRequest } from "@/lib/email/compose";
+import { EngineError, createEngineClient, type EngineClient, type WireEnvelope } from "@/lib/engine/client";
 import type {
   MailAttachmentMeta,
   MailContactSearchParams,
@@ -39,27 +40,9 @@ import type {
  *   `sendWithUploads` jako `{zdroj: "upload", id}`.
  */
 
-export type EngineMailboxErrorCode =
-  | "unauthorized"
-  | "not_configured"
-  | "not_exposed"
-  | "attachment_by_link"
-  | "network"
-  | "engine"
-  | "bad_response";
-
-export class EngineMailboxError extends Error {
-  readonly code: EngineMailboxErrorCode;
-  /** `duvod` z odpovědi enginu, když ho poslal. */
-  readonly reason?: string;
-
-  constructor(code: EngineMailboxErrorCode, message: string, reason?: string) {
-    super(message);
-    this.name = "EngineMailboxError";
-    this.code = code;
-    this.reason = reason;
-  }
-}
+/** Chyby přenosu a obálky jsou společné pro celý engine (`src/lib/engine/client.ts`). */
+export { EngineError as EngineMailboxError } from "@/lib/engine/client";
+export type { EngineErrorCode as EngineMailboxErrorCode } from "@/lib/engine/client";
 
 /** Schránky, které engine zná (`schranky.typ` v plánu). `all` = sjednocená. */
 export type EngineMailboxId = "uvn" | "gmail" | "mediendo" | "all";
@@ -124,12 +107,6 @@ export interface EngineMailbox extends MailboxClient {
  * Pojmenování podle enginu (česky, `snake_case`). Pole, která K1 nezadává,
  * jsou tady jen jednou; s K2.3 se upraví tady, ne v obrazovkách.
  * ──────────────────────────────────────────────────────────────────────── */
-
-interface WireEnvelope {
-  ok: boolean;
-  duvod?: string;
-  chyba?: string;
-}
 
 interface WireMessage {
   ref: string;
@@ -230,55 +207,22 @@ function toAttachmentMeta(a: WireAttachment): MailAttachmentMeta {
   return { filename: a.nazev, mimeType: a.typ, size: a.velikost, attachmentId: String(a.index) };
 }
 
-function trimSlash(url: string): string {
-  return url.replace(/\/+$/, "");
-}
-
 export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbox {
-  const base = trimSlash(options.baseUrl);
   const mailbox = options.mailbox ?? "all";
   const archiveFolder = options.archiveFolder ?? "_Triage/Vyřízeno";
-  const fetchImpl = options.fetchImpl ?? fetch;
 
   const schranky = mailbox === "all" ? undefined : [mailbox];
 
-  async function authHeader(): Promise<Record<string, string>> {
-    if (!base) throw new EngineMailboxError("not_configured", cs.posta.engine.chybiAdresa);
-    const token = await options.getToken();
-    if (!token) throw new EngineMailboxError("unauthorized", cs.posta.engine.neprihlasen);
-    return { Authorization: `Bearer ${token}` };
-  }
-
-  async function readEnvelope<T extends WireEnvelope>(response: Response): Promise<T> {
-    const body = (await response.json().catch(() => null)) as T | null;
-    if (!body || typeof body !== "object") {
-      throw new EngineMailboxError("bad_response", cs.posta.engine.neplatnaOdpoved);
-    }
-    if (!response.ok || !body.ok) {
-      const reason = body.duvod ?? body.chyba;
-      throw new EngineMailboxError("engine", reason ?? cs.posta.engine.neplatnaOdpoved, reason);
-    }
-    return body;
-  }
-
-  /** `POST {base}/api/v1/{tool}` s JSON tělem — tvar 1 : 1 s nástrojem enginu. */
-  async function call<T extends WireEnvelope>(tool: string, payload: Record<string, unknown> = {}): Promise<T> {
-    const headers = { ...(await authHeader()), "Content-Type": "application/json" };
-    let response: Response;
-    try {
-      response = await fetchImpl(`${base}/api/v1/${tool}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      throw new EngineMailboxError("network", err instanceof Error ? err.message : cs.posta.engine.sit);
-    }
-    return readEnvelope<T>(response);
-  }
+  const engine: EngineClient = createEngineClient({
+    baseUrl: options.baseUrl,
+    getToken: options.getToken,
+    fetchImpl: options.fetchImpl,
+  });
+  /** `POST /api/v1/{tool}` s JSON tělem — tvar 1 : 1 s nástrojem enginu. */
+  const call = engine.call;
 
   const notExposed = async (): Promise<never> => {
-    throw new EngineMailboxError("not_exposed", cs.posta.engine.nevystaveno);
+    throw new EngineError("not_exposed", cs.posta.engine.nevystaveno);
   };
 
   const sendPayload = (request: EngineSendRequest) => ({
@@ -344,7 +288,7 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     },
 
     async getAttachment(): Promise<string> {
-      throw new EngineMailboxError("attachment_by_link", cs.posta.engine.prilohaOdkazem);
+      throw new EngineError("attachment_by_link", cs.posta.engine.prilohaOdkazem);
     },
 
     async attachmentLink(messageId, attachment) {
@@ -352,7 +296,7 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
         ref: messageId,
         index: Number(attachment.attachmentId),
       });
-      if (!data.url) throw new EngineMailboxError("bad_response", cs.posta.engine.neplatnaOdpoved);
+      if (!data.url) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
       return data.url;
     },
 
@@ -392,7 +336,7 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
 
     async send(request: MailSendRequest): Promise<MailSendResult> {
       if (request.attachments?.length) {
-        throw new EngineMailboxError("attachment_by_link", cs.posta.engine.prilohaOdkazem);
+        throw new EngineError("attachment_by_link", cs.posta.engine.prilohaOdkazem);
       }
       const { attachments: _ignored, ...rest } = request;
       return client.sendWithUploads(rest);
@@ -405,21 +349,14 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
 
     async saveDraft(request) {
       const data = await call<WireSend>("mail_draft", sendPayload(request));
-      if (!data.ref) throw new EngineMailboxError("bad_response", cs.posta.engine.neplatnaOdpoved);
+      if (!data.ref) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
       return { ref: data.ref };
     },
 
     async upload(file, name) {
-      const headers = await authHeader();
       const form = new FormData();
       form.append("soubor", file, name ?? (file instanceof File ? file.name : "priloha"));
-      let response: Response;
-      try {
-        response = await fetchImpl(`${base}/api/v1/upload`, { method: "POST", headers, body: form });
-      } catch (err) {
-        throw new EngineMailboxError("network", err instanceof Error ? err.message : cs.posta.engine.sit);
-      }
-      const data = await readEnvelope<WireUpload>(response);
+      const data = await engine.callMultipart<WireUpload>("upload", form);
       return { uploadId: data.upload_id, name: data.nazev, size: data.velikost, mimeType: data.typ };
     },
 
