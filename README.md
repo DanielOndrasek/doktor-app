@@ -25,6 +25,8 @@ Artefakt „Schránka“ se vypíná až po týdnu běhů bez ručních oprav v 
   datový model, rozhraní, fáze, měřítka, rizika. Zdroj pravdy.
 - [`docs/zadani-serveru-doktor-k1.md`](docs/zadani-serveru-doktor-k1.md) — zadání enginu
   pro K1 (ÚKOLy 35–41). Aplikace na něm stojí.
+- [`docs/zadani-serveru-doktor-gmail.md`](docs/zadani-serveru-doktor-gmail.md) — Gmail jako
+  druhý IMAP účet na enginu (ÚKOLy 42–46), z rozhodnutí O4.
 - [`docs/rozhodnuti.md`](docs/rozhodnuti.md) — otevřená rozhodnutí O1–O9 a co blokují.
 - [`docs/prevzeti-z-vividbooks.md`](docs/prevzeti-z-vividbooks.md) — co se kopíruje
   z vividbooks CRM a co se z něj naopak nebere.

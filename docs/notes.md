@@ -89,7 +89,6 @@ All Mail, `X-GM-THRID`); pro aplikaci nic — `engineMailbox` už `schranka = gm
 
 **21. 9. 2026 — O3 rozhodnuto, engine zůstává.** Supabase EU je jen databáze a přihlášení;
 engine na Hetzneru zůstává jediným zapisovačem nad schránkami (ÚVN i Gmail) a drží těla,
-přílohy, index, MCP, kalendáře, běhy. Co pro K2 čeká na enginu navíc: druhý IMAP účet pro
-Gmail (heslo aplikace v tajemstvích enginu), Gmail specifika (štítky, All Mail,
-`X-GM-THRID`). Pro Supabase: založit projekt (EU), zapnout TOTP, `password_min_length = 12`,
+přílohy, index, MCP, kalendáře, běhy. Co čeká na enginu navíc, je zadané v `zadani-serveru-doktor-gmail.md`
+(ÚKOLy 42–46). Pro Supabase: založit projekt (EU), zapnout TOTP, `password_min_length = 12`,
 redirect `<doména>/reset-hesla`, DPA.
