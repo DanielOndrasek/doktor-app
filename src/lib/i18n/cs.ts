@@ -219,7 +219,7 @@ export const cs = {
   ukoly: {
     titulek: "Úkoly",
     nacteniSelhalo: "Úkoly se nepodařilo načíst.",
-    bezZdroje: "Úkoly se načtou, až bude K2 — tabule je zatím prázdná.",
+    bezZdroje: "Zatím žádné úkoly — přibudou z pošty a z Clauda.",
     stavy: {
       todo: "TODO",
       probiha: "V procesu",

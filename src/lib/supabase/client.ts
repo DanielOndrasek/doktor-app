@@ -23,12 +23,14 @@ const EFFECTIVE_SUPABASE_ANON_KEY = isConfigured ? SUPABASE_ANON_KEY : "not-conf
  *
  * `Database` je generovaný ze schématu (`src/types/database.ts`, viz
  * CLAUDE.md — typy se generují, nepíší ručně). Po každé migraci se
- * přegeneruje a commitne spolu s ní.
+ * přegeneruje a commitne spolu s ní. Schéma je v generiku napsané
+ * výslovně, aby `from("ukoly")` zůstalo typované, i kdyby generátor někdy
+ * přidal `public`.
  *
  * Převzato z `crm/src/integrations/supabase/client.ts` (vividbooks CRM,
  * commit `831f9ae6`); tam bylo `schema: "crm"`.
  */
-export const supabase = createClient<Database>(EFFECTIVE_SUPABASE_URL, EFFECTIVE_SUPABASE_ANON_KEY, {
+export const supabase = createClient<Database, "doktor">(EFFECTIVE_SUPABASE_URL, EFFECTIVE_SUPABASE_ANON_KEY, {
   db: { schema: "doktor" },
   auth: {
     storage: localStorage,

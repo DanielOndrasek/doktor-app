@@ -73,6 +73,10 @@ se do ní doplní, až budou zdroje z K2.
 v `src/lib/tasks.ts` čeká na K2 (`load` = řádky `ukoly` → `KanbanCard`, `move` = nový
 `stav` + `stav_zdroj = klik`). Bez „+" a bez detailu úkolu — obojí potřebuje zápis do
 `ukoly`. Seznam po termínech a kalendář jsou další dva pohledy téže obrazovky.
+*Doplněno 21. 9. večer:* `createSupabaseTaskSource()` čte `ukoly` (bez `zruseno`, řazení
+`poradi, termin, vytvoreno`, jméno kontaktu přes vztah `kontakty`) a `move` zapisuje
+`stav` + `stav_zdroj = 'klik'`; `stav_zmenen` drží trigger. Zakládání a detail úkolu
+(`?ukol=`) zůstávají — karta na něj odkazuje, obrazovka ho zatím neumí.
 
 **21. 9. 2026 — Události nad prázdným zdrojem (K3.7).** `/udalosti` ukazuje návrhy
 z mailů ve stavech nové · přidané · zamítnuté s kolizemi a zápisem do kalendáře jen

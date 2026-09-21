@@ -14,16 +14,19 @@ import ResetPassword from "@/pages/ResetPassword";
 import Tasks from "@/pages/Tasks";
 import Today from "@/pages/Today";
 import { EMPTY_EVENT_SOURCE } from "@/lib/events";
-import { EMPTY_TASK_SOURCE } from "@/lib/tasks";
+import { createSupabaseTaskSource } from "@/lib/tasks";
 import { EMPTY_TODAY_SOURCE } from "@/lib/today";
 
 const queryClient = new QueryClient();
+
+/** Úkoly čtou a zapisují `ukoly` přes supabase-js pod RLS (K2.2 hotové). */
+const taskSource = createSupabaseTaskSource();
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
  * jde přes `RequireAuth` (session + MFA). Obrazovky (Dnes, Pošta, Úkoly,
  * Události, Kontakty, Nastavení) přijdou podle `docs/prevzeti-z-vividbooks.md`
- * — za přihlášením jsou Dnes, Úkoly a Události (prázdné zdroje) a Pošta nad enginem.
+ * — za přihlášením jsou Dnes a Události (prázdné zdroje), Úkoly nad `ukoly` a Pošta nad enginem.
  */
 export default function App() {
   return (
@@ -43,8 +46,8 @@ export default function App() {
                       {/* Dnes zatím nad prázdným zdrojem — signály přijdou s K2. */}
                       <Route path={TODAY_PATH} element={<Today source={EMPTY_TODAY_SOURCE} />} />
                       <Route path={MAIL_PATH} element={<Mail />} />
-                      {/* Úkoly zatím nad prázdným zdrojem — řádky `ukoly` přijdou s K2. */}
-                      <Route path={TASKS_PATH} element={<Tasks source={EMPTY_TASK_SOURCE} />} />
+                      {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}
+                      <Route path={TASKS_PATH} element={<Tasks source={taskSource} />} />
                       {/* Události zatím nad prázdným zdrojem — návrhy z mailů přijdou s K2. */}
                       <Route path={EVENTS_PATH} element={<Events source={EMPTY_EVENT_SOURCE} />} />
                       <Route path="*" element={<Navigate to={TODAY_PATH} replace />} />
