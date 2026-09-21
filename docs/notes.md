@@ -22,11 +22,11 @@ a Události, jejich pickery (`TaskDeadlinePicker` a spol.) budou chtít stejné 
 v8 API (`fromDate`, `toDate`, `captionLayout="buttons"`) v tomhle repozitáři neexistuje.
 
 **20. 9. 2026 — komponenty pošty a kanban.** Řádky 5 a 9 převzaté; odchylky v oddílu
-„Co se při kopírování rozhodlo". Dvě věci čekají na další řádky: `EmailCompose`
-posílá přílohy jako `uploadIds` (ne base64), takže `engineMailbox.ts` (K3.2) musí
-rozhodnout, jak se `upload_id` dostane do `send` — kontrakt `MailboxClient` na to
-pole nemá. A `KanbanCard` je projekce řádku `ukoly`; mapování napíše obrazovka
-Úkoly (K3.6), až budou typy z K2.
+„Co se při kopírování rozhodlo". `EmailCompose` posílá přílohy jako `uploadIds` (ne
+base64) — vyřešeno 21. 9. v `engineMailbox.ts`: `sendWithUploads` je mapuje na
+`prilohy: [{zdroj: "upload", id}]`, kontrakt `MailboxClient` zůstal nedotčený.
+`KanbanCard` je projekce řádku `ukoly`; mapování napíše obrazovka Úkoly (K3.6), až
+budou typy z K2.
 
 **20. 9. 2026 — šablony zpráv (K2).** Schéma `doktor` v plánu nemá tabulku šablon,
 ale řádek Komponenty pošty nese `EmailTemplatesDialog`. Dialog je props-driven
@@ -58,3 +58,12 @@ navrhne v K2 vedle `poznamky`. V K3 se do Dnes nezapojují.
 Tvar řádku (`Run` v `src/lib/runs.ts`) má navíc `source` a `state`, protože Doktor musí
 vidět i běh, který nedoběhl — CRM to nepotřebovalo. `agent_commands` z tabulky převzetí
 v `831f9ae6` není; vzor je `agent_runs`.
+
+**21. 9. 2026 — `engineMailbox.ts` čeká na K2.3.** Klient je napsaný proti nástrojům
+enginu a tvarům z K1. Co K1 nezadává, je v `Wire*` typech na jednom místě: názvy polí
+seznamu zpráv (`ref, vlakno, od, komu, predmet, datum, datum_ms, ukazka, priznaky`),
+stránkování (`strana` / `dalsi_strana`), složky (`standardni`, `vlastni`), `mail_stats`
+→ `neprectene`, `upload` → `upload_id`, a cesta `GET /api/v1/mail_priloha_soubor?ref&index`
+pro otevření přílohy. Až K2.3 řekne jinak, mění se jen `engineMailbox.ts`. Obrazovka Pošta
+(K3.2) ho zapojí přes `createEngineMailboxFromEnv(getToken)` a `onOpenAttachment` →
+`attachmentUrl`.
