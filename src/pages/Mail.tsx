@@ -80,9 +80,13 @@ export default function Mail() {
           key={mailboxId}
           mailbox={mailbox}
           compose={{
-            onSend: (request) => {
-              if (!mailbox) return Promise.reject(new Error(cs.posta.chyby.bezSchranky));
-              return mailbox.sendWithUploads(request).then(() => undefined);
+            onSend: async (request) => {
+              if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);
+              const result = await mailbox.sendWithUploads(request);
+              // Např. `jina_schranka`: zpráva odešla, ale z jiné schránky (pravidlo 8) — říct to nahlas.
+              if (result.warnings.length) {
+                toast({ title: cs.posta.odeslanoSVarovanim, description: result.warnings.join(" ") });
+              }
             },
             onUploadAttachment: mailbox ? (file) => mailbox.upload(file) : undefined,
           }}

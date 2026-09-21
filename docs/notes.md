@@ -225,3 +225,17 @@ zapéká při buildu, takže platí od dalšího nasazení. Engine stále není 
 login` na serveru čeká na kód ze zařízení). Test „přes internet" jde udělat rovnou z Pošty
 po přihlášení s MFA — access token z `localStorage` není třeba nikam vkládat.
 
+**21. 9. 2026 večer — engine na GitHubu, klient srovnaný s `rest_api.py`.** Repozitář
+`DanielOndrasek/uvn-mail-mcp` (privátní, commit `c60bed8`, 35 souborů, žádný `.env`, index ani
+klíč; `.gitignore` kryje `.env*`, `data/`, `*.db`, `*.pem`, `*.key`). Porovnání s klientem
+aplikace: cesty, obálka, JWT, CORS, `upload` (pole `soubor`), `mail_priloha_odkaz`, `novy_ref`,
+`telo_html`, `priznaky`, `neprectene`, `ref` z konceptu a `kal_uid` sedí. Opraveno v aplikaci:
+sjednocená schránka posílá `schranka: "vse"` a schránku zprávy si pamatuje podle refu (Gmail
+refy `[Gmail]/Všechny zprávy:<uid>`), nepřečtené se sčítají z obou; `mail_draft` dostává i přílohy,
+skrytou kopii, `odeslat_z` a `podpis_id` (engine je bere); chybová hláška ukazuje `chyba` (věta),
+kód je v `EngineError.reason`, 401/403 → `unauthorized`; `varovani` z `mail_send` (`jina_schranka`)
+jde do toastu. Co zůstává na serveru: `REST_LIMIT_ZA_MINUTU=60` je pro listování málo (detail
+= `mail_get` + `mail_prilohy`), doporučeno 240; JWKS ověřuje ES256/RS256/EdDSA — projekt musí mít
+asymetrické podepisování JWT (Project Settings → JWT Keys), s legacy HS256 vrátí engine
+„neznámý klíč"; CORS zná jen produkční adresu a `localhost:5173`, ne náhledová nasazení.
+

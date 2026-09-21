@@ -84,13 +84,18 @@ export interface EngineUploadResult {
   mimeType: string;
 }
 
+/** Výsledek odeslání: kontrakt + varování enginu (`jina_schranka`, pravidlo 8). */
+export interface EngineSendResult extends MailSendResult {
+  warnings: string[];
+}
+
 /** `MailboxClient` + operace, které kontrakt z CRM nemá a plán je přidává (4.1). */
 export interface EngineMailbox extends MailboxClient {
   readonly provider: "engine";
   /** Přesun s výsledkem; `moveToFolder` z kontraktu ho volá a výsledek zahodí. */
   moveMessage(messageId: string, folderId: string): Promise<EngineMoveResult>;
   /** Odeslání s přílohami odkazem (`uploadIds` → `prilohy`). */
-  sendWithUploads(request: EngineSendRequest): Promise<MailSendResult>;
+  sendWithUploads(request: EngineSendRequest): Promise<EngineSendResult>;
   /** Koncept s přílohami do Konceptů (`mail_draft`). */
   saveDraft(request: EngineSendRequest): Promise<{ ref: string }>;
   /** Nahrání přílohy multipartem; vrací `upload_id` (pravidlo 2). */
@@ -107,9 +112,11 @@ export interface EngineMailbox extends MailboxClient {
  * Přesně podle nástrojů enginu, jak je vidí MCP 21. 9. 2026 (`mail_search`,
  * `mail_get`, `mail_prilohy`, `mail_folders`, `mail_flag`, `mail_move`,
  * `mail_send`, `mail_draft`, `mail_stats`). REST K2.3 je tenký obal 1 : 1
- * nad nástroji (zadání K2, část B), takže tvary jsou tytéž. Co engine zatím
- * nemá (`upload`, `mail_priloha_odkaz`, `prilohy` u `mail_send`, `telo_html`,
- * `neprectene`), je označené jako volitelné a čeká na K2.3.
+ * nad nástroji (zadání K2, část B), takže tvary jsou tytéž. Od 21. 9. večer
+ * REST stojí (`app/rest_api.py` enginu): `upload`, `mail_priloha_odkaz`,
+ * `prilohy` u `mail_send` i `mail_draft`, `telo_html` (REST sám dosadí
+ * `format: "html"`), `priznaky` + `schranka` v každém řádku (`zive_priznaky`),
+ * `neprectene`, `novy_ref`, `ref` z `mail_draft`, `varovani` u odeslání.
  * ──────────────────────────────────────────────────────────────────────── */
 
 /** Řádek z `mail_search.vysledky` i hlavička z `mail_get`. */
@@ -181,8 +188,10 @@ interface WireSend extends WireEnvelope {
   message_id?: string;
   priznak_nastaven?: boolean;
   ulozeno_do_sent?: boolean;
-  /** `mail_draft`: ref uloženého konceptu (K2.3). */
+  /** `mail_draft`: ref uloženého konceptu. */
   ref?: string;
+  /** Např. `jina_schranka: …` — zpráva odešla, ale z jiné schránky, než do které přišla (pravidlo 8). */
+  varovani?: string[];
 }
 
 interface WireStats extends WireEnvelope {
@@ -211,6 +220,9 @@ const STANDARD_FOLDER_TO_ENGINE: Record<string, string> = {
 };
 
 const STANDARD_FOLDER_NAMES = new Set(Object.values(STANDARD_FOLDER_TO_ENGINE));
+
+/** Gmail refy enginu jsou vždy `[Gmail]/Všechny zprávy:<uid>`. */
+const GMAIL_REF_PREFIX = "[Gmail]/";
 
 function engineFolder(folderId: string, archiveFolder: string): string | undefined {
   if (folderId === "all") return undefined;
@@ -271,8 +283,19 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
   /** `POST /api/v1/{tool}` s JSON tělem — tvar 1 : 1 s nástrojem enginu. */
   const call = engine.call;
 
-  // ÚVN je výchozí schránka enginu; `schranka` se posílá jen pro Gmail (ÚKOL 44).
-  const schranka = mailbox === "gmail" ? "gmail" : undefined;
+  // ÚVN je výchozí schránka enginu, proto se `schranka` pro ÚVN neposílá.
+  // Sjednocená schránka = `mail_search(schranka: "vse")`; každý řádek nese `schranka`
+  // a operace nad jednou zprávou (`mail_get`, `mail_flag`, …) ji potřebují zpět —
+  // drží se v `known` podle refu, záložně podle tvaru refu.
+  const searchSchranka = mailbox === "all" ? "vse" : mailbox === "uvn" ? undefined : mailbox;
+  const known = new Map<string, string>();
+  const schrankaOf = (ref: string): string | undefined => {
+    if (mailbox !== "all") return searchSchranka;
+    const s = known.get(ref) ?? (ref.startsWith(GMAIL_REF_PREFIX) ? "gmail" : "uvn");
+    return s === "uvn" ? undefined : s;
+  };
+  // Odeslání a složky: schránku odeslání určuje `odeslat_z`; bez něj ta, ve které se uživatel dívá.
+  const schranka = mailbox === "gmail" || mailbox === "mediendo" ? mailbox : undefined;
 
   const notExposed = async (): Promise<never> => {
     throw new EngineError("not_exposed", cs.posta.engine.nevystaveno);
@@ -283,7 +306,7 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       schranka,
       komu: request.to,
       kopie: request.cc,
-      // K2.3: skryta_kopie, html, odeslat_z, podpis_id, prilohy — dnes engine nezná, proto jen když jsou.
+      // Prázdné klíče vypadnou v `compact` — engine bere jen vyplněné.
       skryta_kopie: request.bcc,
       predmet: request.subject,
       telo: request.body,
@@ -295,13 +318,18 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     });
 
   async function moveMessage(messageId: string, folderId: string): Promise<EngineMoveResult> {
-    const data = await call<WireMove>("mail_move", compact({ schranka, ref: messageId, slozka: engineFolder(folderId, archiveFolder) }));
-    return { newRef: data.novy_ref ?? messageId, folder: data.slozka, messageId: data.message_id };
+    const data = await call<WireMove>(
+      "mail_move",
+      compact({ schranka: schrankaOf(messageId), ref: messageId, slozka: engineFolder(folderId, archiveFolder) }),
+    );
+    return { newRef: data.novy_ref || messageId, folder: data.slozka, messageId: data.message_id };
   }
 
   async function search(payload: Record<string, unknown>): Promise<WireMessage[]> {
-    const data = await call<WireSearchResult>("mail_search", compact({ schranka, ...payload }));
-    return data.vysledky ?? [];
+    const data = await call<WireSearchResult>("mail_search", compact({ schranka: searchSchranka, ...payload }));
+    const rows = data.vysledky ?? [];
+    for (const m of rows) if (m.schranka) known.set(m.ref, m.schranka);
+    return rows;
   }
 
   async function listMessages(params: MailListParams): Promise<MailListPage> {
@@ -328,11 +356,12 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     listMessages,
 
     async getMessage(messageId): Promise<MailMessageDetail> {
-      const z = await call<WireMessageDetail>("mail_get", compact({ schranka, ref: messageId, plne_telo: true }));
+      const s = schrankaOf(messageId);
+      const z = await call<WireMessageDetail>("mail_get", compact({ schranka: s, ref: messageId, plne_telo: true }));
       const html = z.telo_html?.trim();
       // Seznam příloh je zvlášť (`mail_prilohy`); volá se jen když zpráva nějaké má.
       const attachments = z.prilohy?.trim()
-        ? ((await call<WireAttachments>("mail_prilohy", compact({ schranka, ref: messageId }))).prilohy ?? []).map(toAttachmentMeta)
+        ? ((await call<WireAttachments>("mail_prilohy", compact({ schranka: s, ref: messageId }))).prilohy ?? []).map(toAttachmentMeta)
         : [];
       return {
         ...toListMessage(z),
@@ -348,17 +377,20 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     },
 
     async attachmentLink(messageId, attachment) {
-      const data = await call<WireAttachmentLink>("mail_priloha_odkaz", compact({ schranka, ref: messageId, index: Number(attachment.attachmentId) }));
+      const data = await call<WireAttachmentLink>(
+        "mail_priloha_odkaz",
+        compact({ schranka: schrankaOf(messageId), ref: messageId, index: Number(attachment.attachmentId) }),
+      );
       if (!data.url) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
       return data.url;
     },
 
     async setRead(messageId, read) {
-      await call("mail_flag", compact({ schranka, ref: messageId, priznak: "seen", nastavit: read }));
+      await call("mail_flag", compact({ schranka: schrankaOf(messageId), ref: messageId, priznak: "seen", nastavit: read }));
     },
 
     async setStarred(messageId, starred) {
-      await call("mail_flag", compact({ schranka, ref: messageId, priznak: "flagged", nastavit: starred }));
+      await call("mail_flag", compact({ schranka: schrankaOf(messageId), ref: messageId, priznak: "flagged", nastavit: starred }));
     },
 
     trashMessage: notExposed,
@@ -391,8 +423,10 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     deleteFolder: notExposed,
 
     async unreadCount() {
-      const data = await call<WireStats>("mail_stats", compact({ schranka }));
-      return data.neprectene ?? 0;
+      // Sjednocená schránka sčítá obě; když jedna neodpoví (Gmail vypnutý), počítá se druhá.
+      const boxes = mailbox === "all" ? [undefined, "gmail"] : [schranka];
+      const results = await Promise.allSettled(boxes.map((s) => call<WireStats>("mail_stats", compact({ schranka: s }))));
+      return results.reduce((sum, r) => sum + (r.status === "fulfilled" ? (r.value.neprectene ?? 0) : 0), 0);
     },
 
     async send(request: MailSendRequest): Promise<MailSendResult> {
@@ -403,16 +437,16 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       return client.sendWithUploads(rest);
     },
 
-    async sendWithUploads(request): Promise<MailSendResult> {
+    async sendWithUploads(request): Promise<EngineSendResult> {
       // Odeslání je vždy za potvrzením uživatele v aplikaci (pravidlo 8);
       // engine chce potvrzení výslovně, a to řetězcem.
-      await call<WireSend>("mail_send", { ...sendPayload(request), potvrzeni: "ODESLAT" });
-      return { sentVia: "engine", total: request.to.length };
+      const data = await call<WireSend>("mail_send", { ...sendPayload(request), potvrzeni: "ODESLAT" });
+      return { sentVia: "engine", total: request.to.length, warnings: data.varovani ?? [] };
     },
 
     async saveDraft(request) {
-      const { skryta_kopie: _bcc, html: _html, odeslat_z: _from, podpis_id: _sig, prilohy: _att, ...draft } = sendPayload(request);
-      const data = await call<WireSend>("mail_draft", draft);
+      // Koncept bere totéž co odeslání včetně příloh odkazem — do Konceptů je skládá engine.
+      const data = await call<WireSend>("mail_draft", sendPayload(request));
       return { ref: data.ref ?? "" };
     },
 

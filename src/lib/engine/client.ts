@@ -76,8 +76,9 @@ export function createEngineClient(options: EngineClientOptions): EngineClient {
       throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
     }
     if (!response.ok || !body.ok) {
-      const reason = body.duvod ?? body.chyba;
-      throw new EngineError("engine", reason ?? cs.engine.neplatnaOdpoved, reason);
+      // Engine: `duvod` = kód (`mfa_required`, `neplatny_ref`, …), `chyba` = věta pro uživatele.
+      const code: EngineErrorCode = response.status === 401 || response.status === 403 ? "unauthorized" : "engine";
+      throw new EngineError(code, body.chyba ?? body.duvod ?? cs.engine.neplatnaOdpoved, body.duvod);
     }
     return body;
   }

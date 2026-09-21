@@ -113,8 +113,9 @@ export const cs = {
       gmail: "Gmail",
       mediendo: "Mediendo",
     },
-    bezEngine: "Engine není propojený — chybí VITE_ENGINE_URL. Pošta se načte, až bude K2.",
+    bezEngine: "Engine není propojený — chybí VITE_ENGINE_URL.",
     otevritPrilohuSelhalo: "Přílohu se nepodařilo otevřít.",
+    odeslanoSVarovanim: "Odesláno, engine ale varuje",
 
     /** Chyby klienta enginu (`src/lib/email/engineMailbox.ts`). */
     engine: {
