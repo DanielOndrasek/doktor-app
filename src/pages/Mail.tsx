@@ -6,6 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
+import type { MailAttachmentMeta, MailMessageDetail } from "@/lib/email/types";
 import { loadMailboxes } from "@/lib/mailboxes";
 import { getAccessToken } from "@/lib/supabase/token";
 
@@ -51,21 +52,13 @@ export default function Mail() {
     }
   };
 
-  const openAttachment = useCallback(
-    async (messageId: string, attachmentIndex: string, filename: string, mimeType: string, size: number) => {
-      if (!mailbox) return;
-      try {
-        const url = await mailbox.attachmentLink(messageId, { attachmentId: attachmentIndex, filename, mimeType, size });
-        window.open(url, "_blank", "noopener");
-      } catch (err) {
-        toast({
-          title: cs.posta.otevritPrilohuSelhalo,
-          description: err instanceof Error ? err.message : undefined,
-          variant: "destructive",
-        });
-      }
+  // Podepsaný odkaz enginu (10 min); náhled a stažení nad ním dělá obrazovka.
+  const attachmentUrl = useCallback(
+    (message: MailMessageDetail, att: MailAttachmentMeta) => {
+      if (!mailbox) return Promise.reject(new Error(cs.posta.chyby.bezSchranky));
+      return mailbox.attachmentLink(message.id, att);
     },
-    [mailbox, toast],
+    [mailbox],
   );
 
   return (
@@ -102,11 +95,7 @@ export default function Mail() {
             },
             onUploadAttachment: mailbox ? (file) => mailbox.upload(file) : undefined,
           }}
-          onOpenAttachment={
-            mailbox
-              ? (message, att) => void openAttachment(message.id, att.attachmentId, att.filename, att.mimeType, att.size)
-              : undefined
-          }
+          attachmentUrl={mailbox ? attachmentUrl : undefined}
         />
       </div>
     </div>

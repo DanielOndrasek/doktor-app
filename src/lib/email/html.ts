@@ -97,6 +97,23 @@ export function sanitizeEmailHtml(html: string): string {
   return String(DOMPurify.sanitize(html || "", EMAIL_SANITIZE));
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Prosté textové tělo (engine `telo`, když zpráva HTML část nemá) → HTML do
+ * iframu: zalomení řádků zůstanou, odkazy jsou klikací, nic dalšího se
+ * neinterpretuje. Bez tohohle se text v iframu slije do jednoho odstavce.
+ */
+export function textToHtml(text: string): string {
+  const linked = escapeHtml(text || "").replace(
+    /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]"'])/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
+  return `<div style="white-space:pre-wrap">${linked}</div>`;
+}
+
 /** Vytáhne e-mailové adresy z hlavičky „Jméno <adresa>, …“. */
 export function extractEmails(header: string | null | undefined): string[] {
   if (!header) return [];

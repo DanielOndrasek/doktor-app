@@ -62,6 +62,11 @@ export const cs = {
       dnes: "dnes",
       vcera: "včera",
       prilohuOtevreEngine: "Otevírání příloh zařídí engine — zatím není propojený.",
+      stahnout: "Stáhnout",
+      stahnoutVse: "Stáhnout vše",
+      nahledPrilohy: "Náhled přílohy",
+      otevritVNoveKarte: "Otevřít v nové kartě",
+      stazeniSelhalo: "Přílohu se nepodařilo stáhnout.",
     },
 
     psani: {

@@ -178,6 +178,16 @@ i v `REST_CORS_ORIGINS` enginu), `https://doktor-app-danielondraseks-projects.ve
 (produkce, dlouhý alias), `https://doktor-app-git-main-danielondraseks-projects.vercel.app`
 (větev main). Engine musí v CORS znát každou adresu, ze které se aplikace otevírá — jinak
 preflight spadne s „No 'Access-Control-Allow-Origin' header" (stalo se 21. 9. večer).
+
+**21. 9. 2026 večer — první živá Pošta: co se opravilo hned.** (1) Prosté textové tělo
+(zpráva bez HTML části, typicky odpověď z Outlooku) se v iframu slévalo do jednoho odstavce
+→ `textToHtml` v `lib/email/html.ts` (zalomení, klikací odkazy); odkazy z těla se otvírají
+v nové kartě (`<base target>` + sandbox `allow-popups`). (2) Přílohy: náhled PDF, obrázku
+a textu v dialogu, stažení pod původním názvem (`fetch` → `blob:`; `<a download>` na cizí
+origin nefunguje) a „Stáhnout vše" po jedné — `lib/email/attachments.ts`, prop `attachmentUrl`
+místo `onOpenAttachment`. (3) „Odeslat z" v okně psaní (K3.3) nad `schranky`; Gmail řádek
+`suchanekstepan@gmail.com` založen 21. 9. Gmail v seznamu je pomalý a bez úryvku, protože engine
+ho čte živě přes IMAP — náprava je ÚKOL 44 bod 3 (index Gmailu), zadáno serverovému Claudovi.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.

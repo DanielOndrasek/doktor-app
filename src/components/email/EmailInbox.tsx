@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
 import {
   ArrowLeft,
+  Download,
   FolderInput,
   Forward,
   Loader2,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
-import { avatarColorClass, emailInitials, parseEmailFromHeader, sanitizeEmailHtml } from "@/lib/email/html";
+import { avatarColorClass, emailInitials, parseEmailFromHeader, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
+import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import type {
   MailAttachmentMeta,
   MailFolderRef,
@@ -67,10 +70,11 @@ interface EmailInboxProps {
   /** Co okno psaní potřebuje zvenčí (podpis, adresář, šablony, přílohy, odeslání). */
   compose: EmailComposeSharedProps;
   /**
-   * Otevření přílohy. Engine ji podá odkazem; obrazovka bajty nedrží a base64
+   * Krátkodobý odkaz na přílohu (engine, `mail_priloha_odkaz`). Nad ním stojí
+   * náhled, stažení i „Stáhnout vše"; obrazovka bajty nedrží a base64
    * nedekóduje (pravidlo 2 v `CLAUDE.md`). Bez propu jsou přílohy jen k vidění.
    */
-  onOpenAttachment?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => void;
+  attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
   /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
@@ -87,11 +91,12 @@ interface EmailInboxProps {
  * - `CrmEmailContext` → slot `renderContext` (vlastní řádek převzetí),
  * - `trashMessage`, `createFolder`, `deleteFolder` a jejich tlačítka
  *   → pravidlo 3 v `CLAUDE.md`, nic se nemaže,
- * - stažení přílohy dekódováním base64 v prohlížeči → prop `onOpenAttachment`,
+ * - stažení přílohy dekódováním base64 v prohlížeči → prop `attachmentUrl`
+ *   (podepsaný odkaz enginu; náhled a stažení jsou nad ním),
  * - `sonner` → `useToast` z převzatého kitu,
  * - `emailWallUtils` → `lib/email/html.ts`.
  */
-export function EmailInbox({ mailbox, compose, onOpenAttachment, renderContext }: EmailInboxProps) {
+export function EmailInbox({ mailbox, compose, attachmentUrl, renderContext }: EmailInboxProps) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [emails, setEmails] = useState<MailListMessage[]>([]);
@@ -377,7 +382,7 @@ export function EmailInbox({ mailbox, compose, onOpenAttachment, renderContext }
       onMarkUnread={handleMarkUnread}
       customFolders={customFolders}
       onMoveToFolder={handleMoveToFolder}
-      onOpenAttachment={onOpenAttachment}
+      attachmentUrl={attachmentUrl}
       renderContext={renderContext}
     />
   ) : null;
@@ -586,7 +591,7 @@ function DetailView({
   onMarkUnread,
   customFolders,
   onMoveToFolder,
-  onOpenAttachment,
+  attachmentUrl,
   renderContext,
 }: {
   detail: MailMessageDetail;
@@ -595,11 +600,60 @@ function DetailView({
   onMarkUnread: () => void;
   customFolders: MailFolderRef[];
   onMoveToFolder: (messageId: string, folderId: string, folderName: string) => Promise<void>;
-  onOpenAttachment?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => void;
+  attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
   renderContext?: (detail: MailMessageDetail) => ReactNode;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { toast } = useToast();
   const { displayName, email } = parseEmailFromHeader(detail.from);
+
+  // Přílohy: náhled (PDF, obrázek, text) v dialogu, jinak stažení; „Stáhnout vše" po jedné.
+  const [preview, setPreview] = useState<{ att: MailAttachmentMeta; url: string; kind: AttachmentPreviewKind } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const attachmentFailed = (err: unknown) =>
+    toast({ title: cs.posta.detail.stazeniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+
+  const downloadAttachment = async (att: MailAttachmentMeta) => {
+    if (!attachmentUrl) return;
+    setBusy(att.attachmentId);
+    try {
+      await downloadFromUrl(await attachmentUrl(detail, att), att.filename);
+    } catch (err) {
+      attachmentFailed(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openAttachment = async (att: MailAttachmentMeta) => {
+    if (!attachmentUrl) return;
+    const kind = attachmentPreviewKind(att.mimeType);
+    if (!kind) return downloadAttachment(att);
+    setBusy(att.attachmentId);
+    try {
+      setPreview({ att, url: await attachmentUrl(detail, att), kind });
+    } catch (err) {
+      attachmentFailed(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const downloadAll = async () => {
+    if (!attachmentUrl) return;
+    setBusy("all");
+    try {
+      // Po jedné, ne najednou: prohlížeč se u druhého stažení zeptá na povolení.
+      for (const att of detail.attachments ?? []) {
+        await downloadFromUrl(await attachmentUrl(detail, att), att.filename);
+      }
+    } catch (err) {
+      attachmentFailed(err);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const handleIframeLoad = () => {
     const iframe = iframeRef.current;
@@ -614,7 +668,11 @@ function DetailView({
     }
   };
 
-  const srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;background:#fff;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}a{color:#1a73e8}table{max-width:100%!important}blockquote{margin:8px 0;padding-left:12px;border-left:3px solid #ddd;color:#555}</style></head><body>${sanitizeEmailHtml(detail.body)}</body></html>`;
+  // Prostý text (zpráva bez HTML části) by se v iframu slil do jednoho odstavce —
+  // převádí se se zachovaným zalomením a klikacími odkazy. Odkazy se otvírají
+  // v nové kartě (`<base target>`), sandbox to dovoluje jen přes popup.
+  const bodyHtml = detail.bodyType === "html" ? sanitizeEmailHtml(detail.body) : textToHtml(detail.body);
+  const srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_blank"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;background:#fff;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}a{color:#1a73e8}table{max-width:100%!important}blockquote{margin:8px 0;padding-left:12px;border-left:3px solid #ddd;color:#555}</style></head><body>${bodyHtml}</body></html>`;
 
   const attachments = detail.attachments || [];
 
@@ -651,7 +709,7 @@ function DetailView({
         <iframe
           ref={iframeRef}
           srcDoc={srcdoc}
-          sandbox="allow-same-origin"
+          sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
           className="w-full rounded border-0"
           style={{ minHeight: "200px" }}
           onLoad={handleIframeLoad}
@@ -663,25 +721,80 @@ function DetailView({
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
               <Paperclip className="h-4 w-4" />
               {cs.posta.detail.prilohy} ({attachments.length})
+              {attachments.length > 1 && attachmentUrl && (
+                <Button variant="outline" size="sm" className="ml-auto h-7" onClick={() => void downloadAll()} disabled={busy !== null}>
+                  {busy === "all" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+                  {cs.posta.detail.stahnoutVse}
+                </Button>
+              )}
             </div>
             <div className="space-y-1">
               {attachments.map((att) => (
-                <button
-                  key={att.attachmentId}
-                  onClick={() => onOpenAttachment?.(detail, att)}
-                  disabled={!onOpenAttachment}
-                  title={onOpenAttachment ? undefined : cs.posta.detail.prilohuOtevreEngine}
-                  className="group flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors enabled:hover:bg-muted disabled:cursor-default"
-                >
-                  <Paperclip className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
-                  <span className="flex-1 truncate text-foreground">{att.filename}</span>
-                  <span className="flex-shrink-0 text-xs text-muted-foreground">{formatSize(att.size)}</span>
-                </button>
+                <div key={att.attachmentId} className="group flex items-center gap-1 rounded-md pr-1 transition-colors hover:bg-muted">
+                  <button
+                    onClick={() => void openAttachment(att)}
+                    disabled={!attachmentUrl || busy !== null}
+                    title={attachmentUrl ? (attachmentPreviewKind(att.mimeType) ? cs.posta.detail.nahledPrilohy : cs.posta.detail.stahnout) : cs.posta.detail.prilohuOtevreEngine}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm disabled:cursor-default"
+                  >
+                    {busy === att.attachmentId ? (
+                      <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Paperclip className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
+                    )}
+                    <span className="flex-1 truncate text-foreground">{att.filename}</span>
+                    <span className="flex-shrink-0 text-xs text-muted-foreground">{formatSize(att.size)}</span>
+                  </button>
+                  {attachmentUrl && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      title={cs.posta.detail.stahnout}
+                      aria-label={cs.posta.detail.stahnout}
+                      onClick={() => void downloadAttachment(att)}
+                      disabled={busy !== null}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
         )}
       </div>
+
+      <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
+        <DialogContent className="flex h-[90vh] max-w-5xl flex-col gap-0 p-0">
+          <DialogHeader className="px-4 pb-2 pr-12 pt-4 text-left">
+            <DialogTitle className="truncate text-base">{preview?.att.filename}</DialogTitle>
+            <DialogDescription>
+              {preview ? `${formatSize(preview.att.size)} · ${preview.att.mimeType}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 bg-muted">
+            {preview?.kind === "image" ? (
+              <img src={preview.url} alt={preview.att.filename} className="mx-auto h-full max-w-full object-contain" />
+            ) : preview ? (
+              <iframe src={preview.url} title={preview.att.filename} className="h-full w-full border-0 bg-background" />
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2 px-4 py-3 sm:justify-start">
+            <Button variant="outline" size="sm" onClick={() => preview && void downloadAttachment(preview.att)} disabled={busy !== null}>
+              <Download className="mr-1.5 h-4 w-4" />
+              {cs.posta.detail.stahnout}
+            </Button>
+            {preview && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={preview.url} target="_blank" rel="noopener noreferrer">
+                  {cs.posta.detail.otevritVNoveKarte}
+                </a>
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-2 border-t border-border px-6 py-3">
         <Button variant="outline" size="sm" onClick={onReply}>
