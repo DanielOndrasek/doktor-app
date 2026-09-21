@@ -92,3 +92,9 @@ engine na Hetzneru zůstává jediným zapisovačem nad schránkami (ÚVN i Gmai
 přílohy, index, MCP, kalendáře, běhy. Co čeká na enginu navíc, je zadané v `zadani-serveru-doktor-gmail.md`
 (ÚKOLy 42–46). Pro Supabase: založit projekt (EU), zapnout TOTP, `password_min_length = 12`,
 redirect `<doména>/reset-hesla`, DPA.
+
+**21. 9. 2026 — zadání K2 (schéma a REST).** `zadani-k2-schema-a-rest.md`. Pět sloupců navíc
+proti plánu je v A.3 **k odsouhlasení**, ne rozhodnutých: `ukoly.stav_zmenen`,
+`ukoly.stav_zdroj`, `udalosti.zdroj_id`, tabulka `signaly_odlozene`, tabulka `sablony`.
+Bez odsouhlasení se do migrace nedostanou a aplikace nechá pole prázdné. Otevřená volba
+v B.3: kdo překládá id složek z kontraktu (`inbox`) na názvy enginu (`INBOX`) — dnes aplikace.

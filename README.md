@@ -27,6 +27,8 @@ Artefakt „Schránka“ se vypíná až po týdnu běhů bez ručních oprav v 
   pro K1 (ÚKOLy 35–41). Aplikace na něm stojí.
 - [`docs/zadani-serveru-doktor-gmail.md`](docs/zadani-serveru-doktor-gmail.md) — Gmail jako
   druhý IMAP účet na enginu (ÚKOLy 42–46), z rozhodnutí O4.
+- [`docs/zadani-k2-schema-a-rest.md`](docs/zadani-k2-schema-a-rest.md) — K2.2 schéma
+  `doktor` s RLS a K2.3 REST `/api/v1`; co aplikace už má připravené.
 - [`docs/rozhodnuti.md`](docs/rozhodnuti.md) — otevřená rozhodnutí O1–O9 a co blokují.
 - [`docs/prevzeti-z-vividbooks.md`](docs/prevzeti-z-vividbooks.md) — co se kopíruje
   z vividbooks CRM a co se z něj naopak nebere.
