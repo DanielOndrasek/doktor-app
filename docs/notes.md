@@ -68,3 +68,8 @@ nedá, proto odkaz podepisuje engine). Až K2.3 řekne jinak, mění se jen `eng
 (`/posta`) ho zapojuje přes `createEngineMailboxFromEnv(getToken, schranka)`; bez
 `VITE_ENGINE_URL` ukáže pruh „engine není propojený". Podpis, adresář, šablony a kontext
 se do ní doplní, až budou zdroje z K2.
+
+**21. 9. 2026 — Úkoly nad prázdným zdrojem (K3.6).** `/ukoly` má kanban; `TaskSource`
+v `src/lib/tasks.ts` čeká na K2 (`load` = řádky `ukoly` → `KanbanCard`, `move` = nový
+`stav` + `stav_zdroj = klik`). Bez „+" a bez detailu úkolu — obojí potřebuje zápis do
+`ukoly`. Seznam po termínech a kalendář jsou další dva pohledy téže obrazovky.

@@ -49,7 +49,7 @@ npm run build
 ```
 
 Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
-Dnes (`/`, prázdný zdroj) a Poštu (`/posta`) nad klientem enginu — bez
-`VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený. Kanban, kontext a zápisy
-čekají na své obrazovky. Přihlášení a data čekají na rozhodnutí O3 (kde bude databáze) a O4
+Dnes (`/`) a Úkoly (`/ukoly`, kanban) nad prázdnými zdroji a Poštu (`/posta`) nad
+klientem enginu — bez `VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený.
+Kontext a zápisy čekají na své obrazovky. Přihlášení a data čekají na rozhodnutí O3 (kde bude databáze) a O4
 (doména pod ověřeným OAuth projektem), viz `docs/rozhodnuti.md`.

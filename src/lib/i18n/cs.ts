@@ -217,6 +217,9 @@ export const cs = {
 
   /** Úkoly — stavy a kanban (`src/components/kanban/`). */
   ukoly: {
+    titulek: "Úkoly",
+    nacteniSelhalo: "Úkoly se nepodařilo načíst.",
+    bezZdroje: "Úkoly se načtou, až bude K2 — tabule je zatím prázdná.",
     stavy: {
       todo: "TODO",
       probiha: "V procesu",
@@ -418,6 +421,7 @@ export const cs = {
   nav: {
     dnes: "Dnes",
     posta: "Pošta",
+    ukoly: "Úkoly",
     odhlasit: "Odhlásit se",
   },
 

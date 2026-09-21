@@ -10,10 +10,12 @@ import { supabase } from "@/lib/supabase/client";
 
 export const TODAY_PATH = "/";
 export const MAIL_PATH = "/posta";
+export const TASKS_PATH = "/ukoly";
 
 const NAV: { to: string; label: string }[] = [
   { to: TODAY_PATH, label: cs.nav.dnes },
   { to: MAIL_PATH, label: cs.nav.posta },
+  { to: TASKS_PATH, label: cs.nav.ukoly },
 ];
 
 /**
