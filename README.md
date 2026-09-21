@@ -13,7 +13,7 @@ engine `uvn-mail-mcp` je samostatný a jeho zadání pro fázi K1 je zde jen pro
 | K0 | Opravy Schránky, které nečekají | artefakt | probíhá |
 | K1 | Engine: `novy_ref`, HTML tělo, přílohy, párování stavu, profil ze Sent | server | zadáno |
 | K2 | Databáze `doktor`, REST `/api/v1`, MCP nástroje | server + Supabase | čeká na O3, O4 |
-| **K3** | **Aplikace v1: Pošta, Podpisy, Přílohy, Dnes, Úkoly, Události, Kontext** | **tento repozitář** | **převzato: UI kit, vzhled, kontrakt pošty, komponenty pošty, kanban, přihlášení, podpisy, kontext, Dnes** |
+| **K3** | **Aplikace v1: Pošta, Podpisy, Přílohy, Dnes, Úkoly, Události, Kontext** | **tento repozitář** | **převzato: UI kit, vzhled, kontrakt pošty, komponenty pošty, kanban, přihlášení, podpisy, kontext, Dnes, zápisy, běhy** |
 | K4 | Aplikace v2: Kontakty, pohledy, sklad příloh, Disk, CardDAV | tento repozitář | — |
 | K5 | Dotažení, vypnutí artefaktu | — | — |
 

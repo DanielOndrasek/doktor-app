@@ -48,8 +48,8 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Úkoly | `pages/crm/VbTasksPage.tsx`, `components/tasks/*` | `src/pages/Tasks.tsx`, `src/components/tasks/` | ☐ |
 | Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☑ |
 | Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/`, `src/lib/today.ts` | ☑ |
-| Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/` | ☐ |
-| Přehled práce agenta | `AgentRunsHistory.tsx`, vzor `agent_commands` | `src/components/runs/` | ☐ |
+| Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/`, `src/lib/notes.ts` | ☑ |
+| Přehled práce agenta | `AgentRunsHistory.tsx`, vzor `agent_commands` | `src/components/runs/`, `src/lib/runs.ts` | ☑ |
 | Přihlášení | Supabase Auth, `components/mfa/*`, stránky Auth/Reset | `src/lib/supabase/`, `src/components/auth/`, `src/pages/{Login,ResetPassword}.tsx` | ☑ |
 | Disk | `components/google/*` (Picker, `drive.file`), funkce `drive-access-token` | `src/components/google/` | ☐ |
 | Gmail OAuth | funkce `gmail-auth`, `gmail-callback`, `gmail-*` | `supabase/functions/` | ☐ |
@@ -332,6 +332,47 @@ v `sessionStorage` (patří tomu, kdo načítá), navigace na `/obchody` a `/dat
 a typ v `integrations/supabase/types.ts`. Vzorem je tedy tvar řádku a trojice
 hotovo · odložit · nerelevantní; výpočet nad `polozky`, `ukoly` a `udalosti` se napíše
 v K2 od nuly. Do té doby `EMPTY_TODAY_SOURCE` drží Dnes v prázdném stavu.
+
+### Zápisy (21. 9. 2026)
+
+`components/vividbooks/CallRecordingsInbox.tsx` → `src/components/notes/NotesInbox.tsx`
++ `AssignNoteDialog.tsx`; tvar `crm.call_recordings` → `src/lib/notes.ts` (`NoteIntake`,
+`NoteAssignment`, `ContactCandidate`).
+
+Kopie je K3.1; **zapojení je K4.6** („Zápisy z Plaudu ke kontaktům") — komponenta je
+props-driven a čeká, data ani routa se v K3 nedělají.
+
+| Bylo | Je | Proč |
+|---|---|---|
+| škola + volitelný obchod | kontakt | plán K4.6; případy jsou O2 |
+| `select` z `call_recordings`, hledání ve `v_school_list`, `db_deals` | propsy `notes`, `onSearchContacts` | schéma `crm` |
+| RPC `call_recording_assign`, `update … status = dismissed` | `onAssign(note, { contactId, summary, tasks })`, `onDismiss(note)` | zápis do `poznamky` (druh hovor, zdroj plaud, `zdroj_id` = id nahrávky) a `ukoly` (zdroj plaud) je věc volajícího |
+| nativní `confirm()` | `AlertDialog` z kitu | primitivum z kitu |
+| nativní `<input>`, `<select>`, `<textarea>`, `<input type="date">` | `Input`, `Textarea`, `Checkbox`, `DatePicker` | primitiva z kitu; datum přes `DatePicker` (react-day-picker v9) |
+| `formatRelativeTimeCs` z `lib/formatters` | date-fns `formatDistanceToNowStrict` s `cs`, absolutní čas v `title` | konvence z CLAUDE.md |
+| fialová (`violet-*`) jako barva Plaudu | akcent (`secondary`) | tokeny |
+
+**`plaud-intake` v commitu `831f9ae6` není** (žádná edge funkce toho jména ve stromu).
+Vzorem je tedy jen tvar řádku `call_recordings`; příjem nahrávek se navrhne v K2 vedle
+`poznamky`.
+
+### Přehled práce agenta (21. 9. 2026)
+
+`components/vividbooks/AgentRunsHistory.tsx` → `src/components/runs/RunsHistory.tsx`;
+tvar `crm.agent_runs` → `src/lib/runs.ts` (`Run`, `RunOutcomeRef`).
+
+**`agent_commands` v commitu `831f9ae6` není** — komponenta čte `agent_runs`
+(`prompt, action, proposed, created, skipped, created_ids`). Ta je vzorem.
+
+| Bylo | Je | Proč |
+|---|---|---|
+| `select` z `agent_runs` + jména z `profiles` | prop `runs` | schéma `crm`; jeden uživatel, jméno netřeba |
+| obchody z `db_deals` po rozbalení, `<Link to="/obchody…">` | `onLoadOutcomes(run) → RunOutcomeRef[]` s obecným `href` | výsledek běhu je položka, úkol nebo událost |
+| `prompt`, `proposed`, `created` | `label`, `counts`, `createdCount` | běh 7/13/17 nemá „zadání", má název a počty podle druhu |
+| — | `source` (běh · Claude · aplikace), `state` (běží · hotovo · chyba), `error` | K2.7: kontrola, že běh proběhl; `audit.kdo` rozlišuje app / claude / beh |
+| `formatDateCs` | date-fns s `cs` | konvence |
+
+Sekce se v Dnes zatím nezobrazuje — přijde s K3.9, až budou `behy`.
 
 ## Nepřebírat
 

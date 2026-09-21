@@ -49,3 +49,12 @@ volání a typ), takže vzor je tvar řádku, ne SQL. Pro K2 to znamená napsat 
 `doktor.dnes()` od nuly nad `polozky` (P1, čeká na odpověď), `ukoly` (po termínu)
 a `udalosti` (dnes) — a `signal_dismiss` s odložením o 7 dní. Tvar výstupu je
 v `src/lib/today.ts`.
+
+**21. 9. 2026 — Zápisy jsou K4.6.** Komponenty `notes/` jsou převzaté (K3.1 kopie), ale
+zapojení ke kontaktům je K4.6 a příjem z Plaudu (`plaud-intake` v `831f9ae6` není) se
+navrhne v K2 vedle `poznamky`. V K3 se do Dnes nezapojují.
+
+**21. 9. 2026 — běhy a zásahy (K2.7, K3.9).** `RunsHistory` čeká na `behy` + `audit`.
+Tvar řádku (`Run` v `src/lib/runs.ts`) má navíc `source` a `state`, protože Doktor musí
+vidět i běh, který nedoběhl — CRM to nepotřebovalo. `agent_commands` z tabulky převzetí
+v `831f9ae6` není; vzor je `agent_runs`.
