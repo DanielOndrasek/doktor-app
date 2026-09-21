@@ -33,8 +33,8 @@ import type {
  * - `trashMessage`, `deleteFolder`, `createFolder` jsou v kontraktu, ale
  *   vyhodí `not_exposed` a engine se nevolá (pravidlo 3),
  * - `getAttachment` (base64 v kontraktu) vyhodí `attachment_by_link`;
- *   příloha se otevírá odkazem `attachmentUrl` a nahrává přes `upload`
- *   (pravidlo 2),
+ *   příloha se otevírá podepsaným odkazem `attachmentLink` a nahrává přes
+ *   `upload` (pravidlo 2),
  * - `send` s `attachments` (base64) odmítne; přílohy jdou přes
  *   `sendWithUploads` jako `{zdroj: "upload", id}`.
  */
@@ -112,8 +112,12 @@ export interface EngineMailbox extends MailboxClient {
   saveDraft(request: EngineSendRequest): Promise<{ ref: string }>;
   /** Nahrání přílohy multipartem; vrací `upload_id` (pravidlo 2). */
   upload(file: File | Blob, name?: string): Promise<EngineUploadResult>;
-  /** Odkaz, kterým prohlížeč přílohu otevře nebo stáhne — stream, ne base64. */
-  attachmentUrl(messageId: string, attachment: MailAttachmentMeta): string;
+  /**
+   * Krátkodobý podepsaný odkaz na přílohu (`mail_priloha_odkaz`) — prohlížeč
+   * ho otevře napřímo, stream ze skladu, ne base64. Bearer JWT se do `<a href>`
+   * nedá, proto odkaz podepisuje engine.
+   */
+  attachmentLink(messageId: string, attachment: MailAttachmentMeta): Promise<string>;
 }
 
 /* ── Drátové tvary ─────────────────────────────────────────────────────────
@@ -181,6 +185,10 @@ interface WireSend extends WireEnvelope {
 
 interface WireStats extends WireEnvelope {
   neprectene: number;
+}
+
+interface WireAttachmentLink extends WireEnvelope {
+  url: string;
 }
 
 interface WireUpload extends WireEnvelope {
@@ -339,9 +347,13 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       throw new EngineMailboxError("attachment_by_link", cs.posta.engine.prilohaOdkazem);
     },
 
-    attachmentUrl(messageId, attachment) {
-      const q = new URLSearchParams({ ref: messageId, index: attachment.attachmentId });
-      return `${base}/api/v1/mail_priloha_soubor?${q.toString()}`;
+    async attachmentLink(messageId, attachment) {
+      const data = await call<WireAttachmentLink>("mail_priloha_odkaz", {
+        ref: messageId,
+        index: Number(attachment.attachmentId),
+      });
+      if (!data.url) throw new EngineMailboxError("bad_response", cs.posta.engine.neplatnaOdpoved);
+      return data.url;
     },
 
     async setRead(messageId, read) {

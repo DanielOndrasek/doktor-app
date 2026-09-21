@@ -105,6 +105,17 @@ export const cs = {
 
     presunuto: "Přesunuto do",
 
+    /** Přepínač schránek na obrazovce Pošta (K3.2). */
+    schranky: {
+      popisek: "Schránka",
+      all: "Vše",
+      uvn: "ÚVN",
+      gmail: "Gmail",
+      mediendo: "Mediendo",
+    },
+    bezEngine: "Engine není propojený — chybí VITE_ENGINE_URL. Pošta se načte, až bude K2.",
+    otevritPrilohuSelhalo: "Přílohu se nepodařilo otevřít.",
+
     /** Chyby klienta enginu (`src/lib/email/engineMailbox.ts`). */
     engine: {
       neprihlasen: "Nejste přihlášeni.",
@@ -401,6 +412,13 @@ export const cs = {
     nacitamDetail: "Načítám…",
     bezVysledku: "Z tohoto běhu nic nevzniklo.",
     detailSelhal: "Detail běhu se nepodařilo načíst.",
+  },
+
+  /** Navigace aplikace (`src/components/AppShell.tsx`). */
+  nav: {
+    dnes: "Dnes",
+    posta: "Pošta",
+    odhlasit: "Odhlásit se",
   },
 
   /** Výběr data (`ui/date-picker.tsx`). */
