@@ -52,6 +52,12 @@ export default function Mail() {
     }
   };
 
+  // Stabilní reference: DetailView na ní má useEffect, nová funkce při každém renderu by vlákno načítala pořád dokola.
+  const loadThread = useCallback(
+    (message: MailMessageDetail) => (mailbox ? mailbox.thread(message.threadId, message.id) : Promise.resolve([])),
+    [mailbox],
+  );
+
   // Podepsaný odkaz enginu (10 min); náhled a stažení nad ním dělá obrazovka.
   const attachmentUrl = useCallback(
     (message: MailMessageDetail, att: MailAttachmentMeta) => {
@@ -96,6 +102,7 @@ export default function Mail() {
             onUploadAttachment: mailbox ? (file) => mailbox.upload(file) : undefined,
           }}
           attachmentUrl={mailbox ? attachmentUrl : undefined}
+          loadThread={mailbox ? loadThread : undefined}
         />
       </div>
     </div>

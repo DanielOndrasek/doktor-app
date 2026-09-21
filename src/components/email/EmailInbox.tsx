@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronRight,
   Download,
   FolderInput,
   Forward,
@@ -31,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
 import { avatarColorClass, emailInitials, parseEmailFromHeader, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
+import type { ThreadMessage } from "@/lib/email/thread";
 import type {
   MailAttachmentMeta,
   MailFolderRef,
@@ -75,6 +78,8 @@ interface EmailInboxProps {
    * nedekóduje (pravidlo 2 v `CLAUDE.md`). Bez propu jsou přílohy jen k vidění.
    */
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
+  /** Ostatní zprávy vlákna k otevřené zprávě (engine `mail_thread`); bez propu se vlákno neukazuje. */
+  loadThread?: (message: MailMessageDetail) => Promise<ThreadMessage[]>;
   /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
@@ -96,7 +101,7 @@ interface EmailInboxProps {
  * - `sonner` → `useToast` z převzatého kitu,
  * - `emailWallUtils` → `lib/email/html.ts`.
  */
-export function EmailInbox({ mailbox, compose, attachmentUrl, renderContext }: EmailInboxProps) {
+export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, renderContext }: EmailInboxProps) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [emails, setEmails] = useState<MailListMessage[]>([]);
@@ -383,6 +388,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, renderContext }: E
       customFolders={customFolders}
       onMoveToFolder={handleMoveToFolder}
       attachmentUrl={attachmentUrl}
+      loadThread={loadThread}
       renderContext={renderContext}
     />
   ) : null;
@@ -592,6 +598,7 @@ function DetailView({
   customFolders,
   onMoveToFolder,
   attachmentUrl,
+  loadThread,
   renderContext,
 }: {
   detail: MailMessageDetail;
@@ -601,11 +608,40 @@ function DetailView({
   customFolders: MailFolderRef[];
   onMoveToFolder: (messageId: string, folderId: string, folderName: string) => Promise<void>;
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
+  loadThread?: (message: MailMessageDetail) => Promise<ThreadMessage[]>;
   renderContext?: (detail: MailMessageDetail) => ReactNode;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
   const { displayName, email } = parseEmailFromHeader(detail.from);
+
+  // Vlákno: ostatní zprávy chronologicky, sbalené; otevřená zpráva je v něm jen značka.
+  const [thread, setThread] = useState<ThreadMessage[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    let cancelled = false;
+    setThread([]);
+    setExpanded(new Set());
+    if (!loadThread) return;
+    loadThread(detail)
+      .then((messages) => {
+        if (!cancelled) setThread(messages);
+      })
+      .catch(() => {
+        // Vlákno je doplněk: když ho engine nedá (Gmail, výpadek), zpráva se ukáže bez něj.
+        if (!cancelled) setThread([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail, loadThread]);
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // Přílohy: náhled (PDF, obrázek, text) v dialogu, jinak stažení; „Stáhnout vše" po jedné.
   const [preview, setPreview] = useState<{ att: MailAttachmentMeta; url: string; kind: AttachmentPreviewKind } | null>(null);
@@ -706,6 +742,58 @@ function DetailView({
 
       <div className="flex-1 overflow-auto px-6 py-4">
         {renderContext && <div className="mb-3">{renderContext(detail)}</div>}
+
+        {thread.length > 1 && (
+          <div className="mb-4 rounded-lg border border-border">
+            <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {cs.posta.detail.vlakno} ({thread.length})
+            </div>
+            <ol className="divide-y divide-border">
+              {thread.map((m) => {
+                const current = m.id === detail.id;
+                const who = parseEmailFromHeader(m.from);
+                const open = expanded.has(m.id);
+                return (
+                  <li key={m.id} className={cn("text-sm", current && "bg-muted/40")}>
+                    <button
+                      type="button"
+                      onClick={() => !current && toggleExpanded(m.id)}
+                      disabled={current}
+                      aria-expanded={current ? undefined : open}
+                      aria-label={current ? undefined : open ? cs.posta.detail.skryt : cs.posta.detail.zobrazit}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-left disabled:cursor-default"
+                    >
+                      {current ? (
+                        <span className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                      ) : open ? (
+                        <ChevronDown className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline gap-2">
+                          <span className={cn("truncate font-medium", m.labelIds.includes("SENT") && "text-secondary")}>
+                            {who.displayName}
+                          </span>
+                          <span className="ml-auto flex-shrink-0 text-xs text-muted-foreground" title={m.date}>
+                            {formatDetailDate(m.date)}
+                          </span>
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {current ? cs.posta.detail.tatoZprava : m.snippet || m.subject}
+                        </span>
+                      </span>
+                    </button>
+                    {open && !current && (
+                      <div className="whitespace-pre-wrap break-words px-9 pb-3 text-sm leading-relaxed text-foreground">{m.body}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
+
         <iframe
           ref={iframeRef}
           srcDoc={srcdoc}

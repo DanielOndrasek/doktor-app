@@ -67,6 +67,10 @@ export const cs = {
       nahledPrilohy: "Náhled přílohy",
       otevritVNoveKarte: "Otevřít v nové kartě",
       stazeniSelhalo: "Přílohu se nepodařilo stáhnout.",
+      vlakno: "Vlákno",
+      tatoZprava: "tato zpráva",
+      zobrazit: "Zobrazit",
+      skryt: "Skrýt",
     },
 
     psani: {

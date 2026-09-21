@@ -1,5 +1,6 @@
 import { cs } from "@/lib/i18n/cs";
 import type { ComposeSendRequest } from "@/lib/email/compose";
+import type { ThreadMessage } from "@/lib/email/thread";
 import { EngineError, createEngineClient, type EngineClient, type WireEnvelope } from "@/lib/engine/client";
 import type {
   MailAttachmentMeta,
@@ -104,6 +105,11 @@ export interface EngineMailbox extends MailboxClient {
    * nedá, proto odkaz podepisuje engine.
    */
   attachmentLink(messageId: string, attachment: MailAttachmentMeta): Promise<string>;
+  /**
+   * Celé vlákno chronologicky (`mail_thread`), včetně zprávy samé. Jen z indexu
+   * ÚVN — u Gmailu vrací prázdné pole (engine vlákna Gmailu zatím neskládá).
+   */
+  thread(threadId: string, messageId?: string): Promise<ThreadMessage[]>;
 }
 
 /* ── Drátové tvary ─────────────────────────────────────────────────────────
@@ -148,6 +154,12 @@ interface WireMessageDetail extends WireEnvelope, WireMessage {
   telo?: string;
   /** Sanitizované HTML (ÚKOL 36) — až ho engine vrátí, čtečka ho vezme. */
   telo_html?: string;
+}
+
+interface WireThread extends WireEnvelope {
+  vlakno: string;
+  pocet: number;
+  zpravy: (WireMessage & { telo?: string })[];
 }
 
 interface WireAttachment {
@@ -453,6 +465,13 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       form.append("soubor", file, name ?? (file instanceof File ? file.name : "priloha"));
       const data = await engine.callMultipart<WireUpload>("upload", form);
       return { uploadId: data.upload_id, name: data.nazev, size: data.velikost, mimeType: data.typ };
+    },
+
+    async thread(threadId, messageId) {
+      // `mail_thread` nezná `schranka` a čte jen index ÚVN.
+      if (!threadId || mailbox === "gmail" || (messageId && schrankaOf(messageId) === "gmail")) return [];
+      const data = await call<WireThread>("mail_thread", { vlakno: threadId, limit: 40 });
+      return (data.zpravy ?? []).map((m) => ({ ...toListMessage(m), body: m.telo ?? m.uryvek ?? "" }));
     },
 
     async findByContacts(params: MailContactSearchParams): Promise<MailContactSearchResult> {
