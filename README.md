@@ -55,8 +55,8 @@ hlavičky a cache pro `assets/`. Postup, jednorázově:
 1. vercel.com → Add New → Project → Import `DanielOndrasek/doktor-app`, větev `main`.
    Framework Preset se načte z `vercel.json`, nic neměnit.
 2. Environment Variables: `VITE_SUPABASE_URL` a `VITE_SUPABASE_ANON_KEY` z `.env.example`
-   (obě veřejné). `VITE_ENGINE_URL` až bude REST enginu (K2.3). Service key ani heslo
-   k databázi sem nepatří.
+   (obě veřejné) a `VITE_ENGINE_URL` = základ adresy enginu (REST `/api/v1`, K2.3;
+   nastaveno 21. 9.). Service key ani heslo k databázi sem nepatří.
 3. Deploy. Každý další push do `main` se nasadí sám.
 4. Supabase → Authentication → URL Configuration: Site URL = adresa nasazení,
    Redirect URLs = `<adresa>/reset-hesla`. Bez toho odkaz na obnovu hesla vede jinam.
@@ -71,7 +71,7 @@ npm run build
 
 Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
 Dnes (`/`) nad `dnes()` se sekcí Rozpracováno v Claude, Úkoly (`/ukoly`: kanban, seznam po termínech, kalendář, detail a zakládání) nad tabulkou `ukoly`, Kontakty (`/kontakty`: adresář a minimální CRM), Události
-(`/udalosti`) nad `udalosti` se zápisem do kalendáře přes engine a Poštu (`/posta`) nad klientem enginu — bez `VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený.
+(`/udalosti`) nad `udalosti` se zápisem do kalendáře přes engine a Poštu (`/posta`) nad klientem enginu — REST `/api/v1` od 21. 9. běží, bez `VITE_ENGINE_URL` obrazovka hlásí, že engine není propojený.
 Kontext a zápisy čekají na své obrazovky. Databáze je Supabase projekt `doktor` (EU, `eu-west-1`);
 veřejné hodnoty pro `.env` jsou v `.env.example`, schéma v `supabase/migrations/`, typy
 v `src/types/database.ts`. `TodaySource`, `TaskSource` a `EventSource` čtou a zapisují `dnes()`, `ukoly`

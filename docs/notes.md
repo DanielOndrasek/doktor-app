@@ -210,3 +210,18 @@ nezná (`schranka`, `skryta_kopie`, `html`, `prilohy`, `telo_html`, `priznaky` v
 Repozitář enginu není na GitHubu (jen `/opt/uvn-mail-mcp` na Hetzneru). Rozhodnuto: nahrát
 ho na GitHub, pak REST napsat dovnitř. Do té doby Pošta hlásí „engine není propojený".
 
+**21. 9. 2026 večer — REST enginu stojí (K2.3), aplikace ho má nastavený.** Claude Code na
+serveru hlásí `https://mcp.2-28-234-7.sslip.io/api/v1/<nástroj>`: JWT ze Supabase s `aal2`,
+allow-list uživatelů, CORS pro Vercel a `localhost:5173`, skryté nástroje 404, podepsaný odkaz
+na přílohu bez JWT; z tabulky B.2 hotové `priznaky`, `telo_html` (sanitizace nh3, vzdálené
+obrázky a inline styly pryč, `cid:` jako `data:`), `skryta_kopie`, `html`, `odeslat_z`
+s varováním `jina_schranka`, `prilohy`, `ref` z `mail_draft`, `neprectene`, `kal_uid`, navíc
+`novy_ref` z `mail_move` a `stav_vlaken` (K1.4). `podpis_id`, `podpisy_seznam` a kopie auditu
+do `doktor.audit` čekají na `SUPABASE_SERVICE_ROLE_KEY` v `.env` enginu (klíč jde jen tam,
+nikdy do aplikace ani do chatu). Omezení: Gmail `mail_search` má prázdný `uryvek`,
+`mail_thread` jen ÚVN, `mail_send` s přílohou netestováno (opravdu by odeslal).
+`VITE_ENGINE_URL` nastaveno na Vercelu pro production · preview · development; Vite ho
+zapéká při buildu, takže platí od dalšího nasazení. Engine stále není na GitHubu (`gh auth
+login` na serveru čeká na kód ze zařízení). Test „přes internet" jde udělat rovnou z Pošty
+po přihlášení s MFA — access token z `localStorage` není třeba nikam vkládat.
+
