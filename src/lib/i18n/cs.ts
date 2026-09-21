@@ -105,6 +105,16 @@ export const cs = {
 
     presunuto: "Přesunuto do",
 
+    /** Chyby klienta enginu (`src/lib/email/engineMailbox.ts`). */
+    engine: {
+      neprihlasen: "Nejste přihlášeni.",
+      chybiAdresa: "Chybí adresa enginu (VITE_ENGINE_URL).",
+      nevystaveno: "Tahle operace se v aplikaci nevystavuje — nic se nemaže.",
+      prilohaOdkazem: "Příloha se předává odkazem, ne base64. Použijte odkaz na přílohu nebo nahrání na engine.",
+      sit: "Spojení s enginem selhalo.",
+      neplatnaOdpoved: "Engine vrátil nečekanou odpověď.",
+    },
+
     podpis: {
       nahled: "Podpis e-mailu",
       rezimPodpis: "Podpis",
