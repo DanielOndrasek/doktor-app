@@ -82,11 +82,8 @@ z tlačítka. `EventSource` v `src/lib/events.ts` čeká na K2: `load` = řádky
 Vlastní události a jejich úpravy jsou O7/K5. Nic z toho není z CRM — to mělo jen Google
 kalendář a `task_gcal_sync`, který se nepřebírá.
 
-**21. 9. 2026 — nastavení Google Cloud po O4 (interní aplikace).** V Cloud projektu pod
-organizací Workspace Vividbooks: (1) OAuth consent screen *Internal*, scopes `gmail.modify`
-(čtení, štítky, přesun) a případně `gmail.send` — jen ty, které engine opravdu volá;
-(2) OAuth klient typu Web, redirect URI `https://doktor.vividbooks.com/<cesta gmail-callback>`;
-(3) DNS `doktor.vividbooks.com` → Vercel projekt Doktora; (4) client id + secret do tajemství
-Supabase pro funkce `gmail-auth` / `gmail-callback`; (5) v adminu Workspace „App access
-control" — interní aplikace povolené (výchozí). Štěpánova Gmail schránka musí být účet
-v téže organizaci Workspace; ověřit, než se řádek Gmail OAuth přebere.
+**21. 9. 2026 — Gmail bez OAuth (návrh k O4).** Štěpán má osobní Gmail; interní aplikace
+ani neověřený externí projekt nejdou. Návrh: IMAP/SMTP s heslem aplikace na enginu, viz
+`rozhodnuti.md`. Pro engine (K1/K2) to znamená druhý IMAP účet a Gmail specifika (štítky,
+All Mail, `X-GM-THRID`); pro aplikaci nic — `engineMailbox` už `schranka = gmail` umí.
+Řádky Gmail klient a Gmail OAuth v tabulce převzetí by přešly do Nepřebírat.
