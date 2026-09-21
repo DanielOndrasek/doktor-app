@@ -1,5 +1,6 @@
-import type { KanbanCardData, KanbanState } from "@/components/kanban";
-import { KANBAN_COLUMNS } from "@/components/kanban";
+import type { KanbanCardData, KanbanState, TaskState } from "@/components/kanban";
+import { KANBAN_COLUMNS, TASK_STATES } from "@/components/kanban";
+import { cs } from "@/lib/i18n/cs";
 import { supabase } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 
@@ -13,15 +14,92 @@ import type { Database } from "@/types/database";
  * musí být vidět, odkud změna přišla. `stav_zmenen` nastavuje trigger
  * `ukoly_stav_zmenen` v databázi, aplikace ho neposílá.
  */
+/** Odkud úkol přišel (`ukoly.zdroj`). */
+export type TaskOrigin = "email" | "claude" | "rucne" | "plaud";
+
+/** Celý úkol pro detail — projekce řádku `ukoly` (vše, co dialog ukazuje nebo mění). */
+export interface TaskDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  state: TaskState;
+  /** `priorita` — text, v UI P1–P3. */
+  priority: string | null;
+  area: string | null;
+  kind: string | null;
+  /** `termin` jako „YYYY-MM-DD". */
+  dueDate: string | null;
+  /** `cas` jako „HH:MM"; bez data nedává smysl. */
+  dueTime: string | null;
+  contactId: string | null;
+  contactLabel: string | null;
+  /** `polozka_id` — zpráva, ze které úkol vznikl. */
+  itemId: string | null;
+  itemHref?: string;
+  source: TaskOrigin;
+  stateEnteredAt: string;
+  createdAt: string;
+  calUid: string | null;
+}
+
+/** Co uživatel v dialogu edituje. Prázdný řetězec = null. */
+export interface TaskDraft {
+  title: string;
+  description: string;
+  state: TaskState;
+  priority: string;
+  area: string;
+  kind: string;
+  dueDate: string;
+  dueTime: string;
+}
+
+/** Zakládání navíc nese vazby, které dialog nezadává (úkol z mailu, ze zápisu). */
+export interface TaskCreateInput extends TaskDraft {
+  contactId?: string | null;
+  itemId?: string | null;
+  /** Výchozí `rucne`; `email` / `plaud` / `claude` podle toho, kdo zakládá. */
+  source?: TaskOrigin;
+}
+
 export interface TaskSource {
   load: () => Promise<KanbanCardData[]>;
   move: (card: KanbanCardData, to: KanbanState) => Promise<void>;
+  /** Detail; `null` = neexistuje nebo není můj (RLS). */
+  get: (id: string) => Promise<TaskDetail | null>;
+  create: (input: TaskCreateInput) => Promise<TaskDetail>;
+  /** Změna stavu z dialogu je taky klik: zapíše `stav_zdroj = klik`. */
+  update: (task: TaskDetail, draft: TaskDraft) => Promise<TaskDetail>;
+}
+
+export function emptyTaskDraft(state: TaskState = "todo"): TaskDraft {
+  return { title: "", description: "", state, priority: "", area: "", kind: "", dueDate: "", dueTime: "" };
+}
+
+export function draftOf(task: TaskDetail): TaskDraft {
+  return {
+    title: task.title,
+    description: task.description ?? "",
+    state: task.state,
+    priority: task.priority ?? "",
+    area: task.area ?? "",
+    kind: task.kind ?? "",
+    dueDate: task.dueDate ?? "",
+    dueTime: task.dueTime ?? "",
+  };
 }
 
 /** Prázdný zdroj — pro náhledy a testy obrazovky bez databáze. */
 export const EMPTY_TASK_SOURCE: TaskSource = {
   load: async () => [],
   move: async () => {},
+  get: async () => null,
+  create: async () => {
+    throw new Error(cs.ukoly.detail.bezZdroje);
+  },
+  update: async () => {
+    throw new Error(cs.ukoly.detail.bezZdroje);
+  },
 };
 
 /** Sloupce, které tabule čte. `zruseno` na tabuli nepatří, proto se nenačítá. */
@@ -35,9 +113,65 @@ type UkolRow = Pick<
 };
 
 const KANBAN_STATES = new Set<string>(KANBAN_COLUMNS.map((c) => c.value));
+const ALL_STATES = new Set<string>(TASK_STATES);
+const ORIGINS = new Set<string>(["email", "claude", "rucne", "plaud"]);
 
 function isKanbanState(value: string): value is KanbanState {
   return KANBAN_STATES.has(value);
+}
+
+function isTaskState(value: string): value is TaskState {
+  return ALL_STATES.has(value);
+}
+
+/** Detail čte navíc popis, druh, vazby a časy; `cas` z DB je „HH:MM:SS". */
+const DETAIL_COLUMNS =
+  "id, nazev, popis, stav, priorita, oblast, druh, termin, cas, kontakt_id, polozka_id, zdroj, stav_zmenen, vytvoreno, kal_uid, kontakty (jmeno, prijmeni)" as const;
+
+type UkolDetailRow = Pick<
+  Database["doktor"]["Tables"]["ukoly"]["Row"],
+  "id" | "nazev" | "popis" | "stav" | "priorita" | "oblast" | "druh" | "termin" | "cas" | "kontakt_id" | "polozka_id" | "zdroj" | "stav_zmenen" | "vytvoreno" | "kal_uid"
+> & {
+  kontakty: Pick<Database["doktor"]["Tables"]["kontakty"]["Row"], "jmeno" | "prijmeni"> | null;
+};
+
+export function toDetail(row: UkolDetailRow): TaskDetail | null {
+  if (!isTaskState(row.stav)) return null;
+  return {
+    id: row.id,
+    title: row.nazev,
+    description: row.popis,
+    state: row.stav,
+    priority: row.priorita,
+    area: row.oblast,
+    kind: row.druh,
+    dueDate: row.termin,
+    dueTime: row.termin && row.cas ? row.cas.slice(0, 5) : null,
+    contactId: row.kontakt_id,
+    contactLabel: contactLabel(row.kontakty),
+    itemId: row.polozka_id,
+    itemHref: row.polozka_id ? `/posta?polozka=${row.polozka_id}` : undefined,
+    source: ORIGINS.has(row.zdroj) ? (row.zdroj as TaskOrigin) : "rucne",
+    stateEnteredAt: row.stav_zmenen,
+    createdAt: row.vytvoreno,
+    calUid: row.kal_uid,
+  };
+}
+
+const orNull = (value: string): string | null => value.trim() || null;
+
+/** Sloupce z draftu; `stav` zvlášť — nese s sebou `stav_zdroj`. */
+function draftColumns(draft: TaskDraft): Database["doktor"]["Tables"]["ukoly"]["Update"] {
+  const termin = orNull(draft.dueDate);
+  return {
+    nazev: draft.title.trim(),
+    popis: orNull(draft.description),
+    priorita: orNull(draft.priority),
+    oblast: orNull(draft.area),
+    druh: orNull(draft.kind),
+    termin,
+    cas: termin ? orNull(draft.dueTime) : null,
+  };
 }
 
 /** Jméno kontaktu na kartě: „Jméno Příjmení", nebo nic. */
@@ -98,6 +232,57 @@ export function createSupabaseTaskSource(client: typeof supabase = supabase): Ta
         .update({ stav: to, stav_zdroj: "klik" })
         .eq("id", card.id);
       if (error) throw new Error(error.message);
+    },
+
+    async get(id) {
+      const { data, error } = await client.from("ukoly").select(DETAIL_COLUMNS).eq("id", id).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? toDetail(data) : null;
+    },
+
+    async create(input) {
+      if (!input.title.trim()) throw new Error(cs.ukoly.detail.chybiNazev);
+      // RLS chce `user_id = auth.uid()` — bere se ze session, ne z formuláře.
+      const {
+        data: { session },
+      } = await client.auth.getSession();
+      if (!session) throw new Error(cs.engine.neprihlasen);
+      const { data, error } = await client
+        .from("ukoly")
+        .insert({
+          ...draftColumns(input),
+          nazev: input.title.trim(),
+          user_id: session.user.id,
+          stav: input.state,
+          stav_zdroj: "klik",
+          zdroj: input.source ?? "rucne",
+          kontakt_id: input.contactId ?? null,
+          polozka_id: input.itemId ?? null,
+        })
+        .select(DETAIL_COLUMNS)
+        .single();
+      if (error) throw new Error(error.message);
+      const detail = toDetail(data);
+      if (!detail) throw new Error(cs.ukoly.detail.ulozeniSelhalo);
+      return detail;
+    },
+
+    async update(task, draft) {
+      if (!draft.title.trim()) throw new Error(cs.ukoly.detail.chybiNazev);
+      const stateChanged = draft.state !== task.state;
+      const { data, error } = await client
+        .from("ukoly")
+        .update({
+          ...draftColumns(draft),
+          ...(stateChanged ? { stav: draft.state, stav_zdroj: "klik" } : {}),
+        })
+        .eq("id", task.id)
+        .select(DETAIL_COLUMNS)
+        .single();
+      if (error) throw new Error(error.message);
+      const detail = toDetail(data);
+      if (!detail) throw new Error(cs.ukoly.detail.ulozeniSelhalo);
+      return detail;
     },
   };
 }

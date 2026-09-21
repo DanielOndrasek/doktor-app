@@ -148,3 +148,10 @@ obranně, `urg`/`kat` mimo číselník se zahodí). Generované typy funkcí nez
 ručním zásahem do `database.ts`. Tím jsou všechny tři zdroje (Dnes, Úkoly, Události) na
 databázi; na dashboard zbývá vystavit schéma `doktor` v API, jinak nic z toho nenačte.
 
+**21. 9. 2026 — detail a zakládání úkolu (K3.6).** `TaskDialog` nad `TaskSource.get / create /
+update`; převzetí z CRM je rozepsané v `prevzeti-z-vividbooks.md`. Co zbývá z K3.6: seznam
+po termínech a kalendář (buckety a týden/měsíc z `VbTasksPage.tsx` jdou převzít) a „úkol →
+iCloud Pracovní se Simčou na kliknutí" (`cal_pridat` + `ukoly.kal_uid`, až bude REST).
+`EmailContext.onCreateTask` se dá zapojit na `taskSource.create({… source: "email",
+contactId, itemId})`, až Pošta dostane kontext z K2.3.
+

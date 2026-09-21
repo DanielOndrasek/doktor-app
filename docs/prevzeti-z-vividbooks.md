@@ -44,7 +44,8 @@ najde odpověď tady, ne v historii cizího repozitáře.
 | Podpisy | `src/lib/emailSignature*.ts`, `components/vividbooks/EmailSignatureEditor.tsx` | `src/lib/email/signature*.ts`, `src/components/email/SignatureEditor.tsx` | ☑ |
 | Karta kontaktu | `pages/VbPersonDetailPage.tsx`, `components/vividbooks/EntityDetailShell.tsx`, `ActivityTimeline.tsx`, `ActivityDialog.tsx`, `ActivityPanel.tsx`; z `EntityWall.tsx` koncept a části UI | `src/pages/ContactDetail.tsx`, `src/components/contacts/` | ☐ |
 | Kontext u e-mailu | `components/vividbooks/CrmEmailContext.tsx` | `src/components/email/EmailContext.tsx` | ☑ |
-| Úkoly | `pages/crm/VbTasksPage.tsx`, `components/tasks/*` | `src/pages/Tasks.tsx`, `src/components/tasks/` | ☐ |
+| Úkoly — detail a zakládání | `components/tasks/TaskDeadlinePicker.tsx`, `TaskDetailDialogChrome.tsx`, `components/vividbooks/ActivityDialog.tsx` (tvar formuláře) | `src/components/tasks/` | ☑ |
+| Úkoly — seznam po termínech, kalendář | `pages/crm/VbTasksPage.tsx` (buckety Po termínu · Dnes · Zítra · Tento týden · Později · Bez termínu, týden/měsíc) | `src/pages/Tasks.tsx` | ☐ |
 | Kanban | `components/sales/SalesKanban*.tsx`, `components/kanban/*` | `src/components/kanban/` | ☑ |
 | Dnes | `pages/HomePage.tsx`, `components/home/TodaySignals.tsx`, `EvidenceChips.tsx`; vzor `crm.today_signals()` | `src/pages/Today.tsx`, `src/components/home/`, `src/lib/today.ts` | ☑ |
 | Zápisy | vzor `plaud-intake`, `crm.call_recordings`, `CallRecordingsInbox.tsx` | `src/components/notes/`, `src/lib/notes.ts` | ☑ |
@@ -371,6 +372,37 @@ tvar `crm.agent_runs` → `src/lib/runs.ts` (`Run`, `RunOutcomeRef`).
 | `formatDateCs` | date-fns s `cs` | konvence |
 
 Sekce se v Dnes zatím nezobrazuje — přijde s K3.9, až budou `behy`.
+
+### Úkoly — detail a zakládání (21. 9. 2026)
+
+Tři zdroje, dvě kopie a jeden tvar:
+
+- `TaskDeadlinePicker.tsx` → `src/components/tasks/TaskDeadlinePicker.tsx` **1 : 1** — datum
+  a volitelný čas s režimem „celodenní", presety v půlhodinovém rastru, vlastní čas. Změny:
+  texty do `cs.ukoly.terminVyber`, kalendář na react-day-picker v9 (`autoFocus`,
+  `defaultMonth`) jako u `DatePicker`, ARIA popisky nejsou props.
+- `TaskDetailDialogChrome.tsx` → `src/components/tasks/TaskDialogChrome.tsx` **1 : 1** — hlavička
+  s ikonou a stavem, dvousloupcové tělo, patička, popis rostoucí na mobilu, potlačení
+  autofokusu na mobilu. Změny: plochy hlavičky a patičky braly `--deal-*` (zeď obchodu,
+  nepřebírá se) → `bg-muted/40`, ikona `bg-secondary/10` + `text-secondary`; popisky
+  („Detail úkolu", „Stav", „Kontext", „Volitelný popis…") chodí propsy z `cs`.
+- `ActivityDialog.tsx` → `src/components/tasks/TaskDialog.tsx` jako **tvar**: dialog s názvem
+  jako prvním polem, termín s rychlými volbami Dnes · Zítra · Za 3 dny · Za týden, poznámka,
+  patička Zrušit / Uložit, `Enter` v názvu ukládá.
+
+| V CRM | V Doktorovi | Proč |
+|---|---|---|
+| druhy aktivit (úkol, hovor, schůzka, videohovor, školení), délka, místo | stav úkolu (šest hodnot z `CLAUDE.md`), priorita P1–P3, oblast a druh jako text | úkol není událost; události mají vlastní obrazovku a `udalosti` |
+| „Komu" (přiřazení kolegovi) | — | uživatel je zatím jeden; sekretariát přijde s RLS později |
+| Google Meet, hosté, pozvánky, `google-calendar-sync-task` | — | do kalendáře zapisuje jen engine (`cal_pridat`), a jen na kliknutí |
+| našeptávač škol a obchodů, vazba na `db_deals` | kontext vpravo: kontakt, zdroj, zpráva (odkaz do Pošty), založeno, ve stavu od | vazby přijdou z běhu (`kontakt_id`, `polozka_id`), ne z formuláře |
+| `supabase.from("db_deal_wall_posts")` přímo v komponentě | `TaskSource.get / create / update` (`src/lib/tasks.ts`) nad `ukoly` | datová vrstva úkolů přes zeď obchodu je v Nepřebírat |
+| `toast` ze `sonner` | `useToast` z kitu | jeden systém hlášek |
+| `TaskContextPreviewCards.tsx` | — | náhledy obchodu a školy; karta kontaktu je K4.1 |
+
+`create` bere `user_id` ze session (RLS `with check`), `zdroj = rucne`; `update` zapisuje
+`stav_zdroj = klik`, když se změnil stav. Otevření detailu je `?ukol=<id>` — stejný odkaz
+dává karta kanbanu, `dnes()` i úkol z e-mailu.
 
 ## Nepřebírat
 

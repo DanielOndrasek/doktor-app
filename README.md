@@ -53,7 +53,7 @@ npm run build
 ```
 
 Build projde. Aplikace má přihlášení s MFA (`/prihlaseni`, `/reset-hesla`), za ním
-Dnes (`/`) nad `dnes()`, Úkoly (`/ukoly`, kanban) nad tabulkou `ukoly`, Události
+Dnes (`/`) nad `dnes()`, Úkoly (`/ukoly`, kanban s detailem a zakládáním) nad tabulkou `ukoly`, Události
 (`/udalosti`) nad `udalosti` se zápisem do kalendáře přes engine a Poštu (`/posta`) nad klientem enginu — bez `VITE_ENGINE_URL` a bez K2 ukáže, že engine není propojený.
 Kontext a zápisy čekají na své obrazovky. Databáze je Supabase projekt `doktor` (EU, `eu-west-1`);
 veřejné hodnoty pro `.env` jsou v `.env.example`, schéma v `supabase/migrations/`, typy
