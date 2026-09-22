@@ -21,7 +21,7 @@ i dotaz, stav ceka) — zapiš vysledek a stav hotovo. 3) Načti schválená pra
 (`select max(zacatek) from doktor.behy where stav='hotovo'`): `polozky` s ref_cache, kategorie,
 priorita 1–3, co_resit, návrhy odpovědí v `navrh_telo` (prostý text, bez podpisu, bez rodných čísel),
 `ukoly` (zdroj email, zdroj_id email:<message_id>), `udalosti` (stav novy, kolize z cal_free; NIKDY
-cal_pridat). Idempotentně (on conflict do nothing / where not exists). Nikdy nepřepisuj
+cal_pridat), `pripady` = karty pacientů podle oddílu „Karty pacientů“ (stav navrh, jen když je ve vlákně jméno pacienta). Idempotentně (on conflict do nothing / where not exists). Nikdy nepřepisuj
 `rozepsano_telo` ani stav se stav_zdroj klik. 5) P1 označ vlaječkou `mail_flag`, jednoznačný šum
 přesuň do `_Triage/Šum` přes `mail_move` a obnov `ref_cache` na novy_ref. 6) Uzavři `behy`
 (stav hotovo, konec, pocty) a doplň řádek `audit` (kdo beh).

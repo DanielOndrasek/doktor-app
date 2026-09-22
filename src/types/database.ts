@@ -697,30 +697,55 @@ export type Database = {
       }
       pripady: {
         Row: {
+          beh_id: string | null
           id: string
           kontakt_id: string | null
           nazev: string
+          posledni_zprava: string | null
+          shrnuti: string | null
+          stav: string
+          stav_zdroj: string
           upraveno: string
           user_id: string
           vytvoreno: string
+          zdroj_id: string | null
         }
         Insert: {
+          beh_id?: string | null
           id?: string
           kontakt_id?: string | null
           nazev: string
+          posledni_zprava?: string | null
+          shrnuti?: string | null
+          stav?: string
+          stav_zdroj?: string
           upraveno?: string
           user_id: string
           vytvoreno?: string
+          zdroj_id?: string | null
         }
         Update: {
+          beh_id?: string | null
           id?: string
           kontakt_id?: string | null
           nazev?: string
+          posledni_zprava?: string | null
+          shrnuti?: string | null
+          stav?: string
+          stav_zdroj?: string
           upraveno?: string
           user_id?: string
           vytvoreno?: string
+          zdroj_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pripady_beh_id_fkey"
+            columns: ["beh_id"]
+            isOneToOne: false
+            referencedRelation: "behy"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pripady_kontakt_id_fkey"
             columns: ["kontakt_id"]

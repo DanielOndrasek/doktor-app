@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import ThemeHost from "@/components/ThemeHost";
-import { AppShell, CONTACTS_PATH, EVENTS_PATH, MAIL_PATH, SETTINGS_PATH, TASKS_PATH, TODAY_PATH } from "@/components/AppShell";
+import { AppShell, CONTACTS_PATH, EVENTS_PATH, MAIL_PATH, PATIENTS_PATH, SETTINGS_PATH, TASKS_PATH, TODAY_PATH } from "@/components/AppShell";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { LOGIN_PATH } from "@/components/auth/MfaGate";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,10 +11,12 @@ import Contacts from "@/pages/Contacts";
 import Events from "@/pages/Events";
 import Login, { RESET_PASSWORD_PATH } from "@/pages/Login";
 import Mail from "@/pages/Mail";
+import Patients from "@/pages/Patients";
 import ResetPassword from "@/pages/ResetPassword";
 import Settings from "@/pages/Settings";
 import Tasks from "@/pages/Tasks";
 import Today from "@/pages/Today";
+import { createSupabaseCaseSource } from "@/lib/cases";
 import { createSupabaseClaudeWorkSource } from "@/lib/claudeProjects";
 import { createSupabaseContactSource } from "@/lib/contacts";
 import { createEngineClientFromEnv } from "@/lib/engine/client";
@@ -49,6 +51,8 @@ const itemSource = createSupabaseItemSource();
 const runsSource = createSupabaseRunsSource();
 /** Pravidla pro Clauda (`pouceni`): návrhy z běhů ke schválení a vlastní pravidla v Nastavení. */
 const ruleSource = createSupabaseRuleSource();
+/** Karty pacientů (`pripady`, O2 z 22. 9.): návrhy z běhů, schválení kliknutím. */
+const caseSource = createSupabaseCaseSource();
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
@@ -82,6 +86,8 @@ export default function App() {
                       {/* Kontakty (K4.1 přitažené do K3): adresář a karta s poznámkami a úkoly. */}
                       <Route path={CONTACTS_PATH} element={<Contacts source={contactSource} taskSource={taskSource} />} />
                       {/* Nastavení: podpisy (K3.3). */}
+                      {/* Pacienti nad `pripady`: karty navržené během, schválení / zamítnutí kliknutím. */}
+                      <Route path={PATIENTS_PATH} element={<Patients source={caseSource} />} />
                       <Route path={SETTINGS_PATH} element={<Settings signatures={signatureSource} rules={ruleSource} />} />
                       <Route path="*" element={<Navigate to={TODAY_PATH} replace />} />
                     </Routes>

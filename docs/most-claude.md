@@ -108,9 +108,34 @@ zprávu (přesun do šumu přes `mail_move`), a zapíše `stav = 'hotovo'`, `vys
 jsonb_build_object('odpoved', 'co se udělalo')`. Poznámka nikdy neznamená odeslání —
 odeslání je vždy kliknutí v aplikaci (pravidlo 8).
 
+## Karty pacientů (`pripady`, O2 změněno 22. 9.)
+
+Když je vlákno o **konkrétním pacientovi** (jméno stojí ve zprávě nebo v příloze — žádost
+o převzetí, konzultace, objednání, výsledek), běh navrhne kartu:
+
+```sql
+insert into doktor.pripady (user_id, nazev, kontakt_id, shrnuti, zdroj_id, stav, stav_zdroj, beh_id, posledni_zprava)
+values (<user_id>, '<Jméno Příjmení pacienta>', <kontakt_id odesílajícího lékaře nebo null>,
+        '<1–2 věty: co se řeší, co je další krok>', 'vlakno:<vlakno>', 'navrh', 'beh', <beh_id>, <datum zprávy>)
+on conflict (user_id, zdroj_id) do update set posledni_zprava = excluded.posledni_zprava
+returning id;
+update doktor.polozky set pripad_id = <id> where id = <polozka id>;
+```
+
+- Dřív než založíš novou: `select id from doktor.pripady where user_id = … and stav <> 'zamitnuto'
+  and lower(nazev) = lower('<jméno>')` — týž pacient ve druhém vlákně se **připojí** k existující
+  kartě (`polozky.pripad_id`, `posledni_zprava`), nová se nezakládá. `zamitnuto` se nezakládá znovu.
+- `nazev` je jméno, jak stojí ve vlákně; bez titulů, bez rodného čísla, bez data narození.
+  `shrnuti` bez rodného čísla a bez čísel pojištěnce (pravidlo 7). Údaje jen z téhož vlákna.
+- Kartu, kterou lékař změnil (`stav_zdroj = 'klik'`), běh nepřepisuje — jen doplňuje zprávy.
+- Karta z jedné zprávy bez jména pacienta nevzniká (`[PACIENT]` není karta).
+
 ## Pravidla pro Clauda (`pouceni`, od 22. 9.)
 
-Nastavení → Pravidla pro Clauda. Claude před psaním návrhů čte **jen schválená**:
+Nastavení → Pravidla pro Clauda. 22. 9. tam bylo nahráno 18 schválených pravidel — jádro
+skillů `email-styl-suchanek` a `email-triage` (registry, tykání, podpisy, „Termín potvrdím po
+domluvě.", priority, co se přesouvá). Skilly zůstávají úplným zněním; `pouceni` je to, co lékař
+vidí a doplňuje. Claude před psaním návrhů čte **jen schválená**:
 `select text from doktor.pouceni where stav = 'schvaleno' order by vytvoreno`. Vlastní
 pravidla lékaře jsou schválená rovnou; návrhy z běhů (`opravy_sber`, ÚKOL 39; K4.7 týdenní
 poučení) se zakládají se `stav = 'navrh'` a `zdroj_opravy = array[id oprav]`, lékař je

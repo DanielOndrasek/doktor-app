@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CalendarDays, CheckCircle, Home, LogOut, Mail, Menu, Moon, Settings, Sun, Users, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckCircle, Home, LogOut, Mail, Menu, Moon, Settings, Stethoscope, Sun, Users, type LucideIcon } from "lucide-react";
 
 import { LOGIN_PATH } from "@/components/auth/MfaGate";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -16,6 +16,7 @@ export const MAIL_PATH = "/posta";
 export const TASKS_PATH = "/ukoly";
 export const EVENTS_PATH = "/udalosti";
 export const CONTACTS_PATH = "/kontakty";
+export const PATIENTS_PATH = "/pacienti";
 export const SETTINGS_PATH = "/nastaveni";
 
 interface NavItem {
@@ -30,6 +31,7 @@ const NAV: NavItem[] = [
   { to: TASKS_PATH, label: cs.nav.ukoly, icon: CheckCircle },
   { to: EVENTS_PATH, label: cs.nav.udalosti, icon: CalendarDays },
   { to: CONTACTS_PATH, label: cs.nav.kontakty, icon: Users },
+  { to: PATIENTS_PATH, label: cs.nav.pacienti, icon: Stethoscope },
 ];
 
 const RAIL_BUTTON =

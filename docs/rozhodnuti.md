@@ -6,7 +6,7 @@ věci se zapisují sem, ne do plánu. U každého rozhodnutí dopiš datum a jed
 | # | Rozhodnutí | Kdo | Blokuje | Stav |
 |---|---|---|---|---|
 | O1 | Uvolnit pravidlo „data jen z téhož vlákna“ na tři úrovně (vlákno · týž pacient se shodou dvou údajů · slabá shoda jen v panelu) | Š | K4.7 | **rozhodnuto 21. 9.** |
-| O2 | Karty pacientů ne; vlákna o pacientovi jako „případ“ pod odesílajícím lékařem | Š | K4.1 | **rozhodnuto 21. 9.** |
+| O2 | Karty pacientů: Claude je navrhuje z vláken, lékař schvaluje (`pripady` = karta pod odesílajícím lékařem) | Š | K4.1 | **rozhodnuto 21. 9., změněno 22. 9.** |
 | O3 | Databáze: Supabase EU, nebo vše na Hetzneru | D | K2.1 | **rozhodnuto 21. 9.** |
 | O4 | Doména aplikace pod ověřeným Google OAuth projektem → Gmail bez OAuth | D + Š | K2.1 | **rozhodnuto 21. 9.** |
 | O5 | Seznam a názvy podpisů (podklad z K1.7) | Š | K3.3 | otevřeno |
@@ -30,6 +30,15 @@ pacientovi se drží jako „případ" (`pripady`) pod odesílajícím lékařem
 pacient není kontakt aplikace a nemá v ní mít vlastní záznam — rodné číslo nikdy do
 aplikace (pravidlo 7). Dopad: K4.1 (karta kontaktu ukazuje případy), schéma `pripady`
 v K2.2 zůstává podle oddílu 3 plánu.
+
+**O2 změna — ano, karty pacientů, navrhuje je Claude** (D + Š, 22. 9. 2026). Karta pacienta
+je řádek `pripady`: jméno pacienta (`nazev`), odesílající lékař (`kontakt_id`), shrnutí, stav
+`navrh` → `schvaleno` / `zamitnuto`. Běh třídění ji navrhne, když je vlákno o konkrétním
+pacientovi; lékař ji na obrazovce Pacienti schválí nebo zamítne a zprávy k případu se váží
+přes `polozky.pripad_id`. Hranice zůstávají: rodné číslo se nezapisuje nikam (pravidlo 7), údaje
+jen z téhož vlákna a přílohy, karta nikdy nevzniká z paměti. Proč: Štěpán chce mít
+přehled po pacientech, ne jen po lékařích. Dopad: migrace `20260922200000_pripady_karty_pacientu`,
+obrazovka `src/pages/Patients.tsx`, oddíl v `docs/most-claude.md`.
 
 **O3 — Supabase EU** (D, 21. 9. 2026). Samostatný projekt v regionu EU — založen 21. 9. jako `doktor` (ref `dwwwdeagnqiibwraxyjx`) v `eu-west-1` (Irsko), ne ve Frankfurtu; podmínka EU platí. Auth + TOTP MFA + RLS + zálohy jsou
 hotové a přihlášení na nich stojí; v Supabase jsou jen metadata (pravidlo 5), těla, přílohy

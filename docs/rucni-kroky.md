@@ -35,9 +35,9 @@ musí udělat člověk nebo serverový Claude, a co se tím odblokuje. Odškrtá
 
 - [ ] **Podpisy** (O5): v Nastavení → Podpisy vyplnit skutečné texty a názvy, každé schránce
   nastavit výchozí. Dokud jsou prázdné, odpovědi odcházejí bez podpisu.
-- [ ] **Vlastní pravidla pro Clauda**: Nastavení → Pravidla pro Clauda (tykání, oslovení,
-  kdo dostává jakou odpověď). Claude čte jen schválená.
-- [ ] **O2** karty pacientů ne, „případ“ pod odesílajícím lékařem — blokuje `pripady` (K4.1).
+- [x] **Pravidla pro Clauda**: jádro skillů (18 pravidel) je nahrané a schválené 22. 9.; Štěpán
+  jen doplňuje, když něco chybí. Claude čte jen schválená.
+- [x] **O2** změněno 22. 9.: karty pacientů ano, navrhuje je běh, schvaluje Štěpán (obrazovka Pacienti).
 - [ ] **O6** sjednotit úkoly s „Rozdělanou prací“ do jedné tabulky — blokuje přenos dat K2.5.
 - [ ] **O7** úprava a mazání vlastních událostí v kalendáři (K5). **O9** které složky Disku
   sdílet se služebním účtem (K4.4). **O8** API pojistka pro spadlý ranní běh (K5).

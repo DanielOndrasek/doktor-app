@@ -386,3 +386,13 @@ repr ve `vysledek` se převádí po řetězcích (apostrof uvnitř nerozbije par
 podle uvozovek a `<…>` (`splitAddressHeader`). Sdílený `.claude/settings.json` je zpět na
 `acceptEdits` — `bypassPermissions` patří jen do `settings.local.json` (gitignored) a do
 uživatelského nastavení, ne do repozitáře, kde by obcházel pravidla 8 a „kalendář jen klikem".
+
+**22. 9. 2026 — pravidla ze skillů do `pouceni`, karty pacientů (O2 změněno).** Do `pouceni` nahráno
+18 schválených pravidel — jádro skillů `email-styl-suchanek` a `email-triage`; Štěpán nic nepíše
+znovu, skilly zůstávají úplným zněním. O2 se změnilo: Claude **navrhuje karty pacientů**. Migrace
+`20260922200000_pripady_karty_pacientu` přidává do `pripady` `stav`, `stav_zdroj`, `shrnuti`,
+`zdroj_id` (unique s `user_id`), `beh_id`, `posledni_zprava` — sloupce navíc proti plánu s důvodem
+v migraci. Nová obrazovka Pacienti (`/pacienti`, `src/lib/cases.ts`): návrhy → schválit / zamítnout,
+úprava jména a shrnutí, ruční karta, zprávy k případu přes `polozky.pripad_id` s prokliky. Typy
+v `src/types/database.ts` doplněny ručně (CLI `supabase gen types` tu není a MCP generátor schéma
+`doktor` nevidí) — po vystavení schématu přegenerovat. Rodné číslo nikam, viz `most-claude.md`.

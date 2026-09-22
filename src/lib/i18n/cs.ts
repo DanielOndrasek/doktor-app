@@ -764,6 +764,46 @@ export const cs = {
     vKalendari: (name: string) => `v kalendáři ${name}`,
   },
 
+  /** Karty pacientů (`pripady`, O2 z 22. 9.; `src/pages/Patients.tsx`). */
+  pacienti: {
+    titulek: "Pacienti",
+    popis: "Karty pacientů navrhuje běh třídění z vláken pošty; tady je schválíte nebo zamítnete. Rodné číslo se nikam nezapisuje.",
+    nacteniSelhalo: "Karty pacientů se nepodařilo načíst.",
+    ulozeniSelhalo: "Kartu se nepodařilo uložit.",
+    ulozeno: "Karta uložena",
+    schvaleno: "Karta schválena",
+    zamitnuto: "Karta zamítnuta",
+    chybiJmeno: "Napište jméno pacienta.",
+    nova: "Nová karta",
+    jmeno: "Jméno pacienta",
+    jmenoPlaceholder: "Jméno a příjmení, jak stojí ve zprávě",
+    shrnuti: "O co jde",
+    shrnutiPlaceholder: "Jednou dvěma větami: co se řeší, kdo poslal, co je další krok. Bez rodného čísla.",
+    lekar: "Odesílající lékař",
+    bezLekare: "bez přiřazeného lékaře",
+    bezShrnuti: "Bez shrnutí.",
+    zpravy: "Zprávy k případu",
+    bezZprav: "Zatím žádná zpráva není k případu přiřazená.",
+    posledniZprava: "poslední zpráva",
+    navrhlBeh: "navrhl běh",
+    stav: {
+      navrh: "Návrhy",
+      schvaleno: "Schválené",
+      zamitnuto: "Zamítnuté",
+    } as Record<string, string>,
+    zadne: {
+      navrh: "Žádné nové návrhy karet. Přibudou z běhů třídění, když vlákno jde o konkrétního pacienta.",
+      schvaleno: "Zatím žádná schválená karta.",
+      zamitnuto: "Nic zamítnutého.",
+    } as Record<string, string>,
+    schvalit: "Schválit",
+    zamitnout: "Zamítnout",
+    upravit: "Upravit",
+    ulozit: "Uložit",
+    zrusit: "Zrušit",
+    vytvorit: "Vytvořit kartu",
+  },
+
   /** Navigace aplikace (`src/components/AppShell.tsx`). */
   /** Nastavení (`src/pages/Settings.tsx`). */
   nastaveni: {
@@ -772,7 +812,7 @@ export const cs = {
     pravidla: {
       nadpis: "Pravidla pro Clauda",
       napoveda:
-        "Jak má Claude psát odpovědi a třídit poštu. Návrhy vznikají z rozdílů mezi návrhem z běhu a tím, co jste skutečně odeslali; tady je schválíte nebo zamítnete. Claude se řídí jen schválenými. Nic se nemaže — nepotřebné pravidlo zamítněte.",
+        "Jak má Claude psát odpovědi a třídit poštu. Základ je převzatý z dosavadních pravidel Schránky (styl psaní, registry, priority) a je už schválený; nové návrhy vznikají z rozdílů mezi návrhem z běhu a tím, co jste skutečně odeslali. Claude se řídí jen schválenými. Nic se nemaže — nepotřebné pravidlo zamítněte.",
       nove: "Nové pravidlo",
       novePlaceholder: "Např. Kolegům z kliniky tykám a podepisuji se jen křestním jménem.",
       pridat: "Přidat pravidlo",
@@ -825,6 +865,7 @@ export const cs = {
     ukoly: "Úkoly",
     udalosti: "Události",
     kontakty: "Kontakty",
+    pacienti: "Pacienti",
     nastaveni: "Nastavení",
     odhlasit: "Odhlásit se",
     otevritMenu: "Otevřít menu",
