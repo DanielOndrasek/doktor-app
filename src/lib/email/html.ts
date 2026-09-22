@@ -127,6 +127,19 @@ export function plainTextToEditorHtml(text: string): string {
     .join("");
 }
 
+/**
+ * HTML z editoru → prostý text: zalomení za blokovými prvky, bez značek.
+ * Pro nástroje enginu, které berou jen text (`mail_preposlat.telo`, `podpisy.text`).
+ */
+export function htmlToPlainText(html: string): string {
+  const withBreaks = (html || "").replace(/<(br|\/p|\/div|\/tr|\/li|\/h[1-6])[^>]*>/gi, "$&\n");
+  const doc = new DOMParser().parseFromString(withBreaks, "text/html");
+  return (doc.body.textContent ?? "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Vytáhne e-mailové adresy z hlavičky „Jméno <adresa>, …“. */
 export function extractEmails(header: string | null | undefined): string[] {
   if (!header) return [];

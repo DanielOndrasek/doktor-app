@@ -347,3 +347,15 @@ z `dnes()` a z přehledu běhů teď Pošta otevírá (`ItemSource.byId` → `re
 když je `ref_cache` prošlý (zpráva přesunutá mimo běh), ukáže se chyba — dohledání podle
 Message-ID přes `mail_najdi` by chtělo REST nástroj na enginu. `/udalosti?udalost=` a
 `/ukoly?ukol=`: Úkoly parametr čtou, Události zatím ne (zůstává).
+
+**22. 9. 2026 — Přeposlat s původními přílohami (kontrolní seznam plánu).** „Přeposlat" v detailu
+otevře okno psaní v režimu přeposlání: tělo je jen poznámka, engine (`mail_preposlat`,
+`zpusob = cast`) doplní původní hlavičky, text a **přílohy překopíruje**, předmět složí „Fwd: …"
+a na originálu nastaví `$Forwarded`. Okno proto nemá sponku ani „Odeslat z" a předmět je jen
+náhled; přeposílané přílohy jsou vypsané v rámečku nad tělem. Poznámka jde jako text
+(`htmlToPlainText`, společné s `podpisy.text`). Omezení enginu (poznámka pro server):
+`mail_preposlat` nezná `schranka` ani `odeslat_z`, čte i odesílá jen ÚVN — u Gmail zprávy
+aplikace přeposlání odmítne se srozumitelnou hláškou; REST odmítá neznámé parametry, takže
+se posílá jen `ref, komu, telo, zpusob, potvrzeni`. Poznámka se před odesláním kontroluje na
+rodné číslo na enginu (přílohy záměrně ne). `\Answered` u odpovědi engine nastavuje přes
+`odpoved_na_message_id` už od K3.2.

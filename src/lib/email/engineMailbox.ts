@@ -1,5 +1,6 @@
 import { cs } from "@/lib/i18n/cs";
 import type { ComposeSendRequest } from "@/lib/email/compose";
+import { htmlToPlainText } from "@/lib/email/html";
 import type { ThreadMessage } from "@/lib/email/thread";
 import { EngineError, createEngineClient, type EngineClient, type WireEnvelope } from "@/lib/engine/client";
 import type {
@@ -88,6 +89,12 @@ export interface EngineSendResult extends MailSendResult {
   warnings: string[];
 }
 
+/** Výsledek přeposlání (`mail_preposlat`): názvy překopírovaných příloh a jestli se povedl `$Forwarded`. */
+export interface EngineForwardResult extends EngineSendResult {
+  attachments: string[];
+  flagged: boolean;
+}
+
 /** `MailboxClient` + operace, které kontrakt z CRM nemá a plán je přidává (4.1). */
 export interface EngineMailbox extends MailboxClient {
   readonly provider: "engine";
@@ -97,6 +104,12 @@ export interface EngineMailbox extends MailboxClient {
   sendWithUploads(request: EngineSendRequest): Promise<EngineSendResult>;
   /** Koncept s přílohami do Konceptů (`mail_draft`). */
   saveDraft(request: EngineSendRequest): Promise<{ ref: string }>;
+  /**
+   * Přeposlání s původními přílohami (`mail_preposlat`, kontrolní seznam plánu):
+   * `request.forwardOf` je ref původní zprávy, `body` poznámka nad ní (HTML se
+   * převede na text — engine skládá zprávu sám). Engine to umí jen nad ÚVN.
+   */
+  forward(request: EngineSendRequest & { forwardOf: string }): Promise<EngineForwardResult>;
   /** Nahrání přílohy multipartem; vrací `upload_id` (pravidlo 2). */
   upload(file: File | Blob, name?: string): Promise<EngineUploadResult>;
   /**
@@ -199,6 +212,15 @@ interface WireSend extends WireEnvelope {
   ref?: string;
   /** Např. `jina_schranka: …` — zpráva odešla, ale z jiné schránky, než do které přišla (pravidlo 8). */
   varovani?: string[];
+}
+
+interface WireForward extends WireSend {
+  /** `složka:uid` původní zprávy. */
+  preposlano?: string;
+  zpusob?: string;
+  priloh?: number;
+  /** Názvy překopírovaných příloh. */
+  prilohy?: string[];
 }
 
 interface WireStats extends WireEnvelope {
@@ -455,6 +477,29 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       // Koncept bere totéž co odeslání včetně příloh odkazem — do Konceptů je skládá engine.
       const data = await call<WireSend>("mail_draft", sendPayload(request));
       return { ref: data.ref ?? "" };
+    },
+
+    async forward(request): Promise<EngineForwardResult> {
+      // `mail_preposlat` nezná `schranka` ani `odeslat_z`: čte i odesílá jen ÚVN (22. 9.).
+      if (schrankaOf(request.forwardOf) === "gmail") {
+        throw new EngineError("not_exposed", cs.posta.engine.preposlaniJenUvn);
+      }
+      // REST odmítá neznámé parametry — jde jen to, co nástroj má.
+      const data = await call<WireForward>("mail_preposlat", {
+        ref: request.forwardOf,
+        komu: request.to,
+        telo: request.isHtml ? htmlToPlainText(request.body) : request.body,
+        zpusob: "cast",
+        // Odeslání je vždy za potvrzením uživatele v aplikaci (pravidlo 8).
+        potvrzeni: "ODESLAT",
+      });
+      return {
+        sentVia: "engine",
+        total: request.to.length,
+        warnings: data.varovani ?? [],
+        attachments: data.prilohy ?? [],
+        flagged: data.priznak_nastaven === true,
+      };
     },
 
     async upload(file, name) {

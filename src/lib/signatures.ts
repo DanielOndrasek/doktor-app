@@ -1,3 +1,4 @@
+import { htmlToPlainText } from "@/lib/email/html";
 import { cs } from "@/lib/i18n/cs";
 import { supabase } from "@/lib/supabase/client";
 
@@ -35,12 +36,7 @@ const COLUMNS = "id, nazev, jazyk, html, text, vychozi_pro_schranku" as const;
 
 /** Prostá textová podoba podpisu (`podpisy.text`) — pro klienty bez HTML. */
 export function signatureHtmlToText(html: string): string {
-  const withBreaks = html.replace(/<(br|\/p|\/div|\/tr|\/li|\/h[1-6])[^>]*>/gi, "$&\n");
-  const doc = new DOMParser().parseFromString(withBreaks, "text/html");
-  return (doc.body.textContent ?? "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return htmlToPlainText(html);
 }
 
 export function createSupabaseSignatureSource(client: typeof supabase = supabase): SignatureSource {

@@ -29,6 +29,18 @@ export interface ComposeSendRequest extends Omit<MailSendRequest, "attachments">
   uploadIds?: string[];
   /** Adresa schránky, ze které se odesílá („Odeslat z", pravidlo 8) — engine ji dostane jako `odeslat_z`. */
   sendFrom?: string;
+  /**
+   * Přeposlání (`mail_preposlat`): ref původní zprávy. Engine k poznámce v `body`
+   * připojí původní hlavičky, text a **původní přílohy** a na zprávě nastaví
+   * `$Forwarded`; předmět „Fwd: …" skládá sám. Aplikace přílohy nikdy nedrží.
+   */
+  forwardOf?: string;
+}
+
+/** Co okno psaní potřebuje vědět o přeposílané zprávě: ref a názvy příloh, které engine překopíruje. */
+export interface ComposeForwardContext {
+  ref: string;
+  attachments: { name: string; size: number }[];
 }
 
 /** Schránka v nabídce „Odeslat z" okna psaní. */

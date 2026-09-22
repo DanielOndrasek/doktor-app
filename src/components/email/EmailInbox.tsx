@@ -36,6 +36,7 @@ import { cs } from "@/lib/i18n/cs";
 import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
+import type { ComposeForwardContext } from "@/lib/email/compose";
 import type { ThreadMessage } from "@/lib/email/thread";
 import type {
   MailAttachmentMeta,
@@ -170,6 +171,8 @@ export function EmailInbox({
     body?: string;
     /** Adresa naší schránky, do které zpráva přišla (předvolba „Odeslat z", pravidlo 8). */
     arrivedAt?: string;
+    /** Přeposlání: ref původní zprávy a názvy jejích příloh (engine je překopíruje). */
+    forwardOf?: ComposeForwardContext;
   } | null>(null);
 
   /** Do které z našich schránek zpráva přišla — podle adres v „Komu". */
@@ -480,15 +483,22 @@ export function EmailInbox({
     setComposing(true);
   };
 
+  // Přeposlání s původními přílohami (`mail_preposlat`): tělo je jen poznámka, zbytek
+  // skládá engine, který na původní zprávě nastaví `$Forwarded`. Bez `threadId`, aby
+  // se okno neukazovalo jako odpověď; předmět je jen náhled, engine ho složí sám.
   const handleForward = () => {
     if (!detail) return;
     setReplyData({
       to: "",
-      subject: detail.subject.startsWith("Fwd:") ? detail.subject : `Fwd: ${detail.subject}`,
-      threadId: detail.threadId,
-      inReplyTo: detail.messageId,
-      references: detail.messageId,
+      subject: /^\s*fwd?\s*:/i.test(detail.subject) ? detail.subject : `Fwd: ${detail.subject}`,
+      threadId: "",
+      inReplyTo: "",
+      references: "",
       arrivedAt: arrivedAt(detail),
+      forwardOf: {
+        ref: detail.id,
+        attachments: detail.attachments.map((a) => ({ name: a.filename, size: a.size })),
+      },
     });
     setComposing(true);
   };
@@ -539,10 +549,11 @@ export function EmailInbox({
       defaultTo={replyData?.to}
       defaultSubject={replyData?.subject}
       defaultBody={replyData?.body}
-      threadId={replyData?.threadId}
-      inReplyTo={replyData?.inReplyTo}
-      references={replyData?.references}
+      threadId={replyData?.threadId || undefined}
+      inReplyTo={replyData?.inReplyTo || undefined}
+      references={replyData?.references || undefined}
       replyMailbox={replyData?.arrivedAt}
+      forwardOf={replyData?.forwardOf}
       onClose={() => {
         setComposing(false);
         setReplyData(null);

@@ -27,6 +27,7 @@ import { normalizeSearch } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
 import type {
   AttachmentUploadRef,
+  ComposeForwardContext,
   ComposeSendRequest,
   EmailRecipientSuggestion,
   EmailSenderOption,
@@ -118,6 +119,12 @@ interface EmailComposeProps extends EmailComposeSharedProps {
    * předvolba „Odeslat z"; odpověď z jiné schránky hlásí varování (pravidlo 8).
    */
   replyMailbox?: string;
+  /**
+   * Režim přeposlání (`mail_preposlat`): tělo je jen poznámka, předmět, původní
+   * hlavičky, text a přílohy skládá engine. Vlastní přílohy nejdou přidat
+   * (nástroj je nebere) a „Odeslat z" se neukazuje — engine přeposílá z ÚVN.
+   */
+  forwardOf?: ComposeForwardContext;
   /** Přepíše min. výšku editačního pole těla (kompaktní composer). */
   bodyMinHeightClass?: string;
   onClose: () => void;
@@ -160,9 +167,10 @@ export function EmailCompose({
   inReplyTo,
   references,
   replyMailbox,
+  forwardOf,
   signatureHtml,
   signatureFor,
-  senders,
+  senders: sendersProp,
   defaultSender,
   recipientSuggestions,
   onSearchRecipients,
@@ -170,7 +178,7 @@ export function EmailCompose({
   onSaveTemplate,
   onDeleteTemplate,
   onTemplateUsed,
-  onUploadAttachment,
+  onUploadAttachment: onUploadAttachmentProp,
   onSend,
   onBodyChange,
   bodyMinHeightClass,
@@ -178,6 +186,9 @@ export function EmailCompose({
   onSent,
 }: EmailComposeProps) {
   const { toast } = useToast();
+  // Přeposlání: bez „Odeslat z" (engine přeposílá z ÚVN) a bez vlastních příloh (nástroj je nebere).
+  const senders = forwardOf ? undefined : sendersProp;
+  const onUploadAttachment = forwardOf ? undefined : onUploadAttachmentProp;
 
   const [to, setTo] = useState<string[]>(parseEmails(defaultTo));
   const [cc, setCc] = useState<string[]>([]);
@@ -297,7 +308,8 @@ export function EmailCompose({
       return;
     }
     const bodyHtml = editorRef.current?.getHTML() || bodyHtmlRef.current;
-    if (!bodyHtml.trim() || bodyHtml === "<p></p>") {
+    // Poznámka k přeposlání smí být prázdná — obsah dodá engine z původní zprávy.
+    if (!forwardOf && (!bodyHtml.trim() || bodyHtml === "<p></p>")) {
       toast({ title: cs.posta.psani.chybiText, variant: "destructive" });
       return;
     }
@@ -317,8 +329,9 @@ export function EmailCompose({
         references,
         uploadIds: uploadIds.length ? uploadIds : undefined,
         sendFrom: sendFrom || undefined,
+        forwardOf: forwardOf?.ref,
       });
-      toast({ title: cs.posta.psani.odeslano });
+      toast({ title: forwardOf ? cs.posta.psani.preposlano : cs.posta.psani.odeslano });
       onSent?.();
       onClose();
     } catch (err) {
@@ -338,7 +351,7 @@ export function EmailCompose({
     <div className="flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-background">
       <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-muted/30 px-4 py-2.5">
         <h3 className="text-sm font-semibold text-foreground">
-          {threadId ? cs.posta.psani.odpoved : cs.posta.psani.novy}
+          {forwardOf ? cs.posta.psani.preposlani : threadId ? cs.posta.psani.odpoved : cs.posta.psani.novy}
         </h3>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label={cs.ui.zavrit}>
           <X className="h-3.5 w-3.5" />
@@ -461,8 +474,31 @@ export function EmailCompose({
             onChange={(e) => setSubject(e.target.value)}
             placeholder={cs.posta.psani.predmetPlaceholder}
             className="h-8 text-sm"
+            disabled={Boolean(forwardOf)}
+            title={forwardOf ? cs.posta.psani.preposlaniPoznamka : undefined}
           />
         </div>
+        {forwardOf && (
+          <div className="space-y-1 rounded-md border border-border bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground">
+            <p>{cs.posta.psani.preposlaniPoznamka}</p>
+            {forwardOf.attachments.length ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span>{cs.posta.psani.preposlaniPrilohy(forwardOf.attachments.length)}</span>
+                {forwardOf.attachments.map((a, i) => (
+                  <span key={`${a.name}-${i}`} className="flex items-center gap-1 rounded-md border border-border bg-background px-1.5 py-0.5">
+                    <Paperclip className="h-3 w-3" />
+                    <span className="max-w-[160px] truncate" title={a.name}>
+                      {a.name}
+                    </span>
+                    <span>({formatFileSize(a.size)})</span>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p>{cs.posta.psani.preposlaniBezPriloh}</p>
+            )}
+          </div>
+        )}
 
         {templates && (
           <div className="flex items-center gap-1">
@@ -630,17 +666,19 @@ export function EmailCompose({
           {sending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
           {cs.posta.psani.odeslat}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={!onUploadAttachment}
-          title={onUploadAttachment ? cs.posta.psani.pridatPrilohu : cs.posta.psani.prilohyNejsouKDispozici}
-        >
-          <Paperclip className="h-4 w-4" />
-        </Button>
+        {!forwardOf && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!onUploadAttachment}
+            title={onUploadAttachment ? cs.posta.psani.pridatPrilohu : cs.posta.psani.prilohyNejsouKDispozici}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+        )}
         {onSaveTemplate && (
           <Button
             type="button"

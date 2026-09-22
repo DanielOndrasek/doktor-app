@@ -280,6 +280,14 @@ export default function Mail({
             onSearchRecipients: searchRecipients,
             onSend: async (request) => {
               if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);
+              if (request.forwardOf) {
+                // Přeposlání s původními přílohami dělá engine (`mail_preposlat`, `$Forwarded` na originálu).
+                const fwd = await mailbox.forward({ ...request, forwardOf: request.forwardOf });
+                if (!fwd.flagged) toast({ title: cs.posta.psani.preposlanoBezPriznaku });
+                else if (fwd.attachments.length) toast({ title: cs.posta.psani.preposlanoSPrilohami(fwd.attachments.length) });
+                if (fwd.warnings.length) toast({ title: cs.posta.odeslanoSVarovanim, description: fwd.warnings.join(" ") });
+                return;
+              }
               const result = await mailbox.sendWithUploads(request);
               // Např. `jina_schranka`: zpráva odešla, ale z jiné schránky (pravidlo 8) — říct to nahlas.
               if (result.warnings.length) {
