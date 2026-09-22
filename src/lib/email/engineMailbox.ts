@@ -105,11 +105,8 @@ export interface EngineMailbox extends MailboxClient {
    * nedá, proto odkaz podepisuje engine.
    */
   attachmentLink(messageId: string, attachment: MailAttachmentMeta): Promise<string>;
-  /**
-   * Celé vlákno chronologicky (`mail_thread`), včetně zprávy samé. Jen z indexu
-   * ÚVN — u Gmailu vrací prázdné pole (engine vlákna Gmailu zatím neskládá).
-   */
-  thread(threadId: string, messageId?: string): Promise<ThreadMessage[]>;
+  /** Celé vlákno chronologicky (`mail_thread`) z indexu enginu, včetně zprávy samé. Obě schránky. */
+  thread(threadId: string): Promise<ThreadMessage[]>;
 }
 
 /* ── Drátové tvary ─────────────────────────────────────────────────────────
@@ -467,11 +464,14 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       return { uploadId: data.upload_id, name: data.nazev, size: data.velikost, mimeType: data.typ };
     },
 
-    async thread(threadId, messageId) {
-      // `mail_thread` nezná `schranka` a čte jen index ÚVN.
-      if (!threadId || mailbox === "gmail" || (messageId && schrankaOf(messageId) === "gmail")) return [];
+    async thread(threadId) {
+      // `mail_thread` nezná `schranka`: čte index podle klíče vlákna, a od indexu Gmailu
+      // (ÚKOL 44.3, 21. 9.) jsou v něm obě schránky (`gmail:<X-GM-THRID>`).
+      if (!threadId) return [];
       const data = await call<WireThread>("mail_thread", { vlakno: threadId, limit: 40 });
-      return (data.zpravy ?? []).map((m) => ({ ...toListMessage(m), body: m.telo ?? m.uryvek ?? "" }));
+      const rows = data.zpravy ?? [];
+      for (const m of rows) if (m.schranka) known.set(m.ref, m.schranka);
+      return rows.map((m) => ({ ...toListMessage(m), body: m.telo ?? m.uryvek ?? "" }));
     },
 
     async findByContacts(params: MailContactSearchParams): Promise<MailContactSearchResult> {

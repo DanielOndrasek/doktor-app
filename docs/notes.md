@@ -197,6 +197,14 @@ ze `schema_doktor` se na ně nepropsala, důvod nezjištěn. Migrace `prava_audi
 `grant all on all tables` + `revoke update, delete, truncate on audit` (insert-only i pro
 service role). Ponaučení: po každé migraci ověřit `information_schema.role_table_grants`,
 ne jen advisory.
+
+**22. 9. 2026 — index Gmailu na enginu (ÚKOL 44.3, commity `d2bc353`, `ecd2d75`).** Gmail je
+v témže indexu jako ÚVN (sloupec `schranka`, klíč X-GM-MSGID, štítky přes CONDSTORE); `mail_search`
+`gmail` i `vse` čte z indexu s úryvkem (medián 5 ms), `vlakno = gmail:<X-GM-THRID>`, `ref` dál
+`[Gmail]/Všechny zprávy:<uid>`. `mail_thread` čte podle klíče vlákna bez ohledu na schránku, takže
+aplikace vlákno skládá i u Gmailu (dřív jsme ho pro Gmail přeskakovali). Co zbývá na enginu je
+v `docs/stav-serveru.md` enginu: `mail_get(gmail)` živě, `schranky[]` + `dalsi_strana`,
+`stav_vlaken` přes obě Sent, `mail_move` na Gmailu propíše štítky až dalším syncem.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.

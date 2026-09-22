@@ -54,7 +54,7 @@ export default function Mail() {
 
   // Stabilní reference: DetailView na ní má useEffect, nová funkce při každém renderu by vlákno načítala pořád dokola.
   const loadThread = useCallback(
-    (message: MailMessageDetail) => (mailbox ? mailbox.thread(message.threadId, message.id) : Promise.resolve([])),
+    (message: MailMessageDetail) => (mailbox ? mailbox.thread(message.threadId) : Promise.resolve([])),
     [mailbox],
   );
 
