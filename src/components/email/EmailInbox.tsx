@@ -92,6 +92,12 @@ interface EmailInboxProps {
   /** Po návratu z Vyřízeno do Doručených (stav položky `nove`). */
   onRestored?: (messageId: string) => void;
   /**
+   * Ref zprávy, kterou má obrazovka otevřít zvenčí (odkaz `/posta?polozka=…`
+   * z Dnes nebo z přehledu běhů). Otevře se jednou, pak přijde `onOpened`.
+   */
+  openRef?: string | null;
+  onOpened?: () => void;
+  /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
    */
@@ -121,6 +127,8 @@ export function EmailInbox({
   itemForMessage,
   onArchived,
   onRestored,
+  openRef,
+  onOpened,
   renderContext,
 }: EmailInboxProps) {
   const isMobile = useIsMobile();
@@ -410,20 +418,23 @@ export function EmailInbox({
     [mailbox],
   );
 
-  const handleSelectEmail = async (email: MailListMessage) => {
-    setSelectedId(email.id);
+  /** Otevře detail podle refu; `unread` = zpráva je v seznamu nepřečtená a má se označit. */
+  const openById = async (id: string, unread: boolean) => {
+    setSelectedId(id);
     setComposing(false);
     setReplyData(null);
     setLoadingDetail(true);
-    if (email.labelIds.includes("UNREAD")) {
-      markAsRead(email.id);
+    if (unread) {
+      markAsRead(id);
     }
     try {
       if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);
-      const loaded = await mailbox.getMessage(email.id);
+      const loaded = await mailbox.getMessage(id);
       setDetail(loaded);
+      // Otevřeno zvenčí (bez řádku seznamu): nepřečtené se pozná až z detailu.
+      if (!unread && loaded.labelIds.includes("UNREAD")) markAsRead(id);
       // Položka k detailu podle Message-ID (spolehlivější než ref); záložně z mapy seznamu.
-      setDetailItem(items.get(email.id) ?? null);
+      setDetailItem(items.get(id) ?? null);
       if (itemForMessage) {
         itemForMessage(loaded)
           .then((item) => setDetailItem((prev) => item ?? prev))
@@ -437,6 +448,18 @@ export function EmailInbox({
       setLoadingDetail(false);
     }
   };
+
+  const handleSelectEmail = (email: MailListMessage) => openById(email.id, email.labelIds.includes("UNREAD"));
+
+  // Otevření zvenčí (`openRef`): jednou na každý nový ref; funkce jde přes ref, aby efekt nezávisel na každém renderu.
+  const openByIdRef = useRef(openById);
+  openByIdRef.current = openById;
+  useEffect(() => {
+    if (!openRef || !mailbox) return;
+    void openByIdRef.current(openRef, false).finally(() => onOpened?.());
+    // `onOpened` je jen oznámení; nová instance nemá zprávu otevírat znovu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRef, mailbox]);
 
   const handleReply = () => {
     if (!detail) return;

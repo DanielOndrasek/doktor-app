@@ -333,3 +333,17 @@ jednom řádku, od čtvrté adresy je „+N dalších" s rozkliknutím (hromadn�
 desítky adres). Blok vlákna se přesunul až pod tělo a přílohy, je sbalený (v hlavičce rozsah
 dat), po rozbalení ukáže posledních 6 zpráv a starší na „Zobrazit N starších". Stav rozbalení
 se při přepnutí zprávy resetuje.
+
+**22. 9. 2026 — K3.9 Přehled běhů a zásahů Clauda na Dnes.** `RunsHistory` (převzatá
+`AgentRunsHistory`) dostala zdroj nad `behy` + `audit` (`src/lib/runs.ts`). Zásah Clauda se
+skládá jen ze zápisových nástrojů auditu (`mail_move`, `mail_flag`, `mail_draft`, `mail_send`,
+`mail_preposlat`, `cal_pridat`, `kb_upsert`, `mail_sync`), volání blíž než 30 minut jsou jeden
+zásah; po rozbalení jsou vidět jednotlivé kroky (schránka, složka → složka, UID, příznaky).
+Čtení se neukazuje — jen `mail_search` má přes 500 řádků za den. Zjištění: `audit.vysledek`
+píše engine někdy jako JSON, někdy jako Python `repr` (`{'ok': True, …}`) — aplikace čte obojí,
+ale engine by měl sjednotit na JSON (poznámka pro server). Hlavička sekce varuje, když poslední
+běh je starší než 26 h (K2.7 „kontrola, že běh proběhl"). Odkazy `/posta?polozka=<id>`
+z `dnes()` a z přehledu běhů teď Pošta otevírá (`ItemSource.byId` → `ref_cache` → `openRef`);
+když je `ref_cache` prošlý (zpráva přesunutá mimo běh), ukáže se chyba — dohledání podle
+Message-ID přes `mail_najdi` by chtělo REST nástroj na enginu. `/udalosti?udalost=` a
+`/ukoly?ukol=`: Úkoly parametr čtou, Události zatím ne (zůstává).

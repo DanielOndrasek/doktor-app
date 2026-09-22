@@ -115,6 +115,7 @@ export const cs = {
       bezSchranky: "Není propojená žádná schránka.",
       nacteniSeznamu: "Nepodařilo se načíst e-maily.",
       nacteniZpravy: "Nepodařilo se načíst e-mail.",
+      polozkaBezZpravy: "K této položce se nepodařilo najít zprávu ve schránce.",
       nacteniSlozek: "Nepodařilo se načíst složky.",
       oznaceni: "Nepodařilo se označit e-mail.",
       presun: "Nepodařilo se přesunout e-mail.",
@@ -616,6 +617,40 @@ export const cs = {
     nazev: "Běhy a zásahy Clauda",
     poslednich: (n: number) => `· posledních ${n}`,
     bezZadani: "(bez zadání)",
+    /** Název řádku, když běh ani zásah nemá zadání. */
+    trideni: "Třídění pošty",
+    zasah: "Zásah Clauda",
+    nacteniSelhalo: "Přehled běhů se nepodařilo načíst.",
+    zadnyBeh: "Zatím žádný běh třídění.",
+    /** Poslední běh je starší, než by měl být (běhy jsou 7:00 / 13:00 / 17:00). */
+    posledniBehPred: (kdy: string) => `poslední běh ${kdy}`,
+    behChybi: "Dnes ještě neproběhl žádný běh.",
+    /** Popisky klíčů `behy.pocty`; neznámý klíč se ukáže tak, jak je. */
+    pocty: {
+      zpravy_uvn: "zpráv ÚVN",
+      zpravy_gmail: "zpráv Gmail",
+      zpravy: "zpráv",
+      polozky: "položek",
+      koncepty: "návrhů odpovědí",
+      navrhy: "návrhů odpovědí",
+      ukoly: "úkolů",
+      udalosti: "událostí",
+      prilohy_precteno: "příloh přečteno",
+      sum_uvn: "šum ÚVN",
+      sum_gmail: "šum Gmail",
+      sum: "šum",
+    } as Record<string, string>,
+    /** Popisky zápisových nástrojů enginu v zásahu Clauda (`audit.nastroj`). */
+    nastroje: {
+      mail_move: "přesunů",
+      mail_flag: "vlaječek",
+      mail_draft: "konceptů",
+      mail_send: "odesláno",
+      mail_preposlat: "přeposláno",
+      cal_pridat: "do kalendáře",
+      kb_upsert: "zápisů do wiki",
+      mail_sync: "synchronizací",
+    } as Record<string, string>,
     zdroj: {
       beh: "běh",
       claude: "Claude",

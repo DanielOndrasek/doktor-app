@@ -374,7 +374,14 @@ tvar `crm.agent_runs` → `src/lib/runs.ts` (`Run`, `RunOutcomeRef`).
 | — | `source` (běh · Claude · aplikace), `state` (běží · hotovo · chyba), `error` | K2.7: kontrola, že běh proběhl; `audit.kdo` rozlišuje app / claude / beh |
 | `formatDateCs` | date-fns s `cs` | konvence |
 
-Sekce se v Dnes zatím nezobrazuje — přijde s K3.9, až budou `behy`.
+**22. 9. 2026 (K3.9):** sekce je na Dnes pod „Rozpracováno v Claude". Zdroj
+`createSupabaseRunsSource` v `src/lib/runs.ts`: běh = řádek `behy` (výsledek = `polozky`
+s `beh_id` a k nim `ukoly` / `udalosti` přes `polozka_id`), zásah Clauda = zápisové nástroje
+z `audit` (`kdo = claude`: přesun, vlaječka, koncept, odeslání, kalendář, wiki) seskupené
+po 30 minutách; čtení (`mail_search`, `mail_get`) a kliknutí lékaře (`kdo = app`) se neukazují.
+Navíc proti CRM: hlavička říká, kdy byl poslední běh, a varuje po 26 hodinách bez běhu (K2.7).
+Odkazy na výsledek jsou `/posta?polozka=`, `/ukoly?ukol=`, `/udalosti?udalost=` — stejné jako
+z `dnes()`; Pošta parametr `polozka` od 22. 9. čte (`openRef` v `EmailInbox`).
 
 ### Úkoly — detail a zakládání (21. 9. 2026)
 

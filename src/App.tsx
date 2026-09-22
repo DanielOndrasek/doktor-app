@@ -20,6 +20,7 @@ import { createSupabaseContactSource } from "@/lib/contacts";
 import { createEngineClientFromEnv } from "@/lib/engine/client";
 import { createSupabaseEventSource } from "@/lib/events";
 import { createSupabaseItemSource } from "@/lib/items";
+import { createSupabaseRunsSource } from "@/lib/runs";
 import { createSupabaseSignatureSource } from "@/lib/signatures";
 import { createSupabaseTaskSource } from "@/lib/tasks";
 import { getAccessToken } from "@/lib/supabase/token";
@@ -43,6 +44,8 @@ const eventSource = createSupabaseEventSource({ engine });
 const signatureSource = createSupabaseSignatureSource();
 /** Položky pošty z běhu třídění (`polozky`, K3.2): triage v seznamu, návrh odpovědi, rozepsaný text. */
 const itemSource = createSupabaseItemSource();
+/** Běhy a zásahy Clauda (`behy` + zápisové řádky `audit`, K3.9) na Dnes. */
+const runsSource = createSupabaseRunsSource();
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
@@ -66,7 +69,7 @@ export default function App() {
                   <AppShell>
                     <Routes>
                       {/* Dnes nad `dnes()`; odložení signálu jde do `signaly_odlozene`. */}
-                      <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} />} />
+                      <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} runs={runsSource} />} />
                       {/* Pošta nad enginem; kontext u e-mailu (K3.8) z kontaktů a úkolů, „Úkol z mailu" do `ukoly`. */}
                       <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} itemSource={itemSource} />} />
                       {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}

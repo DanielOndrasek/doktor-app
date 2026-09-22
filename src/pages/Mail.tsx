@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, formatDistanceToNowStrict, isValid, parseISO } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
@@ -22,6 +23,8 @@ import { emptyTaskDraft, type TaskSource } from "@/lib/tasks";
 
 const MAILBOX_STORAGE_KEY = "doktor:posta-schranka";
 const MAILBOXES: EngineMailboxId[] = ["all", "uvn", "gmail"];
+/** `/posta?polozka=<id>` — odkaz z Dnes (`dnes()`) a z přehledu běhů; otevře zprávu položky. */
+const ITEM_PARAM = "polozka";
 
 function readMailbox(): EngineMailboxId {
   try {
@@ -198,6 +201,44 @@ export default function Mail({
     [itemSource],
   );
 
+  // Odkaz na položku (`?polozka=`): ref se dohledá v `polozky`, obrazovka zprávu otevře a parametr se uklidí.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const itemId = searchParams.get(ITEM_PARAM);
+  const [openRef, setOpenRef] = useState<string | null>(null);
+  const clearItemParam = useCallback(() => {
+    setOpenRef(null);
+    setSearchParams(
+      (prev) => {
+        prev.delete(ITEM_PARAM);
+        return prev;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+  useEffect(() => {
+    if (!itemId) return;
+    let cancelled = false;
+    itemSource
+      .byId(itemId)
+      .then((item) => {
+        if (cancelled) return;
+        if (item?.ref) {
+          setOpenRef(item.ref);
+        } else {
+          toast({ title: cs.posta.chyby.polozkaBezZpravy, variant: "destructive" });
+          clearItemParam();
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        toast({ title: err instanceof Error ? err.message : cs.posta.chyby.polozkaBezZpravy, variant: "destructive" });
+        clearItemParam();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, itemSource, toast, clearItemParam]);
+
   // Našeptávač adres z adresáře (kontakty s e-mailem).
   const searchRecipients = useCallback(
     async (query: string): Promise<EmailRecipientSuggestion[]> => {
@@ -254,6 +295,8 @@ export default function Mail({
           itemForMessage={itemForMessage}
           onArchived={onArchived}
           onRestored={onRestored}
+          openRef={openRef}
+          onOpened={clearItemParam}
           renderContext={renderContext}
         />
       </div>

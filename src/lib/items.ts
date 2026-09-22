@@ -38,6 +38,8 @@ export interface ItemSource {
   /** Položky k refům ze seznamu; klíč mapy je ref. */
   byRefs: (refs: string[]) => Promise<Map<string, TriageItem>>;
   byMessageId: (messageId: string) => Promise<TriageItem | null>;
+  /** Položka podle id — pro odkazy `/posta?polozka=<id>` z Dnes a z přehledu běhů. */
+  byId: (id: string) => Promise<TriageItem | null>;
   /** Změna stavu z kliknutí; `newRef` obnoví `ref_cache` po přesunu (`novy_ref`). */
   setStateByRef: (ref: string, state: ItemState, newRef?: string | null) => Promise<void>;
   /** Rozepsaný text uživatele (E3) — ukládá se průběžně z okna psaní. */
@@ -89,6 +91,13 @@ export function createSupabaseItemSource(client: typeof supabase = supabase): It
     async byMessageId(messageId) {
       if (!messageId) return null;
       const { data, error } = await client.from("polozky").select(COLUMNS).eq("message_id", messageId).limit(1).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? toItem(data) : null;
+    },
+
+    async byId(id) {
+      if (!id) return null;
+      const { data, error } = await client.from("polozky").select(COLUMNS).eq("id", id).maybeSingle();
       if (error) throw new Error(error.message);
       return data ? toItem(data) : null;
     },
