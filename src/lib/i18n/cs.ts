@@ -118,6 +118,17 @@ export const cs = {
 
     presunuto: "Přesunuto do",
 
+    /** Vyřízeno s lištou „Vrátit zpět" (kontrakt t22 v `docs/prevzato`). */
+    vyrizeno: {
+      tlacitko: "Vyřízeno",
+      lista: "Vyřízeno",
+      vratitZpet: "Vrátit zpět",
+      odpocet: (s: number) => `${s} s`,
+      vraceno: "Vráceno mezi otevřené",
+      presunSelhal: "Zprávu se nepodařilo přesunout do Vyřízeno.",
+      vratitMeziOtevrene: "Vrátit mezi otevřené",
+    },
+
     /** Přepínač schránek na obrazovce Pošta (K3.2). */
     schranky: {
       popisek: "Schránka",

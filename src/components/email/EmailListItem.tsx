@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
-import { MailOpen } from "lucide-react";
+import { Check, MailOpen } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
@@ -18,6 +18,8 @@ interface EmailListItemProps {
   isSelected: boolean;
   onClick: () => void;
   onMarkUnread?: (e: MouseEvent) => void;
+  /** Vyřízeno (✓) s lištou „Vrátit zpět"; bez propu se akce neukáže (třeba ve složce Vyřízeno). */
+  onDone?: (e: MouseEvent) => void;
 }
 
 function formatEmailDate(internalDate: string): string {
@@ -49,6 +51,7 @@ export function EmailListItem({
   isSelected,
   onClick,
   onMarkUnread,
+  onDone,
 }: EmailListItemProps) {
   const { displayName, email } = parseEmailFromHeader(from);
   const absoluteDate = (() => {
@@ -106,20 +109,36 @@ export function EmailListItem({
 
       {/* Plovoucí akce vpravo — zobrazí se až na hover. Jsou absolutně
        * pozicované, takže nezasahují do layoutu řádku (datum/jméno se nehýbe). */}
-      {onMarkUnread && !isUnread && (
+      {((onMarkUnread && !isUnread) || onDone) && (
         <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md border border-border bg-background/95 px-0.5 py-0.5 opacity-0 shadow-sm transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-          <span
-            role="button"
-            tabIndex={-1}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMarkUnread(e);
-            }}
-            className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title={cs.posta.seznam.oznacitNeprectene}
-          >
-            <MailOpen className="h-4 w-4" />
-          </span>
+          {onDone && (
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDone(e);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-success"
+              title={cs.posta.vyrizeno.tlacitko}
+            >
+              <Check className="h-4 w-4" />
+            </span>
+          )}
+          {onMarkUnread && !isUnread && (
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkUnread(e);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title={cs.posta.seznam.oznacitNeprectene}
+            >
+              <MailOpen className="h-4 w-4" />
+            </span>
+          )}
         </div>
       )}
     </button>

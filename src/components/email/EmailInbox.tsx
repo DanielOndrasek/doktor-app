@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
 import {
   ArrowLeft,
+  Check,
   ChevronDown,
   ChevronRight,
   Download,
@@ -17,6 +18,7 @@ import {
   RefreshCw,
   Reply,
   Search,
+  Undo2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -162,7 +164,8 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
     try {
       await mailbox.moveToFolder(messageId, folderId);
       toast({ title: `${cs.posta.presunuto} „${folderName}"` });
-      if (activeFolder === "inbox") {
+      // Zpráva opustila právě zobrazenou složku — ze seznamu pryč (i návrat z Vyřízeno do Doručených).
+      if (activeFolder !== folderId) {
         setEmails((prev) => prev.filter((e) => e.id !== messageId));
         if (selectedId === messageId) {
           setSelectedId(null);
@@ -173,6 +176,99 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
       toast({ title: errorMessage(err, cs.posta.chyby.presun), variant: "destructive" });
     }
   };
+
+  /* „Vrátit zpět" (kontrakt t22, `docs/prevzato/README.md`): po Vyřízeno běží 10 s odpočet
+   * a schránka o ničem neví. Teprve po něm jde `archiveMessage` (engine `mail_move`, vrací
+   * `novy_ref`). Vrácení během odpočtu nevolá schránku vůbec; selhání přesunu vrátí zprávu
+   * do seznamu a chybu ukáže — nic se nepředstírá. Stav položky (`polozky.stav`) přibude,
+   * až běh položky naplní. */
+  const UNDO_SECONDS = 10;
+  const [pendingDone, setPendingDone] = useState<{ message: MailListMessage; secondsLeft: number } | null>(null);
+  const pendingRef = useRef<{ message: MailListMessage; index: number; tick: number; fire: number } | null>(null);
+
+  const restoreMessage = (message: MailListMessage, index: number) =>
+    setEmails((prev) => (prev.some((e) => e.id === message.id) ? prev : [...prev.slice(0, index), message, ...prev.slice(index)]));
+
+  const clearPending = () => {
+    if (pendingRef.current) {
+      window.clearInterval(pendingRef.current.tick);
+      window.clearTimeout(pendingRef.current.fire);
+      pendingRef.current = null;
+    }
+    setPendingDone(null);
+  };
+
+  const performDone = async (message: MailListMessage, index: number) => {
+    if (!mailbox) return;
+    try {
+      await mailbox.archiveMessage(message.id);
+    } catch (err) {
+      restoreMessage(message, index);
+      toast({ title: errorMessage(err, cs.posta.vyrizeno.presunSelhal), variant: "destructive" });
+    }
+  };
+
+  /** Odpočet doběhne hned — druhé Vyřízeno během prvního, nebo odchod z obrazovky. */
+  const flushPending = () => {
+    const p = pendingRef.current;
+    if (!p) return;
+    clearPending();
+    void performDone(p.message, p.index);
+  };
+
+  const handleDone = (message: MailListMessage) => {
+    if (!mailbox) return;
+    flushPending();
+    const index = Math.max(0, emails.findIndex((e) => e.id === message.id));
+    setEmails((prev) => prev.filter((e) => e.id !== message.id));
+    if (selectedId === message.id) {
+      setSelectedId(null);
+      setDetail(null);
+    }
+    const tick = window.setInterval(
+      () => setPendingDone((p) => (p ? { ...p, secondsLeft: Math.max(0, p.secondsLeft - 1) } : p)),
+      1000,
+    );
+    const fire = window.setTimeout(() => {
+      const p = pendingRef.current;
+      clearPending();
+      if (p) void performDone(p.message, p.index);
+    }, UNDO_SECONDS * 1000);
+    pendingRef.current = { message, index, tick, fire };
+    setPendingDone({ message, secondsLeft: UNDO_SECONDS });
+  };
+
+  const undoDone = () => {
+    const p = pendingRef.current;
+    if (!p) return;
+    clearPending();
+    restoreMessage(p.message, p.index);
+    toast({ title: cs.posta.vyrizeno.vraceno });
+  };
+
+  // Odchod z obrazovky během odpočtu: přesun proběhne hned, ať se odškrtnutí neztratí.
+  useEffect(
+    () => () => {
+      flushPending();
+    },
+    // `flushPending` čte z refu; stačí zavěsit jednou.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  /** Detail zná jen `MailMessageDetail`; pro odpočet stačí hlavička ze seznamu, nebo z detailu. */
+  const asListMessage = (d: MailMessageDetail): MailListMessage =>
+    emails.find((e) => e.id === d.id) ?? {
+      id: d.id,
+      threadId: d.threadId,
+      snippet: "",
+      from: d.from,
+      to: d.to,
+      subject: d.subject,
+      date: d.date,
+      internalDate: d.internalDate,
+      labelIds: d.labelIds,
+    };
 
   const fetchEmails = useCallback(
     async (folderId?: string, search?: string, pageToken?: string) => {
@@ -387,10 +483,28 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
       onMarkUnread={handleMarkUnread}
       customFolders={customFolders}
       onMoveToFolder={handleMoveToFolder}
+      folderId={activeFolder}
+      onDone={activeFolder !== "archive" ? () => handleDone(asListMessage(detail)) : undefined}
+      onRestore={activeFolder === "archive" ? () => handleMoveToFolder(detail.id, "inbox", cs.posta.slozky.inbox) : undefined}
       attachmentUrl={attachmentUrl}
       loadThread={loadThread}
       renderContext={renderContext}
     />
+  ) : null;
+
+  const undoBar = pendingDone ? (
+    <div role="status" className="flex flex-shrink-0 items-center gap-3 border-t border-border bg-muted/60 px-4 py-2 text-sm">
+      <Check className="h-4 w-4 flex-shrink-0 text-success" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">
+        <span className="font-medium">{cs.posta.vyrizeno.lista}</span>
+        <span className="text-muted-foreground"> · {pendingDone.message.subject || cs.posta.seznam.bezPredmetu}</span>
+      </span>
+      <Button variant="outline" size="sm" className="h-7" onClick={undoDone}>
+        <Undo2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+        {cs.posta.vyrizeno.vratitZpet}
+        <span className="ml-1.5 tabular-nums text-muted-foreground">{cs.posta.vyrizeno.odpocet(pendingDone.secondsLeft)}</span>
+      </Button>
+    </div>
   ) : null;
 
   // Mobil: detail nebo psaní zprávy přes celou obrazovku.
@@ -517,6 +631,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
                 isSelected={selectedId === email.id}
                 onClick={() => void handleSelectEmail(email)}
                 onMarkUnread={() => void handleMarkUnreadById(email.id)}
+                onDone={activeFolder !== "archive" ? () => handleDone(email) : undefined}
               />
             ))}
             {nextPageToken && (
@@ -535,6 +650,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
           </>
         )}
       </ScrollArea>
+      {undoBar}
     </div>
   );
 
@@ -597,6 +713,9 @@ function DetailView({
   onMarkUnread,
   customFolders,
   onMoveToFolder,
+  folderId,
+  onDone,
+  onRestore,
   attachmentUrl,
   loadThread,
   renderContext,
@@ -607,6 +726,10 @@ function DetailView({
   onMarkUnread: () => void;
   customFolders: MailFolderRef[];
   onMoveToFolder: (messageId: string, folderId: string, folderName: string) => Promise<void>;
+  /** Složka, ve které je zpráva otevřená — ve Vyřízeno je místo ✓ „Vrátit mezi otevřené". */
+  folderId: string;
+  onDone?: () => void;
+  onRestore?: () => Promise<void>;
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
   loadThread?: (message: MailMessageDetail) => Promise<ThreadMessage[]>;
   renderContext?: (detail: MailMessageDetail) => ReactNode;
@@ -884,7 +1007,18 @@ function DetailView({
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center gap-2 border-t border-border px-6 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-border px-6 py-3">
+        {folderId === "archive" && onRestore ? (
+          <Button variant="outline" size="sm" onClick={() => void onRestore()}>
+            <Undo2 className="mr-1.5 h-4 w-4" />
+            {cs.posta.vyrizeno.vratitMeziOtevrene}
+          </Button>
+        ) : onDone ? (
+          <Button size="sm" onClick={onDone}>
+            <Check className="mr-1.5 h-4 w-4" />
+            {cs.posta.vyrizeno.tlacitko}
+          </Button>
+        ) : null}
         <Button variant="outline" size="sm" onClick={onReply}>
           <Reply className="mr-1.5 h-4 w-4" />
           {cs.posta.detail.odpovedet}

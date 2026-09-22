@@ -223,6 +223,16 @@ Tlačítko je v kontextu dialogu úkolu, jen u uloženého úkolu s termínem; k
 rozepsaný a neuložený, hlásí „nejdřív ulož". Opakované kliknutí engine odmítne přes `zdroj_id`.
 Název kalendáře je konstanta v `lib/tasks.ts` (plán ho jmenuje výslovně); až bude víc kalendářů
 pro úkoly, půjde do `schranky`/nastavení.
+
+**22. 9. 2026 — „Vrátit zpět" po Vyřízeno (K0.1 → K3.2, kontrakt t22).** V Poště je ✓ Vyřízeno
+(v seznamu na hover, v detailu v patičce). Zpráva zmizí ze seznamu, dole běží lišta s odpočtem
+10 s a tlačítkem Vrátit zpět; dokud běží, schránka o ničem neví (případ 1 a 8). Po doběhnutí
+`archiveMessage` = `mail_move` do `_Triage/Vyřízeno`, engine vrací `novy_ref` (2). Selhání přesunu
+vrátí zprávu do seznamu a ukáže chybu (6). Druhé ✓ během odpočtu první přesun provede hned,
+odchod z obrazovky taky (7). Ve složce Vyřízeno je místo ✓ „Vrátit mezi otevřené" = `mail_move`
+do INBOX (3, 5 — dohledání a Gmail štítky dělá engine, ne aplikace). Co chybí: stav položky
+(`polozky.stav = vyrizeno/nove`, `stav_zdroj = klik`) a `presun_ceka`/`presun_pokusy` — přijde
+s naplněnými `polozky`; a `hledani v archivu` když `novy_ref` chybí (4) je dnes na enginu.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
