@@ -114,7 +114,14 @@ function parseResult(vysledek: string | null): Record<string, unknown> | null {
   if (!vysledek) return null;
   const v = vysledek.trim();
   if (!v.startsWith("{")) return null;
-  for (const candidate of [v, v.replace(/'/g, '"').replace(/\bTrue\b/g, "true").replace(/\bFalse\b/g, "false").replace(/\bNone\b/g, "null")]) {
+  // Python repr → JSON: jednoduše uvozované řetězce (i s `\'` a s `"` uvnitř) se
+  // převedou přes JSON.stringify, dvojitě uvozované už JSON jsou; pak True/False/None.
+  const pythonish = v
+    .replace(/'((?:[^'\\]|\\.)*)'/g, (_m, s: string) => JSON.stringify(s.replace(/\\'/g, "'")))
+    .replace(/\bTrue\b/g, "true")
+    .replace(/\bFalse\b/g, "false")
+    .replace(/\bNone\b/g, "null");
+  for (const candidate of [v, pythonish]) {
     try {
       const j: unknown = JSON.parse(candidate);
       if (j && typeof j === "object" && !Array.isArray(j)) return j as Record<string, unknown>;
@@ -214,9 +221,10 @@ export function createSupabaseRunsSource(client: typeof supabase = supabase): Ru
       const groups = groupInterventions(audit.data ?? []);
       for (const g of groups) interventions.set(g.run.id, g.rows);
 
-      return [...(behy.data ?? []).map(toBehRun), ...groups.map((g) => g.run)]
-        .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-        .slice(0, limit);
+      // Běhy mají přednost: záplava zásahů je nesmí vytlačit ze seznamu (hlavička podle nich pozná, že běhy stojí).
+      const runs = (behy.data ?? []).map(toBehRun);
+      const interventionRuns = groups.map((g) => g.run).slice(0, Math.max(0, limit - runs.length));
+      return [...runs, ...interventionRuns].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     },
 
     async outcomes(run) {

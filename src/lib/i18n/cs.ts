@@ -66,7 +66,7 @@ export const cs = {
       smerPrijate: "Jen přijaté",
       smerOdeslane: "Jen odeslané",
       jenSPrilohou: "Jen zprávy s přílohou",
-      vsechnySlozky: "S filtrem se hledá ve všech složkách, ne jen v otevřené.",
+      vsechnySlozky: "S filtrem se hledá ve všech složkách, ne jen v otevřené. Výběr složky filtr zruší.",
       hledat: "Hledat",
       zrusit: "Zrušit filtr",
       zeptatSe: "Zeptat se Clauda",

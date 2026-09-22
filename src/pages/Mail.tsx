@@ -227,6 +227,9 @@ export default function Mail({
       .then((item) => {
         if (cancelled) return;
         if (item?.ref) {
+          // Zpráva z jiné schránky, než na které Pošta stojí, by se z ní nenačetla — přepnout na sjednocenou.
+          const itemMailbox: EngineMailboxId = item.ref.startsWith("[Gmail]/") ? "gmail" : "uvn";
+          if (mailboxId !== "all" && mailboxId !== itemMailbox) switchMailbox("all");
           setOpenRef(item.ref);
         } else {
           toast({ title: cs.posta.chyby.polozkaBezZpravy, variant: "destructive" });
@@ -241,6 +244,8 @@ export default function Mail({
     return () => {
       cancelled = true;
     };
+    // `mailboxId` se tu jen čte pro přepnutí; jeho změna nemá položku hledat znovu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, itemSource, toast, clearItemParam]);
 
   // „Zeptat se" (kontrolní seznam plánu): otázka + kontext hledání do `fronta_claude`; nic se nevolá na model.
@@ -329,6 +334,7 @@ export default function Mail({
           itemForMessage={itemForMessage}
           onArchived={onArchived}
           onRestored={onRestored}
+          canForward={mailbox ? (detail) => mailbox.forwardSupported(detail.id) : undefined}
           openRef={openRef}
           onOpened={clearItemParam}
           onAskClaude={onAskClaude}

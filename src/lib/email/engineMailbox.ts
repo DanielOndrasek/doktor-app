@@ -110,6 +110,8 @@ export interface EngineMailbox extends MailboxClient {
    * převede na text — engine skládá zprávu sám). Engine to umí jen nad ÚVN.
    */
   forward(request: EngineSendRequest & { forwardOf: string }): Promise<EngineForwardResult>;
+  /** Jestli `forward` pro tenhle ref půjde (jen ÚVN) — obrazovka podle toho tlačítko schová. */
+  forwardSupported(messageId: string): boolean;
   /** Nahrání přílohy multipartem; vrací `upload_id` (pravidlo 2). */
   upload(file: File | Blob, name?: string): Promise<EngineUploadResult>;
   /**
@@ -489,9 +491,13 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       return { ref: data.ref ?? "" };
     },
 
-    async forward(request): Promise<EngineForwardResult> {
+    forwardSupported(messageId) {
       // `mail_preposlat` nezná `schranka` ani `odeslat_z`: čte i odesílá jen ÚVN (22. 9.).
-      if (schrankaOf(request.forwardOf) === "gmail") {
+      return schrankaOf(messageId) === undefined;
+    },
+
+    async forward(request): Promise<EngineForwardResult> {
+      if (!client.forwardSupported(request.forwardOf)) {
         throw new EngineError("not_exposed", cs.posta.engine.preposlaniJenUvn);
       }
       // REST odmítá neznámé parametry — jde jen to, co nástroj má.

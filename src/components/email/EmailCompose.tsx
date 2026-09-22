@@ -396,7 +396,8 @@ export function EmailCompose({
               placeholder={cs.posta.psani.adresaPlaceholder}
             />
           </div>
-          {!showCc && (
+          {/* Přeposlání: `mail_preposlat` bere jen Komu — kopie se nenabízejí, aby se tiše neztratily. */}
+          {!showCc && !forwardOf && (
             <Button
               variant="ghost"
               size="sm"
@@ -406,7 +407,7 @@ export function EmailCompose({
               CC
             </Button>
           )}
-          {!showBcc && (
+          {!showBcc && !forwardOf && (
             <Button
               variant="ghost"
               size="sm"

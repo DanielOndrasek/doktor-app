@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
-import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
+import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, splitAddressHeader, textToHtml } from "@/lib/email/html";
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import { activeFilterCount } from "@/lib/email/search";
@@ -97,6 +97,8 @@ interface EmailInboxProps {
   onArchived?: (message: MailListMessage, newRef?: string) => void;
   /** Po návratu z Vyřízeno do Doručených (stav položky `nove`). */
   onRestored?: (messageId: string) => void;
+  /** Jestli jde zprávu přeposlat s přílohami (engine to umí jen nad ÚVN); bez propu se tlačítko ukazuje vždy. */
+  canForward?: (detail: MailMessageDetail) => boolean;
   /**
    * Ref zprávy, kterou má obrazovka otevřít zvenčí (odkaz `/posta?polozka=…`
    * z Dnes nebo z přehledu běhů). Otevře se jednou, pak přijde `onOpened`.
@@ -140,6 +142,7 @@ export function EmailInbox({
   itemForMessage,
   onArchived,
   onRestored,
+  canForward,
   openRef,
   onOpened,
   onAskClaude,
@@ -349,7 +352,8 @@ export function EmailInbox({
       try {
         const page = await mailbox.listMessages({
           folderId: filterActive ? "all" : folderId || activeFolder,
-          search,
+          // Bez výslovného dotazu platí ten uplatněný — efekt po změně filtru či složky ho nesmí zahodit.
+          search: (search === undefined ? appliedQuery : search) || undefined,
           unreadOnly: showUnreadOnly,
           pageToken,
           maxResults: 30,
@@ -368,7 +372,7 @@ export function EmailInbox({
         setLoadingMore(false);
       }
     },
-    [activeFolder, mailbox, showUnreadOnly, toast, refreshItems, filter, filterActive],
+    [activeFolder, appliedQuery, mailbox, showUnreadOnly, toast, refreshItems, filter, filterActive],
   );
 
   useEffect(() => {
@@ -417,6 +421,8 @@ export function EmailInbox({
   };
 
   const handleFolderChange = (folder: EmailFolder) => {
+    // S filtrem se hledá ve všech složkách; výběr složky filtr zruší — uživatel chce právě tu složku.
+    if (filterActive) setFilter({});
     setActiveFolder(folder.id);
     setEmails([]);
     setSelectedId(null);
@@ -424,7 +430,7 @@ export function EmailInbox({
     setNextPageToken(null);
     setComposing(false);
     setReplyData(null);
-    void fetchEmails(folder.id, appliedQuery);
+    // Načtení udělá efekt nad `fetchEmails` (mění se `activeFolder`, případně filtr).
   };
 
   const markAsRead = useCallback(
@@ -595,7 +601,7 @@ export function EmailInbox({
     <DetailView
       detail={detail}
       onReply={handleReply}
-      onForward={handleForward}
+      onForward={!canForward || canForward(detail) ? handleForward : undefined}
       onMarkUnread={handleMarkUnread}
       customFolders={customFolders}
       onMoveToFolder={handleMoveToFolder}
@@ -670,7 +676,7 @@ export function EmailInbox({
 
   const listPanel = (
     <div className="flex h-full flex-col">
-      {isMobile && <EmailFolderTabs activeFolder={activeFolder} folders={folders} onFolderChange={handleFolderChange} />}
+      {isMobile && <EmailFolderTabs activeFolder={filterActive ? "" : activeFolder} folders={folders} onFolderChange={handleFolderChange} />}
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -810,7 +816,7 @@ export function EmailInbox({
     <div className="flex h-full">
       <div className="w-[180px] flex-shrink-0 border-r border-border">
         <EmailFolderNav
-          activeFolder={activeFolder}
+          activeFolder={filterActive ? "" : activeFolder}
           folders={folders}
           onFolderChange={handleFolderChange}
           onNewEmail={handleNewEmail}
@@ -840,10 +846,7 @@ const RECIPIENTS_PREVIEW = 3;
 /** Adresáti na jednom řádku s rozkliknutím — hromadné zprávy mívají desítky adres. */
 function RecipientsLine({ label, value }: { label: string; value: string }) {
   const [open, setOpen] = useState(false);
-  const all = (value || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const all = splitAddressHeader(value);
   if (all.length <= RECIPIENTS_PREVIEW) {
     return (
       <div className="mt-0.5 truncate text-xs text-muted-foreground" title={value}>
@@ -884,7 +887,8 @@ function DetailView({
 }: {
   detail: MailMessageDetail;
   onReply: () => void;
-  onForward: () => void;
+  /** `undefined` = přeposlání pro tuhle zprávu nejde (Gmail) a tlačítko se neukáže. */
+  onForward?: () => void;
   onMarkUnread: () => void;
   customFolders: MailFolderRef[];
   onMoveToFolder: (messageId: string, folderId: string, folderName: string) => Promise<void>;
@@ -1294,10 +1298,12 @@ function DetailView({
           <Reply className="mr-1.5 h-4 w-4" />
           {cs.posta.detail.odpovedet}
         </Button>
-        <Button variant="outline" size="sm" onClick={onForward}>
-          <Forward className="mr-1.5 h-4 w-4" />
-          {cs.posta.detail.preposlat}
-        </Button>
+        {onForward && (
+          <Button variant="outline" size="sm" onClick={onForward}>
+            <Forward className="mr-1.5 h-4 w-4" />
+            {cs.posta.detail.preposlat}
+          </Button>
+        )}
         {onNoteForClaude && (
           <Button variant="outline" size="sm" onClick={() => setNoteOpen(true)}>
             <MessageSquarePlus className="mr-1.5 h-4 w-4" />

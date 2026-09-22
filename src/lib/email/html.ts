@@ -140,6 +140,31 @@ export function htmlToPlainText(html: string): string {
     .trim();
 }
 
+/**
+ * Rozdělí hlavičku Komu/Kopie na jednotlivé adresáty. Čárka uvnitř uvozovek
+ * („Novák, Jan" <jan@…>) ani v `<…>` nerozděluje — naivní `split(",")` by
+ * z jednoho adresáta udělal dva.
+ */
+export function splitAddressHeader(header: string | null | undefined): string[] {
+  const out: string[] = [];
+  let current = "";
+  let quoted = false;
+  let angle = false;
+  for (const ch of header ?? "") {
+    if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === "<") angle = true;
+    else if (!quoted && ch === ">") angle = false;
+    if (ch === "," && !quoted && !angle) {
+      if (current.trim()) out.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) out.push(current.trim());
+  return out;
+}
+
 /** Vytáhne e-mailové adresy z hlavičky „Jméno <adresa>, …“. */
 export function extractEmails(header: string | null | undefined): string[] {
   if (!header) return [];

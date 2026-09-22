@@ -375,3 +375,14 @@ je „Poznámka pro Clauda" — zapíše `fronta_claude` (`druh = poznamka`) s r
 předmětem a `polozka_id`; Dnes ji ukazuje vedle dotazů a odpověď Clauda po zpracování. Kontrakt
 pro Clauda je v `docs/most-claude.md`. Co zůstává: přehled `opravy` (páry návrh ↔ odesláno)
 přijde, až je engine začne plnit (ÚKOL 39 `opravy_sber`); dnes by byl prázdný.
+
+**22. 9. 2026 — kontrola kódu dnešních změn (10 nálezů, vše opraveno).** Filtr hledání
+zahazoval uplatněné klíčové slovo (efekt volal `fetchEmails()` bez dotazu); s filtrem výběr
+složky filtr zruší a navigace nic nezvýrazňuje; přeposlání schová CC/BCC (nástroj je nebere)
+a tlačítko Přeposlat se u Gmail zprávy neukazuje (`forwardSupported`); odkaz `?polozka=` na
+zprávu z jiné schránky přepne Poštu na sjednocenou; `?udalost=` se po prvním použití uklidí,
+aby Přidat/Zamítnout nepřepínalo záložku; přehled běhů nikdy nevytlačí běhy zásahy; Python
+repr ve `vysledek` se převádí po řetězcích (apostrof uvnitř nerozbije parse); adresáti se dělí
+podle uvozovek a `<…>` (`splitAddressHeader`). Sdílený `.claude/settings.json` je zpět na
+`acceptEdits` — `bypassPermissions` patří jen do `settings.local.json` (gitignored) a do
+uživatelského nastavení, ne do repozitáře, kde by obcházel pravidla 8 a „kalendář jen klikem".

@@ -23,20 +23,34 @@ export default function Events({ source }: { source: EventSource }) {
   const [calendars, setCalendars] = useState<CalendarRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<EventState>("novy");
-  const [searchParams] = useSearchParams();
-  const highlightId = searchParams.get(EVENT_PARAM);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Zvýraznění se drží ve stavu a parametr se po prvním použití uklidí — jinak by každá
+  // změna události (Přidat, Zamítnout) znovu přepínala záložku podle odkazu.
+  const [highlightId, setHighlightId] = useState<string | null>(() => searchParams.get(EVENT_PARAM));
+  const [highlightDone, setHighlightDone] = useState(false);
 
-  // Odkaz na událost: až jsou data, přepnout na její záložku a přijet ke kartě.
+  // Odkaz na událost: až jsou data, jednou přepnout na její záložku a přijet ke kartě.
   useEffect(() => {
-    if (loading || !highlightId) return;
+    if (loading || !highlightId || highlightDone) return;
+    setHighlightDone(true);
+    setSearchParams(
+      (prev) => {
+        prev.delete(EVENT_PARAM);
+        return prev;
+      },
+      { replace: true },
+    );
     const target = events.find((e) => e.id === highlightId);
-    if (!target) return;
+    if (!target) {
+      setHighlightId(null);
+      return;
+    }
     setState(target.state);
     const timer = window.setTimeout(() => {
       document.getElementById(`udalost-${target.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loading, highlightId, events]);
+  }, [loading, highlightId, highlightDone, events, setSearchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
