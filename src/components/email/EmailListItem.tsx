@@ -20,7 +20,17 @@ interface EmailListItemProps {
   onMarkUnread?: (e: MouseEvent) => void;
   /** Vyřízeno (✓) s lištou „Vrátit zpět"; bez propu se akce neukáže (třeba ve složce Vyřízeno). */
   onDone?: (e: MouseEvent) => void;
+  /** Pole triage z `polozky` (K3.2): priorita 1–3, stav (jen „čekám" se ukazuje) a co řešit místo úryvku. */
+  priority?: 1 | 2 | 3 | null;
+  stateLabel?: string | null;
+  toDo?: string | null;
 }
+
+const PRIORITY_CLASS: Record<1 | 2 | 3, string> = {
+  1: "bg-destructive/15 text-destructive",
+  2: "bg-warning/20 text-warning-foreground",
+  3: "bg-muted text-muted-foreground",
+};
 
 function formatEmailDate(internalDate: string): string {
   const d = new Date(Number(internalDate));
@@ -52,6 +62,9 @@ export function EmailListItem({
   onClick,
   onMarkUnread,
   onDone,
+  priority,
+  stateLabel,
+  toDo,
 }: EmailListItemProps) {
   const { displayName, email } = parseEmailFromHeader(from);
   const absoluteDate = (() => {
@@ -80,6 +93,14 @@ export function EmailListItem({
         <div className="mb-0.5 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             {isUnread && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-secondary" />}
+            {priority ? (
+              <span className={cn("flex-shrink-0 rounded px-1 text-[10.5px] font-semibold leading-4", PRIORITY_CLASS[priority])}>
+                {cs.posta.triage.priorita(priority)}
+              </span>
+            ) : null}
+            {stateLabel ? (
+              <span className="flex-shrink-0 rounded bg-secondary/15 px-1 text-[10.5px] font-medium leading-4 text-secondary">{stateLabel}</span>
+            ) : null}
             <span
               className={cn(
                 "truncate text-sm",
@@ -104,7 +125,11 @@ export function EmailListItem({
         >
           {subject || cs.posta.seznam.bezPredmetu}
         </div>
-        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{snippet}</div>
+        {toDo ? (
+          <div className="mt-0.5 line-clamp-2 text-xs text-foreground/80">{toDo}</div>
+        ) : (
+          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{snippet}</div>
+        )}
       </div>
 
       {/* Plovoucí akce vpravo — zobrazí se až na hover. Jsou absolutně

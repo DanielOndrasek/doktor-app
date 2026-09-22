@@ -97,7 +97,14 @@ export interface EmailComposeSharedProps {
    * naplánované ani automatické odeslání tady není.
    */
   onSend: (request: ComposeSendRequest) => Promise<void>;
+  /**
+   * Rozepsaný text (K3.2, E3): volá se s odstupem po psaní, aby se rozepsaná
+   * odpověď uložila k položce a běh ji nepřepsal. Kam, řeší volající.
+   */
+  onBodyChange?: (html: string, context: { inReplyTo?: string; threadId?: string }) => void;
 }
+
+const BODY_CHANGE_DELAY_MS = 1500;
 
 interface EmailComposeProps extends EmailComposeSharedProps {
   defaultTo?: string;
@@ -165,6 +172,7 @@ export function EmailCompose({
   onTemplateUsed,
   onUploadAttachment,
   onSend,
+  onBodyChange,
   bodyMinHeightClass,
   onClose,
   onSent,
@@ -194,6 +202,18 @@ export function EmailCompose({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const bodyHtmlRef = useRef(defaultBody);
+  const bodyChangeTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (bodyChangeTimer.current) window.clearTimeout(bodyChangeTimer.current);
+    },
+    [],
+  );
+  const scheduleBodyChange = (html: string) => {
+    if (!onBodyChange) return;
+    if (bodyChangeTimer.current) window.clearTimeout(bodyChangeTimer.current);
+    bodyChangeTimer.current = window.setTimeout(() => onBodyChange(html, { inReplyTo, threadId }), BODY_CHANGE_DELAY_MS);
+  };
 
   useEffect(() => {
     setTo(parseEmails(defaultTo));
@@ -566,6 +586,7 @@ export function EmailCompose({
             defaultContent={initialContent}
             onUpdate={(html) => {
               bodyHtmlRef.current = html;
+              scheduleBodyChange(html);
             }}
             onFilesAdded={onUploadAttachment ? (files) => void addFiles(files) : undefined}
             editorRef={editorRef}

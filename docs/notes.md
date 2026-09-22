@@ -244,6 +244,17 @@ by rozepsaný text). Engine `podpis_id` **nedostává** — podpis je v těle, j
 podruhé; `podpisy_seznam` na enginu tím pádem aplikace nepotřebuje. Obrázky v podpisu zůstávají
 `data:` do 3 MB (`onUploadImage` nezapojen — kam ukládat, rozhodne s K4.3 sklad příloh).
 O5 (názvy podpisů z ÚKOLU 41) zůstává otevřené — Štěpán si je zatím pojmenuje sám.
+
+**22. 9. 2026 — pole triage, návrh a autosave nad `polozky` (K3.2 dokončeno na straně aplikace).**
+`src/lib/items.ts` (`ItemSource`: `byRefs`, `byMessageId`, `setStateByRef`, `saveUserDraft`).
+Seznam se páruje přes `ref_cache` (v seznamu z enginu Message-ID není), detail přes `message_id`.
+V seznamu chip P1–P3, „Čekám" a `co_resit` místo úryvku; v detailu box priorita · kategorie ·
+stav · co řešit a věta, že je návrh (nebo rozepsaný text). Odpovědět předvyplní tělo: rozepsaný
+text uživatele má přednost před `navrh_telo` (E3), předmět z `navrh_predmet`. Rozepsaný text se
+ukládá 1,5 s po psaní do `rozepsano_telo` (HTML). Vyřízeno → `stav = hotovo`, `ref_cache = novy_ref`;
+Vrátit mezi otevřené → `nove`; obojí `stav_zdroj = klik`. Tabulka je zatím prázdná — první běh
+třídění ji naplní podle `most-claude.md` (doplněno: `ref_cache` povinný, slovník `stav`).
+Tím je K3 hotové až na K3.4 (přílohy z jiného mailu, Disk) a K3.9 (běhy), obojí čeká na engine/běh.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.

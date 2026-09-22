@@ -19,6 +19,7 @@ import { createSupabaseClaudeWorkSource } from "@/lib/claudeProjects";
 import { createSupabaseContactSource } from "@/lib/contacts";
 import { createEngineClientFromEnv } from "@/lib/engine/client";
 import { createSupabaseEventSource } from "@/lib/events";
+import { createSupabaseItemSource } from "@/lib/items";
 import { createSupabaseSignatureSource } from "@/lib/signatures";
 import { createSupabaseTaskSource } from "@/lib/tasks";
 import { getAccessToken } from "@/lib/supabase/token";
@@ -40,6 +41,8 @@ const taskSource = createSupabaseTaskSource(undefined, { engine });
 const eventSource = createSupabaseEventSource({ engine });
 /** Podpisy e-mailu (`podpisy`, K3.3): Nastavení je spravuje, Pošta vkládá podle schránky odeslání. */
 const signatureSource = createSupabaseSignatureSource();
+/** Položky pošty z běhu třídění (`polozky`, K3.2): triage v seznamu, návrh odpovědi, rozepsaný text. */
+const itemSource = createSupabaseItemSource();
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
@@ -65,7 +68,7 @@ export default function App() {
                       {/* Dnes nad `dnes()`; odložení signálu jde do `signaly_odlozene`. */}
                       <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} />} />
                       {/* Pošta nad enginem; kontext u e-mailu (K3.8) z kontaktů a úkolů, „Úkol z mailu" do `ukoly`. */}
-                      <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} />} />
+                      <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} itemSource={itemSource} />} />
                       {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}
                       <Route path={TASKS_PATH} element={<Tasks source={taskSource} />} />
                       {/* Události nad `udalosti`; zápis do kalendáře jen z tlačítka přes engine. */}

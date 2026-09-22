@@ -118,6 +118,18 @@ export const cs = {
 
     presunuto: "Přesunuto do",
 
+    /** Pole triage z `polozky` v seznamu a detailu (K3.2). */
+    triage: {
+      priorita: (p: number) => `P${p}`,
+      kategorie: "Kategorie",
+      coResit: "Co řešit",
+      stavy: { nove: "Nové", ceka: "Čekám", odeslano: "Odesláno", hotovo: "Vyřízeno", zamitnuto: "Zamítnuto" } as Record<string, string>,
+      navrhPripraven: "Návrh odpovědi je připravený — Odpovědět ho předvyplní.",
+      rozepsano: "Máš rozepsanou odpověď — Odpovědět ji otevře.",
+      rozepsaneUlozeno: "Rozepsaný text uložen",
+      rozepsaneNeulozeno: "Rozepsaný text se nepodařilo uložit.",
+    },
+
     /** Vyřízeno s lištou „Vrátit zpět" (kontrakt t22 v `docs/prevzato`). */
     vyrizeno: {
       tlacitko: "Vyřízeno",

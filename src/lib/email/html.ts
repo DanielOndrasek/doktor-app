@@ -114,6 +114,19 @@ export function textToHtml(text: string): string {
   return `<div style="white-space:pre-wrap">${linked}</div>`;
 }
 
+/**
+ * Prostý text návrhu odpovědi (`navrh_telo` z běhu) → HTML pro editor psaní:
+ * odstavce z prázdných řádků, `<br>` uvnitř odstavce. Nic se neinterpretuje.
+ */
+export function plainTextToEditorHtml(text: string): string {
+  return (text || "")
+    .replace(/\r\n?/g, "\n")
+    .trim()
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
 /** Vytáhne e-mailové adresy z hlavičky „Jméno <adresa>, …“. */
 export function extractEmails(header: string | null | undefined): string[] {
   if (!header) return [];

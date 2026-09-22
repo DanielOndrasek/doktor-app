@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, formatDistanceToNowStrict, isValid, parseISO } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
@@ -13,7 +13,8 @@ import { contactDisplayName, type ContactSource } from "@/lib/contacts";
 import type { EmailRecipientSuggestion } from "@/lib/email/compose";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
 import { emailSignatureToEditorHtml } from "@/lib/email/signature";
-import type { MailAttachmentMeta, MailMessageDetail } from "@/lib/email/types";
+import type { MailAttachmentMeta, MailListMessage, MailMessageDetail } from "@/lib/email/types";
+import type { ItemSource } from "@/lib/items";
 import { loadMailboxes } from "@/lib/mailboxes";
 import type { SignatureSource } from "@/lib/signatures";
 import { getAccessToken } from "@/lib/supabase/token";
@@ -51,10 +52,12 @@ export default function Mail({
   contactSource,
   taskSource,
   signatureSource,
+  itemSource,
 }: {
   contactSource: ContactSource;
   taskSource: TaskSource;
   signatureSource: SignatureSource;
+  itemSource: ItemSource;
 }) {
   const { toast } = useToast();
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
@@ -158,6 +161,43 @@ export default function Mail({
     [ownEmails, loadContext, createTaskFromMail],
   );
 
+  // Položky z běhu (K3.2): triage v seznamu podle refu, k detailu podle Message-ID.
+  const loadItems = useCallback((refs: string[]) => itemSource.byRefs(refs), [itemSource]);
+  const itemForMessage = useCallback((message: MailMessageDetail) => itemSource.byMessageId(message.messageId), [itemSource]);
+
+  // Stav položky se odvozuje i z kliknutí: Vyřízeno = `hotovo`, návrat = `nove`, vždy `stav_zdroj = klik`.
+  const onArchived = useCallback(
+    (message: MailListMessage, newRef?: string) => {
+      itemSource.setStateByRef(message.id, "hotovo", newRef).catch((err: unknown) => console.error(cs.posta.vyrizeno.presunSelhal, err));
+    },
+    [itemSource],
+  );
+  const onRestored = useCallback(
+    (messageId: string) => {
+      itemSource.setStateByRef(messageId, "nove").catch((err: unknown) => console.error(cs.posta.chyby.presun, err));
+    },
+    [itemSource],
+  );
+
+  // Rozepsaný text (E3): ukládá se k položce podle Message-ID zprávy, na kterou se odpovídá.
+  const draftItemIds = useRef(new Map<string, string | null>());
+  const onBodyChange = useCallback(
+    (html: string, context: { inReplyTo?: string }) => {
+      const messageId = context.inReplyTo;
+      if (!messageId) return;
+      const save = async () => {
+        let itemId = draftItemIds.current.get(messageId);
+        if (itemId === undefined) {
+          itemId = (await itemSource.byMessageId(messageId))?.id ?? null;
+          draftItemIds.current.set(messageId, itemId);
+        }
+        if (itemId) await itemSource.saveUserDraft(itemId, html);
+      };
+      save().catch((err: unknown) => console.error(cs.posta.triage.rozepsaneNeulozeno, err));
+    },
+    [itemSource],
+  );
+
   // Našeptávač adres z adresáře (kontakty s e-mailem).
   const searchRecipients = useCallback(
     async (query: string): Promise<EmailRecipientSuggestion[]> => {
@@ -206,9 +246,14 @@ export default function Mail({
               }
             },
             onUploadAttachment: mailbox ? (file) => mailbox.upload(file) : undefined,
+            onBodyChange,
           }}
           attachmentUrl={mailbox ? attachmentUrl : undefined}
           loadThread={mailbox ? loadThread : undefined}
+          loadItems={loadItems}
+          itemForMessage={itemForMessage}
+          onArchived={onArchived}
+          onRestored={onRestored}
           renderContext={renderContext}
         />
       </div>

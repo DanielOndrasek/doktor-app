@@ -33,7 +33,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
-import { avatarColorClass, emailInitials, parseEmailFromHeader, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
+import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
+import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import type { ThreadMessage } from "@/lib/email/thread";
 import type {
@@ -82,6 +83,14 @@ interface EmailInboxProps {
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
   /** Ostatní zprávy vlákna k otevřené zprávě (engine `mail_thread`); bez propu se vlákno neukazuje. */
   loadThread?: (message: MailMessageDetail) => Promise<ThreadMessage[]>;
+  /** Pole triage z `polozky` k refům v seznamu (K3.2); bez propu seznam ukazuje jen úryvky. */
+  loadItems?: (refs: string[]) => Promise<Map<string, TriageItem>>;
+  /** Položka k otevřené zprávě podle Message-ID (návrh odpovědi, rozepsaný text). */
+  itemForMessage?: (message: MailMessageDetail) => Promise<TriageItem | null>;
+  /** Po přesunu do Vyřízeno (stav položky `hotovo`, `stav_zdroj = klik`); `newRef` = `novy_ref` enginu. */
+  onArchived?: (message: MailListMessage, newRef?: string) => void;
+  /** Po návratu z Vyřízeno do Doručených (stav položky `nove`). */
+  onRestored?: (messageId: string) => void;
   /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
@@ -103,7 +112,17 @@ interface EmailInboxProps {
  * - `sonner` → `useToast` z převzatého kitu,
  * - `emailWallUtils` → `lib/email/html.ts`.
  */
-export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, renderContext }: EmailInboxProps) {
+export function EmailInbox({
+  mailbox,
+  compose,
+  attachmentUrl,
+  loadThread,
+  loadItems,
+  itemForMessage,
+  onArchived,
+  onRestored,
+  renderContext,
+}: EmailInboxProps) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [emails, setEmails] = useState<MailListMessage[]>([]);
@@ -119,6 +138,19 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
   const [detail, setDetail] = useState<MailMessageDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // Pole triage (K3.2): položky k refům v seznamu a položka k otevřené zprávě.
+  const [items, setItems] = useState<Map<string, TriageItem>>(() => new Map());
+  const [detailItem, setDetailItem] = useState<TriageItem | null>(null);
+  const refreshItems = useCallback(
+    (messages: MailListMessage[]) => {
+      if (!loadItems || !messages.length) return;
+      loadItems(messages.map((m) => m.id))
+        .then((found) => setItems((prev) => new Map([...prev, ...found])))
+        .catch((err: unknown) => console.error(cs.posta.chyby.nacteniSeznamu, err));
+    },
+    [loadItems],
+  );
+
   const [composing, setComposing] = useState(false);
   const [replyData, setReplyData] = useState<{
     to: string;
@@ -126,6 +158,8 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
     threadId: string;
     inReplyTo: string;
     references: string;
+    /** Předvyplněné tělo: rozepsaný text uživatele (E3), jinak návrh z běhu. */
+    body?: string;
     /** Adresa naší schránky, do které zpráva přišla (předvolba „Odeslat z", pravidlo 8). */
     arrivedAt?: string;
   } | null>(null);
@@ -164,6 +198,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
     try {
       await mailbox.moveToFolder(messageId, folderId);
       toast({ title: `${cs.posta.presunuto} „${folderName}"` });
+      if (folderId === "inbox" && activeFolder === "archive") onRestored?.(messageId);
       // Zpráva opustila právě zobrazenou složku — ze seznamu pryč (i návrat z Vyřízeno do Doručených).
       if (activeFolder !== folderId) {
         setEmails((prev) => prev.filter((e) => e.id !== messageId));
@@ -201,7 +236,10 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
   const performDone = async (message: MailListMessage, index: number) => {
     if (!mailbox) return;
     try {
-      await mailbox.archiveMessage(message.id);
+      // Engine vrací `novy_ref` (ÚKOL 35) — položka si ho zapíše do `ref_cache`.
+      const withMove = mailbox as MailboxClient & { moveMessage?: (id: string, folderId: string) => Promise<{ newRef: string }> };
+      const newRef = withMove.moveMessage ? (await withMove.moveMessage(message.id, "archive")).newRef : (await mailbox.archiveMessage(message.id), undefined);
+      onArchived?.(message, newRef);
     } catch (err) {
       restoreMessage(message, index);
       toast({ title: errorMessage(err, cs.posta.vyrizeno.presunSelhal), variant: "destructive" });
@@ -292,6 +330,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
         if (isMore) setEmails((prev) => [...prev, ...page.emails]);
         else setEmails(page.emails);
         setNextPageToken(page.nextPageToken);
+        refreshItems(page.emails);
       } catch (err) {
         console.error(cs.posta.chyby.nacteniSeznamu, err);
         toast({ title: errorMessage(err, cs.posta.chyby.nacteniSeznamu), variant: "destructive" });
@@ -300,7 +339,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
         setLoadingMore(false);
       }
     },
-    [activeFolder, mailbox, showUnreadOnly, toast],
+    [activeFolder, mailbox, showUnreadOnly, toast, refreshItems],
   );
 
   useEffect(() => {
@@ -321,6 +360,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
         .then((page) => {
           setEmails(page.emails);
           setNextPageToken(page.nextPageToken);
+          refreshItems(page.emails);
         })
         .catch((err: unknown) => {
           // Automatické obnovení nesmí zahlcovat uživatele hláškami.
@@ -328,7 +368,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
         });
     }, 60000);
     return () => clearInterval(interval);
-  }, [activeFolder, appliedQuery, mailbox, showUnreadOnly]);
+  }, [activeFolder, appliedQuery, mailbox, showUnreadOnly, refreshItems]);
 
   const handleSearch = () => {
     setAppliedQuery(searchQuery);
@@ -380,7 +420,15 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
     }
     try {
       if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);
-      setDetail(await mailbox.getMessage(email.id));
+      const loaded = await mailbox.getMessage(email.id);
+      setDetail(loaded);
+      // Položka k detailu podle Message-ID (spolehlivější než ref); záložně z mapy seznamu.
+      setDetailItem(items.get(email.id) ?? null);
+      if (itemForMessage) {
+        itemForMessage(loaded)
+          .then((item) => setDetailItem((prev) => item ?? prev))
+          .catch(() => undefined);
+      }
     } catch (err) {
       console.error(cs.posta.chyby.nacteniZpravy, err);
       toast({ title: errorMessage(err, cs.posta.chyby.nacteniZpravy), variant: "destructive" });
@@ -393,13 +441,18 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
   const handleReply = () => {
     if (!detail) return;
     const { email: fromEmail } = parseEmailFromHeader(detail.from);
+    // Rozepsaný text uživatele má přednost před návrhem z běhu (E3 v kontrolním seznamu).
+    const item = detailItem?.messageId === detail.messageId ? detailItem : null;
+    const body = item?.userDraft?.trim() ? item.userDraft : item?.draftBody?.trim() ? plainTextToEditorHtml(item.draftBody) : undefined;
+    const subject = item?.draftSubject?.trim() || (detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`);
     setReplyData({
       to: fromEmail,
-      subject: detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`,
+      subject,
       threadId: detail.threadId,
       inReplyTo: detail.messageId,
       references: detail.messageId,
       arrivedAt: arrivedAt(detail),
+      body,
     });
     setComposing(true);
   };
@@ -462,6 +515,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
       {...compose}
       defaultTo={replyData?.to}
       defaultSubject={replyData?.subject}
+      defaultBody={replyData?.body}
       threadId={replyData?.threadId}
       inReplyTo={replyData?.inReplyTo}
       references={replyData?.references}
@@ -486,6 +540,7 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
       folderId={activeFolder}
       onDone={activeFolder !== "archive" ? () => handleDone(asListMessage(detail)) : undefined}
       onRestore={activeFolder === "archive" ? () => handleMoveToFolder(detail.id, "inbox", cs.posta.slozky.inbox) : undefined}
+      item={detailItem?.messageId === detail.messageId ? detailItem : (items.get(detail.id) ?? null)}
       attachmentUrl={attachmentUrl}
       loadThread={loadThread}
       renderContext={renderContext}
@@ -632,6 +687,9 @@ export function EmailInbox({ mailbox, compose, attachmentUrl, loadThread, render
                 onClick={() => void handleSelectEmail(email)}
                 onMarkUnread={() => void handleMarkUnreadById(email.id)}
                 onDone={activeFolder !== "archive" ? () => handleDone(email) : undefined}
+                priority={items.get(email.id)?.priority}
+                stateLabel={items.get(email.id)?.state === "ceka" ? cs.posta.triage.stavy.ceka : null}
+                toDo={items.get(email.id)?.toDo}
               />
             ))}
             {nextPageToken && (
@@ -716,6 +774,7 @@ function DetailView({
   folderId,
   onDone,
   onRestore,
+  item,
   attachmentUrl,
   loadThread,
   renderContext,
@@ -730,6 +789,8 @@ function DetailView({
   folderId: string;
   onDone?: () => void;
   onRestore?: () => Promise<void>;
+  /** Položka z běhu (priorita, kategorie, co řešit, návrh) — `null`, když běh zprávu ještě neviděl. */
+  item?: TriageItem | null;
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
   loadThread?: (message: MailMessageDetail) => Promise<ThreadMessage[]>;
   renderContext?: (detail: MailMessageDetail) => ReactNode;
@@ -864,6 +925,35 @@ function DetailView({
       </div>
 
       <div className="flex-1 overflow-auto px-6 py-4">
+        {item && (item.priority || item.category || item.toDo || item.draftBody || item.userDraft) ? (
+          <div className="mb-3 space-y-1 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              {item.priority ? (
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 font-semibold",
+                    item.priority === 1 ? "bg-destructive/15 text-destructive" : item.priority === 2 ? "bg-warning/20 text-warning-foreground" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {cs.posta.triage.priorita(item.priority)}
+                </span>
+              ) : null}
+              {item.category ? <span className="text-muted-foreground">{item.category}</span> : null}
+              <span className="rounded bg-secondary/15 px-1.5 py-0.5 font-medium text-secondary">{cs.posta.triage.stavy[item.state] ?? item.state}</span>
+            </div>
+            {item.toDo ? (
+              <p className="text-foreground">
+                <span className="font-medium text-foreground/80">{cs.posta.triage.coResit}: </span>
+                {item.toDo}
+              </p>
+            ) : null}
+            {item.userDraft?.trim() ? (
+              <p className="text-muted-foreground">{cs.posta.triage.rozepsano}</p>
+            ) : item.draftBody?.trim() ? (
+              <p className="text-muted-foreground">{cs.posta.triage.navrhPripraven}</p>
+            ) : null}
+          </div>
+        ) : null}
         {renderContext && <div className="mb-3">{renderContext(detail)}</div>}
 
         {thread.length > 1 && (

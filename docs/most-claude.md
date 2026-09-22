@@ -47,6 +47,13 @@ Rozepsaný text uživatele (`polozky.rozepsano_telo`) se **nikdy** nepřepisuje 
    `od`, `od_email`, `predmet`, `datum`, `kategorie`, `priorita 1–3`, `stav`, `co_resit`,
    `navrh_predmet`, `navrh_telo`, `komu[]`, `kopie[]`, `prilohy_meta` (jen názvy, typy,
    velikosti, SHA), `kontakt_id` (podle `kontakt_adresy.hodnota = od_email`), `beh_id`.
+   **`ref_cache` je povinný** (`ref` z `mail_search`, tvar `složka:uid`): seznam zpráv
+   v aplikaci nemá Message-ID a položky k němu páruje právě přes `ref_cache`; po přesunu
+   ho aplikace přepíše na `novy_ref`, běh ho při dalším průchodu obnoví. `navrh_telo` je
+   prostý text (odstavce oddělené prázdným řádkem), aplikace ho převede do editoru.
+   **`stav`** je `nove` · `ceka` · `odeslano` · `hotovo` (= Vyřízeno v UI) · `zamitnuto`;
+   `dnes()` počítá s `hotovo`/`zamitnuto` jako uzavřenými. Kliknutí v aplikaci zapisuje
+   `hotovo`/`nove` se `stav_zdroj = klik` — běh takový stav nepřepisuje.
 3. `ukoly`: sliby a termíny z pošty — `zdroj = 'email'`, `zdroj_id = 'email:<message_id>'`,
    `polozka_id`, `kontakt_id`; `claude_projekt`, když úkol patří do rozpracovaného projektu.
 4. `udalosti`: návrhy termínů — `stav = 'novy'`, `kolize` z `cal_free`; **nikdy** `cal_pridat`
