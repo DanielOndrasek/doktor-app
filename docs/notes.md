@@ -346,7 +346,7 @@ běh je starší než 26 h (K2.7 „kontrola, že běh proběhl"). Odkazy `/post
 z `dnes()` a z přehledu běhů teď Pošta otevírá (`ItemSource.byId` → `ref_cache` → `openRef`);
 když je `ref_cache` prošlý (zpráva přesunutá mimo běh), ukáže se chyba — dohledání podle
 Message-ID přes `mail_najdi` by chtělo REST nástroj na enginu. `/udalosti?udalost=` a
-`/ukoly?ukol=`: Úkoly parametr čtou, Události zatím ne (zůstává).
+`/ukoly?ukol=`: Úkoly parametr čtou; Události od téhož dne také (přepnou záložku a kartu zvýrazní).
 
 **22. 9. 2026 — Přeposlat s původními přílohami (kontrolní seznam plánu).** „Přeposlat" v detailu
 otevře okno psaní v režimu přeposlání: tělo je jen poznámka, engine (`mail_preposlat`,

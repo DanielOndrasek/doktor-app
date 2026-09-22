@@ -25,6 +25,8 @@ interface EventCardProps {
   calendars: CalendarRef[];
   onAdd: (event: EventProposal, calendarId: string) => Promise<void>;
   onReject: (event: EventProposal) => Promise<void>;
+  /** Zvýraznění karty, na kterou vede odkaz `/udalosti?udalost=<id>` (z Dnes, z přehledu běhů). */
+  highlighted?: boolean;
 }
 
 /**
@@ -32,7 +34,7 @@ interface EventCardProps {
  * kalendářů, výběr kalendáře a dvě akce. Zápis do kalendáře jde **jen**
  * z tlačítka — nikdy sám (`CLAUDE.md`, „Čeho se vyvarovat").
  */
-export function EventCard({ event, calendars, onAdd, onReject }: EventCardProps) {
+export function EventCard({ event, calendars, onAdd, onReject, highlighted }: EventCardProps) {
   const [calendarId, setCalendarId] = useState<string>(event.calendarId ?? calendars[0]?.id ?? "");
   const [busy, setBusy] = useState<"add" | "reject" | null>(null);
   const when = formatRange(event);
@@ -52,9 +54,11 @@ export function EventCard({ event, calendars, onAdd, onReject }: EventCardProps)
 
   return (
     <li
+      id={`udalost-${event.id}`}
       className={cn(
         "home-surface-plain relative overflow-hidden rounded-2xl bg-card px-4 py-3",
         event.state === "zamitnuto" && "opacity-60",
+        highlighted && "ring-2 ring-secondary",
       )}
     >
       <span

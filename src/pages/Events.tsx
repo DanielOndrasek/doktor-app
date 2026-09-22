@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { EventCard } from "@/components/events/EventCard";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -7,6 +8,8 @@ import { cs } from "@/lib/i18n/cs";
 import type { CalendarRef, EventProposal, EventSource, EventState } from "@/lib/events";
 
 const STATES: EventState[] = ["novy", "pridano", "zamitnuto"];
+/** `/udalosti?udalost=<id>` — odkaz z Dnes (`dnes()`) a z přehledu běhů; přepne záložku a kartu zvýrazní. */
+const EVENT_PARAM = "udalost";
 
 /**
  * Události (K3.7): návrhy z mailů se stavem nové · přidané · zamítnuté,
@@ -20,6 +23,20 @@ export default function Events({ source }: { source: EventSource }) {
   const [calendars, setCalendars] = useState<CalendarRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<EventState>("novy");
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get(EVENT_PARAM);
+
+  // Odkaz na událost: až jsou data, přepnout na její záložku a přijet ke kartě.
+  useEffect(() => {
+    if (loading || !highlightId) return;
+    const target = events.find((e) => e.id === highlightId);
+    if (!target) return;
+    setState(target.state);
+    const timer = window.setTimeout(() => {
+      document.getElementById(`udalost-${target.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loading, highlightId, events]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,7 +149,7 @@ export default function Events({ source }: { source: EventSource }) {
         ) : (
           <ul className="space-y-3">
             {list.map((e) => (
-              <EventCard key={e.id} event={e} calendars={calendars} onAdd={add} onReject={reject} />
+              <EventCard key={e.id} event={e} calendars={calendars} onAdd={add} onReject={reject} highlighted={e.id === highlightId} />
             ))}
           </ul>
         )}
