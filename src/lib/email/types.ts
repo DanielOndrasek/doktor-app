@@ -89,6 +89,25 @@ export interface MailListParams {
   unreadOnly?: boolean;
   pageToken?: string | null;
   maxResults?: number;
+  /** Doktor navíc proti CRM: „Hledat" bez AI (plán K0.4) — osoba, období, směr, příloha. */
+  filter?: MailSearchFilter;
+}
+
+/**
+ * Přímý dotaz do indexu enginu bez AI (plán K0.4, kontrolní seznam „Zeptat se").
+ * Engine: `odesilatel`, `prijemce` (+ `vcetne_kopie`), `od_data`, `do_data`, `smer`, `ma_prilohu`.
+ */
+export interface MailSearchFilter {
+  /** Odesílatel — část adresy nebo jména. */
+  from?: string;
+  /** Adresát v Komu nebo v kopii. */
+  to?: string;
+  /** `YYYY-MM-DD` */
+  dateFrom?: string;
+  dateTo?: string;
+  direction?: "sent" | "received";
+  /** `true` = jen zprávy s přílohou; jinak bez filtru. */
+  hasAttachment?: boolean;
 }
 
 /** Vlastní složka (Gmail štítek / IMAP schránka). */

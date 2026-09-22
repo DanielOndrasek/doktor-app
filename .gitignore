@@ -13,3 +13,6 @@ coverage/
 
 # Supabase CLI
 supabase/.temp/
+
+# Claude Code: místní oprávnění (per stroj)
+.claude/settings.local.json

@@ -71,6 +71,26 @@ Sekce na Dnes čte `ukoly` s vyplněným `claude_projekt` (ne hotovo / zruseno) 
 ho přepne na `hotovo` (`stav_zdroj = 'beh'`). Dlouhé požadavky jdou do `fronta_claude`
 (`druh`, `vstup`, `stav`, `vysledek`).
 
+## Dotazy z aplikace („Zeptat se", od 22. 9.)
+
+Pošta má vedle hledání bez AI tlačítko „Zeptat se Clauda". Aplikace **žádný model nevolá**
+— dotaz zapíše do `fronta_claude`:
+
+```
+druh = 'dotaz', stav = 'ceka',
+vstup = {otazka, kontext: {zdroj: 'posta', schranka, klicove_slovo, filtr: {from, to, dateFrom, dateTo, direction, hasAttachment}, slozka}}
+```
+
+Claude (v chatu nebo v běhu) frontu čte: `select id, vstup from doktor.fronta_claude where
+druh = 'dotaz' and stav = 'ceka' order by vytvoreno`. Odpověď hledá přes `mail_search`
+(kontext říká, kde: `filtr.from` → `odesilatel`, období → `od_data`/`do_data`, klíčové slovo →
+`dotaz`), `mail_thread`, `kb_search` a `archiv_search`; nikdy nic neodesílá ani nepřesouvá.
+Zapíše `update … set stav = 'hotovo', vysledek = jsonb_build_object('odpoved', '<prostý text,
+odstavce prázdným řádkem>', 'refy', '["INBOX:95420", …]')`; při neúspěchu `stav = 'chyba'`
+s `vysledek.odpoved` = proč. Dnes ukazuje `vysledek.odpoved` v „Rozpracováno v Claude";
+refy zatím jen jako text (proklik na položku přijde s K0.3, až refy půjdou párovat na `polozky`).
+Do odpovědi nepatří rodná čísla (pravidlo 7) — jména pacientů ano.
+
 ## Co se 21. 9. naplnilo
 
 - `schranky`: ÚVN (`stepan.suchanek@uvn.cz`). Gmail přibude, až bude adresa a účet na enginu.

@@ -359,3 +359,11 @@ aplikace přeposlání odmítne se srozumitelnou hláškou; REST odmítá nezná
 se posílá jen `ref, komu, telo, zpusob, potvrzeni`. Poznámka se před odesláním kontroluje na
 rodné číslo na enginu (přílohy záměrně ne). `\Answered` u odpovědi engine nastavuje přes
 `odpoved_na_message_id` už od K3.2.
+
+**22. 9. 2026 — „Zeptat se": hledání bez AI a dotaz pro Clauda (kontrolní seznam, K0.3/K0.4).**
+V Poště je vedle pole hledání „Rozšířené hledání": osoba (odesílatel), adresát (i v kopii),
+období, směr, jen s přílohou — jde 1 : 1 na `mail_search` (`MailListParams.filter`, Doktor navíc
+proti kontraktu z CRM). S filtrem se hledá ve všech složkách obou schránek, ne jen v otevřené.
+„Zeptat se Clauda" zapíše dotaz s kontextem hledání do `fronta_claude` (`druh = dotaz`); Dnes
+ukazuje dotazy a `vysledek.odpoved` v „Rozpracováno v Claude". Jak odpovídat je v
+`docs/most-claude.md`. Co zůstává: uložené pohledy (K4.2), proklik z odpovědi na položku (K0.3).

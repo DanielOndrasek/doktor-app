@@ -51,6 +51,36 @@ export const cs = {
       nacitani: "Načítání…",
     },
 
+    /** „Hledat" bez AI a „Zeptat se" Clauda (plán K0.3/K0.4, kontrolní seznam). */
+    hledani: {
+      rozsirene: "Rozšířené hledání",
+      aktivni: (n: number) => `${n} aktivních filtrů`,
+      od: "Od (osoba)",
+      odPlaceholder: "jméno nebo část adresy",
+      komu: "Komu",
+      komuPlaceholder: "adresát, i v kopii",
+      obdobiOd: "Od data",
+      obdobiDo: "Do data",
+      smer: "Směr",
+      smerVse: "Přijaté i odeslané",
+      smerPrijate: "Jen přijaté",
+      smerOdeslane: "Jen odeslané",
+      jenSPrilohou: "Jen zprávy s přílohou",
+      vsechnySlozky: "S filtrem se hledá ve všech složkách, ne jen v otevřené.",
+      hledat: "Hledat",
+      zrusit: "Zrušit filtr",
+      zeptatSe: "Zeptat se Clauda",
+      zeptatSePopis:
+        "Dotaz se zapíše do fronty pro Clauda a odpověď se objeví na Dnes v „Rozpracováno v Claude“. Nic se neodesílá ani nemění ve schránce.",
+      otazka: "Dotaz",
+      otazkaPlaceholder: "Např. Kdy jsme naposledy řešili s dr. Novákem přístroj a co jsme mu slíbili?",
+      kontextHledani: "K dotazu se přiloží, co je právě v hledání (klíčové slovo, osoba, období).",
+      predatClaudovi: "Předat Claudovi",
+      dotazPredan: "Dotaz je ve frontě pro Clauda. Odpověď najdete na Dnes.",
+      dotazSelhal: "Dotaz se nepodařilo zapsat.",
+      chybiOtazka: "Napište dotaz.",
+    },
+
     detail: {
       komu: "Komu:",
       telo: "Tělo zprávy",
@@ -536,6 +566,15 @@ export const cs = {
       naposledy: "naposledy",
       veFronte: (n: number) => (n === 1 ? "1 požadavek ve frontě pro Clauda" : `${n} požadavků ve frontě pro Clauda`),
       zobrazitUkoly: "Zobrazit úkoly",
+      /** Dotazy z Pošty („Zeptat se") a odpovědi Clauda z `fronta_claude`. */
+      dotazy: "Dotazy pro Clauda",
+      dotazStav: {
+        ceka: "čeká",
+        bezi: "zpracovává se",
+        hotovo: "zodpovězeno",
+        chyba: "chyba",
+      } as Record<string, string>,
+      bezOdpovedi: "Odpověď zatím není — Claude ji doplní při dalším běhu nebo v chatu.",
     },
   },
 

@@ -36,6 +36,7 @@ import { cs } from "@/lib/i18n/cs";
 import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, textToHtml } from "@/lib/email/html";
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
+import { activeFilterCount } from "@/lib/email/search";
 import type { ComposeForwardContext } from "@/lib/email/compose";
 import type { ThreadMessage } from "@/lib/email/thread";
 import type {
@@ -43,10 +44,12 @@ import type {
   MailFolderRef,
   MailListMessage,
   MailMessageDetail,
+  MailSearchFilter,
   MailboxClient,
 } from "@/lib/email/types";
 import { EmailListItem } from "./EmailListItem";
 import { EmailCompose, type EmailComposeSharedProps } from "./EmailCompose";
+import { EmailSearchFilter } from "./EmailSearchFilter";
 import { EmailFolderNav, EmailFolderTabs } from "./EmailFolderNav";
 import { emailFoldersFor, type EmailFolder } from "./emailFolders";
 
@@ -99,6 +102,11 @@ interface EmailInboxProps {
   openRef?: string | null;
   onOpened?: () => void;
   /**
+   * „Zeptat se" (kontrolní seznam plánu): dotaz s kontextem hledání do fronty
+   * pro Clauda. Žádný model se z aplikace nevolá; bez propu se tlačítko neukáže.
+   */
+  onAskClaude?: (question: string, context: { query: string; filter: MailSearchFilter; folderId: string }) => Promise<void>;
+  /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
    */
@@ -130,6 +138,7 @@ export function EmailInbox({
   onRestored,
   openRef,
   onOpened,
+  onAskClaude,
   renderContext,
 }: EmailInboxProps) {
   const isMobile = useIsMobile();
@@ -138,6 +147,9 @@ export function EmailInbox({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
+  // „Hledat" bez AI (K0.4): s filtrem se hledá ve všech složkách, ne jen v otevřené.
+  const [filter, setFilter] = useState<MailSearchFilter>({});
+  const filterActive = activeFilterCount(filter) > 0;
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
@@ -331,11 +343,12 @@ export function EmailInbox({
 
       try {
         const page = await mailbox.listMessages({
-          folderId: folderId || activeFolder,
+          folderId: filterActive ? "all" : folderId || activeFolder,
           search,
           unreadOnly: showUnreadOnly,
           pageToken,
           maxResults: 30,
+          filter: filterActive ? filter : undefined,
         });
 
         if (isMore) setEmails((prev) => [...prev, ...page.emails]);
@@ -350,7 +363,7 @@ export function EmailInbox({
         setLoadingMore(false);
       }
     },
-    [activeFolder, mailbox, showUnreadOnly, toast, refreshItems],
+    [activeFolder, mailbox, showUnreadOnly, toast, refreshItems, filter, filterActive],
   );
 
   useEffect(() => {
@@ -363,10 +376,11 @@ export function EmailInbox({
     const interval = setInterval(() => {
       mailbox
         .listMessages({
-          folderId: activeFolder,
+          folderId: filterActive ? "all" : activeFolder,
           search: appliedQuery || undefined,
           unreadOnly: showUnreadOnly,
           maxResults: 30,
+          filter: filterActive ? filter : undefined,
         })
         .then((page) => {
           setEmails(page.emails);
@@ -379,13 +393,22 @@ export function EmailInbox({
         });
     }, 60000);
     return () => clearInterval(interval);
-  }, [activeFolder, appliedQuery, mailbox, showUnreadOnly, refreshItems]);
+  }, [activeFolder, appliedQuery, mailbox, showUnreadOnly, refreshItems, filter, filterActive]);
 
   const handleSearch = () => {
     setAppliedQuery(searchQuery);
     setSelectedId(null);
     setDetail(null);
     void fetchEmails(activeFolder, searchQuery);
+  };
+
+  // Filtr mění `fetchEmails` (je v jeho závislostech), efekt výš tedy seznam načte sám.
+  const applyFilter = (next: MailSearchFilter) => {
+    setFilter(next);
+    setAppliedQuery(searchQuery);
+    setSelectedId(null);
+    setDetail(null);
+    setEmails([]);
   };
 
   const handleFolderChange = (folder: EmailFolder) => {
@@ -653,6 +676,13 @@ export function EmailInbox({
             className="h-9 pl-9"
           />
         </div>
+        <EmailSearchFilter
+          value={filter}
+          onApply={applyFilter}
+          onClear={() => applyFilter({})}
+          query={searchQuery}
+          onAsk={onAskClaude ? (question) => onAskClaude(question, { query: searchQuery, filter, folderId: activeFolder }) : undefined}
+        />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

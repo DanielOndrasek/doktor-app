@@ -14,7 +14,8 @@ import { contactDisplayName, type ContactSource } from "@/lib/contacts";
 import type { EmailRecipientSuggestion } from "@/lib/email/compose";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
 import { emailSignatureToEditorHtml } from "@/lib/email/signature";
-import type { MailAttachmentMeta, MailListMessage, MailMessageDetail } from "@/lib/email/types";
+import type { MailAttachmentMeta, MailListMessage, MailMessageDetail, MailSearchFilter } from "@/lib/email/types";
+import type { ClaudeWorkSource } from "@/lib/claudeProjects";
 import type { ItemSource } from "@/lib/items";
 import { loadMailboxes } from "@/lib/mailboxes";
 import type { SignatureSource } from "@/lib/signatures";
@@ -56,11 +57,14 @@ export default function Mail({
   taskSource,
   signatureSource,
   itemSource,
+  claudeWork,
 }: {
   contactSource: ContactSource;
   taskSource: TaskSource;
   signatureSource: SignatureSource;
   itemSource: ItemSource;
+  /** „Zeptat se": dotaz do fronty pro Clauda; odpověď se ukáže na Dnes. */
+  claudeWork: ClaudeWorkSource;
 }) {
   const { toast } = useToast();
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
@@ -239,6 +243,13 @@ export default function Mail({
     };
   }, [itemId, itemSource, toast, clearItemParam]);
 
+  // „Zeptat se" (kontrolní seznam plánu): otázka + kontext hledání do `fronta_claude`; nic se nevolá na model.
+  const onAskClaude = useCallback(
+    (question: string, context: { query: string; filter: MailSearchFilter; folderId: string }) =>
+      claudeWork.ask(question, { zdroj: "posta", schranka: mailboxId, klicove_slovo: context.query || null, filtr: context.filter, slozka: context.folderId }),
+    [claudeWork, mailboxId],
+  );
+
   // Našeptávač adres z adresáře (kontakty s e-mailem).
   const searchRecipients = useCallback(
     async (query: string): Promise<EmailRecipientSuggestion[]> => {
@@ -305,6 +316,7 @@ export default function Mail({
           onRestored={onRestored}
           openRef={openRef}
           onOpened={clearItemParam}
+          onAskClaude={onAskClaude}
           renderContext={renderContext}
         />
       </div>

@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
-import type { ClaudeProject, ClaudeWorkSource } from "@/lib/claudeProjects";
+import type { ClaudeProject, ClaudeQuestion, ClaudeWorkSource } from "@/lib/claudeProjects";
 import { cn } from "@/lib/utils";
 
 const STATE_TONE: Record<string, string> = {
@@ -14,6 +14,13 @@ const STATE_TONE: Record<string, string> = {
   ceka: "bg-warning/15 text-warning",
   todo: "bg-muted text-muted-foreground",
   odlozeno: "bg-muted text-muted-foreground",
+};
+
+const QUESTION_TONE: Record<ClaudeQuestion["state"], string> = {
+  ceka: "bg-warning/15 text-warning",
+  bezi: "bg-secondary/10 text-secondary",
+  hotovo: "bg-success/15 text-success",
+  chyba: "bg-destructive/10 text-destructive",
 };
 
 function relative(iso: string): { label: string; title: string } {
@@ -31,6 +38,7 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
   const t = cs.dnes.rozpracovano;
   const { toast } = useToast();
   const [projects, setProjects] = useState<ClaudeProject[]>([]);
+  const [questions, setQuestions] = useState<ClaudeQuestion[]>([]);
   const [queued, setQueued] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +50,7 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
         if (cancelled) return;
         setProjects(work.projects);
         setQueued(work.queued);
+        setQuestions(work.questions);
       })
       .catch((err: unknown) => {
         if (!cancelled) toast({ title: t.nacteniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
@@ -113,6 +122,30 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
       ) : (
         <p className="rounded-2xl bg-card/60 px-4 py-6 text-center text-sm text-muted-foreground">{t.nic}</p>
       )}
+
+      {/* Dotazy z Pošty („Zeptat se") a odpovědi Clauda z `fronta_claude`. */}
+      {questions.length ? (
+        <div className="home-surface-plain rounded-2xl bg-card px-4 py-3">
+          <div className="text-[13px] font-semibold">{t.dotazy}</div>
+          <ul className="mt-2 divide-y">
+            {questions.map((q) => {
+              const when = relative(q.state === "hotovo" ? q.updatedAt : q.createdAt);
+              return (
+                <li key={q.id} className="py-2 text-[12.5px]">
+                  <div className="flex items-start gap-2">
+                    <span className={cn("mt-0.5 shrink-0 rounded px-1 text-[10px] font-medium", QUESTION_TONE[q.state])}>{t.dotazStav[q.state] ?? q.state}</span>
+                    <span className="min-w-0 flex-1 font-medium">{q.question}</span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground" title={when.title}>
+                      {when.label}
+                    </span>
+                  </div>
+                  <p className={cn("mt-1 whitespace-pre-wrap break-words", q.answer ? "text-foreground" : "text-muted-foreground")}>{q.answer ?? t.bezOdpovedi}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

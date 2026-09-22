@@ -365,9 +365,19 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     const limit = params.maxResults ?? 25;
     const offset = Number(params.pageToken ?? 0) || 0;
     // `jen_neprectene` engine nemá — filtr nepřečtených přijde s K2.3 (index nezná FLAGS).
+    // „Hledat" bez AI (K0.4): `filter` jde 1 : 1 na parametry `mail_search`; `compact` vynechá prázdné.
+    const f = params.filter;
     const zpravy = await search({
       slozka: engineFolder(params.folderId, archiveFolder),
       dotaz: params.search?.trim(),
+      odesilatel: f?.from?.trim(),
+      prijemce: f?.to?.trim(),
+      vcetne_kopie: f?.to?.trim() ? true : undefined,
+      od_data: f?.dateFrom,
+      do_data: f?.dateTo,
+      smer: f?.direction,
+      // `false` by znamenalo „jen bez přílohy" — to se nenabízí.
+      ma_prilohu: f?.hasAttachment ? true : undefined,
       limit,
       offset,
     });
