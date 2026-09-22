@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "mcp__UVN_Email",
+      "mcp__Supabase",
+      "mcp__Vercel",
+      "mcp__github",
+      "mcp__Claude_Code_Remote"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

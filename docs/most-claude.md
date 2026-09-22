@@ -82,3 +82,16 @@ ho přepne na `hotovo` (`stav_zdroj = 'beh'`). Dlouhé požadavky jdou do `front
   Supabase dashboard, doména a CSP.
 - `polozky` **ne**: `mail_kontakty` ani `mail_search` nevrací Message-ID a bez něj by
   seed kolidoval s budoucím během. První běh třídění je naplní správně.
+
+## První běh třídění (22. 9. 2026, `behy` d930633b)
+
+Ručně z chatu podle skillu `email-triage`, okno 19.–22. 9.: 45 zpráv ÚVN INBOX, 8 Gmail.
+Zapsáno 19 `polozky` (Message-ID přes `mail_get`, `ref_cache` = ref, `kontakt_id` přes
+`kontakt_adresy`), 8 návrhů odpovědí v `navrh_telo` (styl `email-styl-suchanek`, bez podpisu —
+ten vkládá aplikace podle schránky), 3 `udalosti` (porada IK 14. 10. s kolizí z `cal_events`,
+dvě celodenní lhůty) a 11 `ukoly` (`zdroj = email`, `zdroj_id = email:<message_id>`).
+Šum a roboti (newslettery, MDPI notifikace, výpadky léčiv) se do `polozky` nezapisovali a nic
+se v ÚVN nepřesouvalo ani neoznačovalo — první běh je jen zápis, úklid schránky přijde
+s dalšími běhy. Stav odvozený ze schránky: zpráva s `\Answered` dostala `stav = odeslano`,
+`stav_zdroj = schranka`. Co příští běh musí navíc: `mail_flag` P1 vlaječkou, šum do
+`_Triage/Šum`, přílohy přes `mail_priloha`, `kb_upsert` hlášení.

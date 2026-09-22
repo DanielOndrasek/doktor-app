@@ -255,6 +255,14 @@ ukládá 1,5 s po psaní do `rozepsano_telo` (HTML). Vyřízeno → `stav = hoto
 Vrátit mezi otevřené → `nove`; obojí `stav_zdroj = klik`. Tabulka je zatím prázdná — první běh
 třídění ji naplní podle `most-claude.md` (doplněno: `ref_cache` povinný, slovník `stav`).
 Tím je K3 hotové až na K3.4 (přílohy z jiného mailu, Disk) a K3.9 (běhy), obojí čeká na engine/běh.
+
+**22. 9. 2026 — první běh třídění do databáze (K2.6, ručně z chatu).** Popsáno v `most-claude.md`
+(oddíl „První běh třídění"): 19 položek, 8 návrhů, 3 události, 11 úkolů, `behy` hotovo, `audit`
+s `kdo = beh`. Tím má Pošta poprvé pole triage a Dnes signály z `dnes()`. Zjištění pro schéma:
+`udalosti (user_id, zdroj_id)` nemá unikátní constraint použitelný pro `on conflict` (zápis jde
+přes `where not exists`) — u příštích migrací zvážit `unique` místo částečného indexu.
+Nastavení Claude Code: `.claude/settings.json` v repozitáři povoluje Bash, Edit, Write a MCP
+servery (UVN_Email, Supabase, Vercel, github, Claude_Code_Remote) bez dotazu na oprávnění.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
