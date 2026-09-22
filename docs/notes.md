@@ -233,6 +233,17 @@ odchod z obrazovky taky (7). Ve složce Vyřízeno je místo ✓ „Vrátit mezi
 do INBOX (3, 5 — dohledání a Gmail štítky dělá engine, ne aplikace). Co chybí: stav položky
 (`polozky.stav = vyrizeno/nove`, `stav_zdroj = klik`) a `presun_ceka`/`presun_pokusy` — přijde
 s naplněnými `polozky`; a `hledani v archivu` když `novy_ref` chybí (4) je dnes na enginu.
+
+**22. 9. 2026 — Nastavení a podpisy per schránka (K3.3, bez čekání na O5).** `/nastaveni`
+(`src/pages/Settings.tsx`, `src/lib/signatures.ts`): seznam podpisů z `podpisy`, název, jazyk,
+„výchozí pro schránku" (nejvýš jeden na schránku — ostatním se vazba sundá) a `SignatureEditor`
+z CRM; `text` se odvozuje z HTML při uložení. Podpisy se nemažou. Okno psaní dostává
+`signatureFor(adresa)` a vloží výchozí podpis schránky, ze které se bude odesílat (odpověď =
+schránka, kam zpráva přišla), jednou při otevření; přepnutí Od uvnitř okna podpis nemění (přepsalo
+by rozepsaný text). Engine `podpis_id` **nedostává** — podpis je v těle, jinak by ho přidal
+podruhé; `podpisy_seznam` na enginu tím pádem aplikace nepotřebuje. Obrázky v podpisu zůstávají
+`data:` do 3 MB (`onUploadImage` nezapojen — kam ukládat, rozhodne s K4.3 sklad příloh).
+O5 (názvy podpisů z ÚKOLU 41) zůstává otevřené — Štěpán si je zatím pojmenuje sám.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.

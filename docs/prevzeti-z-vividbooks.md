@@ -284,7 +284,9 @@ Testy `emailSignature.test.ts` a `emailSignaturePaste.test.ts` zůstaly ve zdroj
 nemá testovací běh. Jsou to čisté funkce, přenesou se, až běh bude.
 
 `EmailCompose` napojení už má: `signatureHtml={emailSignatureToEditorHtml(podpis.html)}`.
-Výběr podpisu podle schránky (`vychozi_pro_schranku`, `odeslat_z`) je K3.3 a čeká na O5.
+Výběr podpisu podle schránky (`vychozi_pro_schranku`, `odeslat_z`) je od 22. 9. hotový:
+`EmailCompose.signatureFor(adresa)` + Nastavení (`src/pages/Settings.tsx`) nad `podpisy`.
+O5 (názvy podpisů) zůstává na Štěpánovi, aplikace na něj nečeká.
 
 ### Kontext u e-mailu (20. 9. 2026)
 

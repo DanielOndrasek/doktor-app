@@ -12,8 +12,10 @@ import { cs } from "@/lib/i18n/cs";
 import { contactDisplayName, type ContactSource } from "@/lib/contacts";
 import type { EmailRecipientSuggestion } from "@/lib/email/compose";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
+import { emailSignatureToEditorHtml } from "@/lib/email/signature";
 import type { MailAttachmentMeta, MailMessageDetail } from "@/lib/email/types";
 import { loadMailboxes } from "@/lib/mailboxes";
+import type { SignatureSource } from "@/lib/signatures";
 import { getAccessToken } from "@/lib/supabase/token";
 import { emptyTaskDraft, type TaskSource } from "@/lib/tasks";
 
@@ -45,7 +47,15 @@ function formatRelative(iso: string): { label: string; title: string } {
  * „Odeslat z" ze `schranky`; našeptávač adres z adresáře. Podpisy a šablony
  * přijdou s K3.3.
  */
-export default function Mail({ contactSource, taskSource }: { contactSource: ContactSource; taskSource: TaskSource }) {
+export default function Mail({
+  contactSource,
+  taskSource,
+  signatureSource,
+}: {
+  contactSource: ContactSource;
+  taskSource: TaskSource;
+  signatureSource: SignatureSource;
+}) {
   const { toast } = useToast();
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
 
@@ -60,6 +70,18 @@ export default function Mail({ contactSource, taskSource }: { contactSource: Con
   );
   const ownEmails = useMemo(() => mailboxes.map((m) => m.adresa), [mailboxes]);
   const defaultSender = mailboxId === "all" ? undefined : mailboxes.find((m) => m.typ === mailboxId)?.adresa;
+
+  // Podpis podle schránky odeslání (K3.3): výchozí podpis schránky, jinak žádný.
+  // Engine `podpis_id` nedostává — podpis je v těle, jinak by ho přidal dvakrát.
+  const { data: signatures = [] } = useQuery({ queryKey: ["podpisy"], queryFn: () => signatureSource.list() });
+  const signatureFor = useCallback(
+    (sender: string) => {
+      const box = mailboxes.find((m) => m.adresa.toLowerCase() === sender.toLowerCase());
+      const sig = box ? signatures.find((s) => s.defaultForMailboxId === box.id) : undefined;
+      return sig ? emailSignatureToEditorHtml(sig.html) : null;
+    },
+    [mailboxes, signatures],
+  );
 
   const switchMailbox = (next: string) => {
     if (!MAILBOXES.includes(next as EngineMailboxId)) return;
@@ -173,6 +195,7 @@ export default function Mail({ contactSource, taskSource }: { contactSource: Con
           compose={{
             senders,
             defaultSender,
+            signatureFor,
             onSearchRecipients: searchRecipients,
             onSend: async (request) => {
               if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);

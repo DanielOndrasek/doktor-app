@@ -653,12 +653,37 @@ export const cs = {
   },
 
   /** Navigace aplikace (`src/components/AppShell.tsx`). */
+  /** Nastavení (`src/pages/Settings.tsx`). */
+  nastaveni: {
+    nadpis: "Nastavení",
+    podpisy: {
+      nadpis: "Podpisy e-mailu",
+      napoveda: "Podpis se vloží na konec nové zprávy podle schránky, ze které se odesílá. Podpisy se nemažou, jdou přejmenovat nebo vyprázdnit.",
+      novy: "Nový podpis",
+      novyNazev: "Nový podpis",
+      zadne: "Zatím žádný podpis. Založ první tlačítkem Nový podpis.",
+      nacteniSelhalo: "Podpisy se nepodařilo načíst.",
+      nazev: "Název",
+      nazevPlaceholder: "např. ÚVN česky",
+      jazyk: "Jazyk",
+      bezJazyka: "bez jazyka",
+      jazyky: { cs: "čeština", en: "angličtina" } as Record<string, string>,
+      vychoziPro: "Výchozí pro schránku",
+      zadnaSchranka: "žádná",
+      beySchranky: "bez schránky",
+      ulozitUdaje: "Uložit údaje",
+      ulozeno: "Podpis uložen",
+      ulozeniSelhalo: "Podpis se nepodařilo uložit.",
+    },
+  },
+
   nav: {
     dnes: "Dnes",
     posta: "Pošta",
     ukoly: "Úkoly",
     udalosti: "Události",
     kontakty: "Kontakty",
+    nastaveni: "Nastavení",
     odhlasit: "Odhlásit se",
     otevritMenu: "Otevřít menu",
     navigace: "Navigace",

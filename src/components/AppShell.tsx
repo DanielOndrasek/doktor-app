@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CalendarDays, CheckCircle, Home, LogOut, Mail, Menu, Moon, Sun, Users, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckCircle, Home, LogOut, Mail, Menu, Moon, Settings, Sun, Users, type LucideIcon } from "lucide-react";
 
 import { LOGIN_PATH } from "@/components/auth/MfaGate";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -16,6 +16,7 @@ export const MAIL_PATH = "/posta";
 export const TASKS_PATH = "/ukoly";
 export const EVENTS_PATH = "/udalosti";
 export const CONTACTS_PATH = "/kontakty";
+export const SETTINGS_PATH = "/nastaveni";
 
 interface NavItem {
   to: string;
@@ -113,6 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="flex flex-col items-center gap-1.5 py-2">
+        {railButton(cs.nav.nastaveni, () => go(SETTINGS_PATH), Settings, isActive(SETTINGS_PATH))}
         {railButton(cs.nav.prepnoutMotiv, toggleTheme, theme === "dark" ? Sun : Moon)}
         {railButton(cs.nav.odhlasit, () => void signOut(), LogOut)}
       </div>

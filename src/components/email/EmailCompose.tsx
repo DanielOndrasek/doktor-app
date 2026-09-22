@@ -65,6 +65,11 @@ export interface EmailComposeSharedProps {
    */
   signatureHtml?: string | null;
   /**
+   * Podpis podle schránky, ze které se bude odesílat (K3.3). Má přednost před
+   * `signatureHtml`; počítá se jednou při otevření okna z předvolené schránky.
+   */
+  signatureFor?: (sender: string) => string | null | undefined;
+  /**
    * Schránky, ze kterých jde odeslat („Odeslat z", K3.3). Bez nich se řádek
    * neukáže a engine odešle z výchozí schránky.
    */
@@ -149,6 +154,7 @@ export function EmailCompose({
   references,
   replyMailbox,
   signatureHtml,
+  signatureFor,
   senders,
   defaultSender,
   recipientSuggestions,
@@ -199,7 +205,8 @@ export function EmailCompose({
    * běhu by přepsala rozepsaný text (E3 v kontrolním seznamu plánu). */
   const initialContent = useMemo(() => {
     const body = defaultBody?.trim() ? defaultBody : "<p></p>";
-    const sig = signatureHtml?.trim();
+    const initialSender = replyMailbox ?? defaultSender ?? senders?.[0]?.address ?? "";
+    const sig = (signatureFor ? signatureFor(initialSender) : signatureHtml)?.trim();
     return sig && !body.includes(sig) ? `${body}<p></p>${signatureBlockHtml(sig)}` : body;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

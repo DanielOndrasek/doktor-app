@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import ThemeHost from "@/components/ThemeHost";
-import { AppShell, CONTACTS_PATH, EVENTS_PATH, MAIL_PATH, TASKS_PATH, TODAY_PATH } from "@/components/AppShell";
+import { AppShell, CONTACTS_PATH, EVENTS_PATH, MAIL_PATH, SETTINGS_PATH, TASKS_PATH, TODAY_PATH } from "@/components/AppShell";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { LOGIN_PATH } from "@/components/auth/MfaGate";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,12 +12,14 @@ import Events from "@/pages/Events";
 import Login, { RESET_PASSWORD_PATH } from "@/pages/Login";
 import Mail from "@/pages/Mail";
 import ResetPassword from "@/pages/ResetPassword";
+import Settings from "@/pages/Settings";
 import Tasks from "@/pages/Tasks";
 import Today from "@/pages/Today";
 import { createSupabaseClaudeWorkSource } from "@/lib/claudeProjects";
 import { createSupabaseContactSource } from "@/lib/contacts";
 import { createEngineClientFromEnv } from "@/lib/engine/client";
 import { createSupabaseEventSource } from "@/lib/events";
+import { createSupabaseSignatureSource } from "@/lib/signatures";
 import { createSupabaseTaskSource } from "@/lib/tasks";
 import { getAccessToken } from "@/lib/supabase/token";
 import { createSupabaseTodaySource } from "@/lib/today";
@@ -36,6 +38,8 @@ const engine = createEngineClientFromEnv(getAccessToken);
 const taskSource = createSupabaseTaskSource(undefined, { engine });
 /** Události: `udalosti` pod RLS; kalendáře přes engine, dokud není propojený, jde návrhy jen zamítat. */
 const eventSource = createSupabaseEventSource({ engine });
+/** Podpisy e-mailu (`podpisy`, K3.3): Nastavení je spravuje, Pošta vkládá podle schránky odeslání. */
+const signatureSource = createSupabaseSignatureSource();
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
@@ -61,13 +65,15 @@ export default function App() {
                       {/* Dnes nad `dnes()`; odložení signálu jde do `signaly_odlozene`. */}
                       <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} />} />
                       {/* Pošta nad enginem; kontext u e-mailu (K3.8) z kontaktů a úkolů, „Úkol z mailu" do `ukoly`. */}
-                      <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} />} />
+                      <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} />} />
                       {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}
                       <Route path={TASKS_PATH} element={<Tasks source={taskSource} />} />
                       {/* Události nad `udalosti`; zápis do kalendáře jen z tlačítka přes engine. */}
                       <Route path={EVENTS_PATH} element={<Events source={eventSource} />} />
                       {/* Kontakty (K4.1 přitažené do K3): adresář a karta s poznámkami a úkoly. */}
                       <Route path={CONTACTS_PATH} element={<Contacts source={contactSource} taskSource={taskSource} />} />
+                      {/* Nastavení: podpisy (K3.3). */}
+                      <Route path={SETTINGS_PATH} element={<Settings signatures={signatureSource} />} />
                       <Route path="*" element={<Navigate to={TODAY_PATH} replace />} />
                     </Routes>
                   </AppShell>
