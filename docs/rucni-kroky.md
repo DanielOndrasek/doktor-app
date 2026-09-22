@@ -18,9 +18,12 @@ musí udělat člověk nebo serverový Claude, a co se tím odblokuje. Odškrtá
 - [ ] **Vlastní doména** pro aplikaci (O4 je rozhodnuto: Gmail bez OAuth, doména je jen věc
   Vercelu). Po ní: doména do `REST_CORS_ORIGINS` na enginu, do Supabase Redirect URLs a CSP
   (`connect-src` Supabase + engine) ve Vercelu.
-- [ ] **Pravidelné běhy třídění** (7:00 · 13:00 · 17:00): říct, jestli je spouštět automaticky
-  jako Routine. Potřebují prostředí s MCP `UVN_Email` a `Supabase`; do té doby běh spouští
-  Claude v chatu na vyžádání („spusť běh třídění“).
+- [ ] **Pravidelné běhy třídění** (7:00 · 13:00 · 17:00 Praha = `0 5,11,15 * * *` UTC).
+  Routine `trig_014oBtj1JrJ64pFMxQWpeXet` je založená, ale **bez konektorů** — z relace Claude
+  Code se konektory do Routine předat nedají, takže spuštěná relace nemá `UVN_Email` ani
+  `Supabase` a běh neprovede. V claude.ai → Routines otevřít tuhle Routine a přidat konektory
+  UVN_Email a Supabase; když to UI neumožní, založit ji tam znovu se stejným rozvrhem a
+  s promptem z `docs/routine-trideni.md` a tuhle smazat.
 - [ ] **Ověřit K3 ručně** (kontrola před dokončením etapy z `CLAUDE.md`): přihlásit se s MFA,
   projít Poštu, Úkoly, Události a Dnes proti kontrolnímu seznamu v oddílu 6 plánu. Zejména:
   „Přeposlat“ (opravdu odešle — vyzkoušet na sebe), „Zeptat se Clauda“, „Poznámka pro Clauda“,
