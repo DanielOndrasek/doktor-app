@@ -1,14 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format, formatDistanceToNowStrict, isValid, parseISO } from "date-fns";
+import { cs as csLocale } from "date-fns/locale";
 
+import { CONTACTS_PATH, TASKS_PATH } from "@/components/AppShell";
+import { EmailContext, type EmailContextData } from "@/components/email/EmailContext";
 import { EmailInbox } from "@/components/email/EmailInbox";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
+import { contactDisplayName, type ContactSource } from "@/lib/contacts";
+import type { EmailRecipientSuggestion } from "@/lib/email/compose";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
 import type { MailAttachmentMeta, MailMessageDetail } from "@/lib/email/types";
 import { loadMailboxes } from "@/lib/mailboxes";
 import { getAccessToken } from "@/lib/supabase/token";
+import { emptyTaskDraft, type TaskSource } from "@/lib/tasks";
 
 const MAILBOX_STORAGE_KEY = "doktor:posta-schranka";
 const MAILBOXES: EngineMailboxId[] = ["all", "uvn", "gmail"];
@@ -22,12 +29,23 @@ function readMailbox(): EngineMailboxId {
   }
 }
 
+/** Relativně („před 3 dny") s absolutním datem v `title` — konvence z CLAUDE.md. */
+function formatRelative(iso: string): { label: string; title: string } {
+  const d = parseISO(iso);
+  if (!isValid(d)) return { label: iso, title: iso };
+  return {
+    label: formatDistanceToNowStrict(d, { addSuffix: true, locale: csLocale }),
+    title: format(d, "d. M. yyyy HH:mm", { locale: csLocale }),
+  };
+}
+
 /**
  * Pošta (K3.2): sjednocená schránka s přepínačem nad `engineMailbox`.
- * Podpis, adresář, šablony a kontext přijdou, až budou jejich zdroje z K2 —
- * do té doby jsou propsy `EmailInbox` nevyplněné a obrazovka to unese.
+ * Kontext u e-mailu (K3.8) skládá z kontaktů, enginu (poslední zprávy) a úkolů;
+ * „Odeslat z" ze `schranky`; našeptávač adres z adresáře. Podpisy a šablony
+ * přijdou s K3.3.
  */
-export default function Mail() {
+export default function Mail({ contactSource, taskSource }: { contactSource: ContactSource; taskSource: TaskSource }) {
   const { toast } = useToast();
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
 
@@ -40,6 +58,7 @@ export default function Mail() {
     () => mailboxes.map((m) => ({ address: m.adresa, label: `${cs.posta.schranky[m.typ]} · ${m.adresa}` })),
     [mailboxes],
   );
+  const ownEmails = useMemo(() => mailboxes.map((m) => m.adresa), [mailboxes]);
   const defaultSender = mailboxId === "all" ? undefined : mailboxes.find((m) => m.typ === mailboxId)?.adresa;
 
   const switchMailbox = (next: string) => {
@@ -67,6 +86,69 @@ export default function Mail() {
     [mailbox],
   );
 
+  // Kontext (K3.8): kdo to je (kontakty), poslední zprávy (engine podle adres), otevřené úkoly (ukoly).
+  const loadContext = useCallback(
+    async (emails: string[]): Promise<EmailContextData> => {
+      const [contact, recent] = await Promise.all([
+        contactSource.findByEmails(emails),
+        mailbox
+          ? mailbox.findByContacts({ contactEmails: emails, maxResults: 4 }).catch(() => ({ emails: [], contactEmails: emails }))
+          : Promise.resolve({ emails: [], contactEmails: emails }),
+      ]);
+      const openTasks = contact ? await contactSource.openTasks(contact.id) : [];
+      return {
+        contact: contact
+          ? {
+              id: contact.id,
+              name: contactDisplayName(contact),
+              role: contact.role,
+              organization: contact.organization,
+              href: `${CONTACTS_PATH}?kontakt=${contact.id}`,
+            }
+          : null,
+        recentMessages: recent.emails.map((m) => ({ id: m.id, subject: m.subject, date: m.date })),
+        openTasks: openTasks.map((t) => ({ id: t.id, title: t.title, due: t.due, href: `${TASKS_PATH}?ukol=${t.id}` })),
+      };
+    },
+    [contactSource, mailbox],
+  );
+
+  // „Úkol z mailu": zdroj `email`, vazba na kontakt; `polozka_id` přibude, až běh naplní `polozky`.
+  const createTaskFromMail = useCallback(
+    async ({ title, contactId }: { title: string; contactId: string | null }) => {
+      await taskSource.create({ ...emptyTaskDraft("todo"), title, contactId, source: "email" });
+    },
+    [taskSource],
+  );
+
+  const renderContext = useCallback(
+    (detail: MailMessageDetail) => (
+      <EmailContext
+        from={detail.from}
+        to={detail.to}
+        subject={detail.subject}
+        ownEmails={ownEmails}
+        load={loadContext}
+        onCreateTask={createTaskFromMail}
+        formatDate={formatRelative}
+      />
+    ),
+    [ownEmails, loadContext, createTaskFromMail],
+  );
+
+  // Našeptávač adres z adresáře (kontakty s e-mailem).
+  const searchRecipients = useCallback(
+    async (query: string): Promise<EmailRecipientSuggestion[]> => {
+      if (!query.trim()) return [];
+      const found = await contactSource.list(query);
+      return found
+        .filter((c): c is typeof c & { primaryEmail: string } => !!c.primaryEmail)
+        .slice(0, 8)
+        .map((c) => ({ email: c.primaryEmail, label: contactDisplayName(c), group: cs.posta.psani.skupinaKontakty }));
+    },
+    [contactSource],
+  );
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-border px-4 py-2">
@@ -91,6 +173,7 @@ export default function Mail() {
           compose={{
             senders,
             defaultSender,
+            onSearchRecipients: searchRecipients,
             onSend: async (request) => {
               if (!mailbox) throw new Error(cs.posta.chyby.bezSchranky);
               const result = await mailbox.sendWithUploads(request);
@@ -103,6 +186,7 @@ export default function Mail() {
           }}
           attachmentUrl={mailbox ? attachmentUrl : undefined}
           loadThread={mailbox ? loadThread : undefined}
+          renderContext={renderContext}
         />
       </div>
     </div>

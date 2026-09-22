@@ -205,6 +205,16 @@ v témže indexu jako ÚVN (sloupec `schranka`, klíč X-GM-MSGID, štítky pře
 aplikace vlákno skládá i u Gmailu (dřív jsme ho pro Gmail přeskakovali). Co zbývá na enginu je
 v `docs/stav-serveru.md` enginu: `mail_get(gmail)` živě, `schranky[]` + `dalsi_strana`,
 `stav_vlaken` přes obě Sent, `mail_move` na Gmailu propíše štítky až dalším syncem.
+
+**22. 9. 2026 — kontext u e-mailu zapojený (K3.8).** `Mail` dostává `contactSource` a `taskSource`
+z `App.tsx` a do `EmailInbox.renderContext` dává `EmailContext`: kontakt podle adres z hlavičky
+(`ContactSource.findByEmails` nad `kontakt_adresy`, odkaz `/kontakty?kontakt=`), poslední zprávy
+z enginu (`findByContacts` = `mail_search(odesilatel=…)` přes obě schránky), otevřené úkoly
+kontaktu (odkaz `/ukoly?ukol=`) a „Úkol z mailu" (`ukoly`, `zdroj = email`, `kontakt_id`;
+`polozka_id` přibude, až běh naplní `polozky`). Vlastní adresy se berou ze `schranky`. Navíc
+našeptávač adres v okně psaní z adresáře (`ContactSource.list`). Z K3 zbývá K3.2 pole triage
+a autosave nad `polozky` (čeká na první běh), K3.3 podpisy, K3.4 přílohy z jiného mailu a Disku,
+K3.6 úkol → iCloud, K3.9 přehled běhů; mimo K3 kontrakt „Vrátit zpět".
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.

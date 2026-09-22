@@ -104,6 +104,7 @@ export const cs = {
       odebratAdresata: "Odebrat adresáta",
       enterProPridani: "Stiskněte Enter pro přidání adresy",
       ostatni: "Ostatní",
+      skupinaKontakty: "Kontakty",
     },
 
     chyby: {

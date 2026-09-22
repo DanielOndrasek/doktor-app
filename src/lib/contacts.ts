@@ -77,6 +77,8 @@ export interface Organization {
 export interface ContactSource {
   list: (search: string) => Promise<ContactListItem[]>;
   get: (id: string) => Promise<ContactDetail | null>;
+  /** Kontakt podle adres z hlavičky zprávy (kontext u e-mailu, K3.8); `null` = nikdo z nich v adresáři není. */
+  findByEmails: (emails: string[]) => Promise<ContactListItem | null>;
   create: (draft: ContactDraft, email?: string) => Promise<ContactDetail>;
   update: (contact: ContactDetail, draft: ContactDraft) => Promise<ContactDetail>;
   addAddress: (contactId: string, value: string) => Promise<void>;
@@ -207,6 +209,19 @@ export function createSupabaseContactSource(client: typeof supabase = supabase):
     },
 
     get: getDetail,
+
+    async findByEmails(emails) {
+      const values = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+      if (!values.length) return null;
+      const { data: byAddress, error } = await client.from("kontakt_adresy").select("kontakt_id").in("hodnota", values).limit(5);
+      if (error) throw new Error(error.message);
+      for (const a of byAddress) {
+        const { data, error: cErr } = await client.from("kontakty").select(LIST_COLUMNS).eq("id", a.kontakt_id).is("sloucen_do", null).maybeSingle();
+        if (cErr) throw new Error(cErr.message);
+        if (data) return toListItem(data);
+      }
+      return null;
+    },
 
     async create(draft, email) {
       const uid = await userId();
