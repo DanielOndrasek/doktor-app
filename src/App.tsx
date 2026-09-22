@@ -30,10 +30,12 @@ const todaySource = createSupabaseTodaySource();
 const claudeWork = createSupabaseClaudeWorkSource();
 /** Kontakty: adresář a minimální CRM nad `kontakty`, `poznamky`, `ukoly`. */
 const contactSource = createSupabaseContactSource();
-/** Úkoly čtou a zapisují `ukoly` přes supabase-js pod RLS (K2.2 hotové). */
-const taskSource = createSupabaseTaskSource();
+/** Engine `uvn-mail-mcp` (REST /api/v1) pro kalendáře; `null`, dokud není `VITE_ENGINE_URL`. */
+const engine = createEngineClientFromEnv(getAccessToken);
+/** Úkoly čtou a zapisují `ukoly` přes supabase-js pod RLS; „do iCloud" přes engine `cal_pridat` (K3.6). */
+const taskSource = createSupabaseTaskSource(undefined, { engine });
 /** Události: `udalosti` pod RLS; kalendáře přes engine, dokud není propojený, jde návrhy jen zamítat. */
-const eventSource = createSupabaseEventSource({ engine: createEngineClientFromEnv(getAccessToken) });
+const eventSource = createSupabaseEventSource({ engine });
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní

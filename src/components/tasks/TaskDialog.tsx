@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { addDays, format, isValid, parseISO } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
-import { Loader2, Mail } from "lucide-react";
+import { CalendarPlus, Loader2, Mail } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription } from "@/components/ui/dialog";
@@ -72,6 +72,7 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
   const [draft, setDraft] = useState<TaskDraft>(emptyTaskDraft());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
 
   const open = target !== null;
   const editing = target?.mode === "edit";
@@ -133,6 +134,27 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
     }
   };
 
+  // Úkol → iCloud (K3.6): jen z kliknutí, jen u uloženého úkolu s termínem, jen když je engine.
+  const addToCalendar = async () => {
+    if (!task || !source.addToCalendar) return;
+    if (!task.dueDate || task.dueDate !== draft.dueDate) {
+      toast({ title: t.kalendarBezTerminu, variant: "destructive" });
+      return;
+    }
+    setAddingToCalendar(true);
+    try {
+      const { calUid } = await source.addToCalendar(task);
+      const updated = { ...task, calUid };
+      setTask(updated);
+      onSaved(updated);
+      toast({ title: t.vKalendariZapsano });
+    } catch (err) {
+      toast({ title: t.kalendarSelhal, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    } finally {
+      setAddingToCalendar(false);
+    }
+  };
+
   const context = task ? (
     <TaskDialogMetaSection title={t.kontext}>
       {task.contactLabel ? <TaskDialogMetaRow label={t.kontakt}>{task.contactLabel}</TaskDialogMetaRow> : null}
@@ -147,7 +169,24 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
       ) : null}
       <TaskDialogMetaRow label={t.zalozeno}>{formatDateTime(task.createdAt)}</TaskDialogMetaRow>
       <TaskDialogMetaRow label={t.veStavuOd}>{formatDateTime(task.stateEnteredAt)}</TaskDialogMetaRow>
-      {task.calUid ? <TaskDialogMetaRow label={t.vKalendari}>✓</TaskDialogMetaRow> : null}
+      {task.calUid ? (
+        <TaskDialogMetaRow label={t.vKalendari}>✓</TaskDialogMetaRow>
+      ) : source.addToCalendar ? (
+        <TaskDialogMetaRow label={t.vKalendari}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => void addToCalendar()}
+            disabled={addingToCalendar || saving || !task.dueDate}
+            title={task.dueDate ? undefined : t.kalendarBezTerminu}
+          >
+            {addingToCalendar ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden /> : <CalendarPlus className="mr-1 h-3.5 w-3.5" aria-hidden />}
+            {addingToCalendar ? t.zapisujiDoKalendare : t.doKalendare}
+          </Button>
+        </TaskDialogMetaRow>
+      ) : null}
     </TaskDialogMetaSection>
   ) : undefined;
 

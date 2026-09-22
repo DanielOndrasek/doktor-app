@@ -1,6 +1,7 @@
 import type { KanbanCardData, KanbanState, TaskState } from "@/components/kanban";
 import { KANBAN_COLUMNS, TASK_STATES } from "@/components/kanban";
 import { cs } from "@/lib/i18n/cs";
+import { EngineError, type EngineClient } from "@/lib/engine/client";
 import { supabase } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 
@@ -72,7 +73,16 @@ export interface TaskSource {
   update: (task: TaskDetail, draft: TaskDraft) => Promise<TaskDetail>;
   /** Přeplánování ze seznamu nebo přetažením v kalendáři: jen `termin`, čas zůstává. */
   reschedule: (card: KanbanCardData, dueDate: string) => Promise<void>;
+  /**
+   * Úkol → iCloud „Pracovní se Simčou" (K3.6). Volá se **jen** z kliknutí; engine
+   * `cal_pridat` založí událost a `ukoly.kal_uid` si ji zapamatuje. `undefined`
+   * = engine není propojený, tlačítko se neukáže.
+   */
+  addToCalendar?: (task: TaskDetail) => Promise<{ calUid: string }>;
 }
+
+/** Kalendář iCloud pro úkoly (plán K3.6, kontrolní seznam §6). Název je i id kalendáře u enginu. */
+export const TASK_CALENDAR = "Pracovní se Simčou";
 
 export function emptyTaskDraft(state: TaskState = "todo"): TaskDraft {
   return { title: "", description: "", state, priority: "", area: "", kind: "", dueDate: "", dueTime: "" };
@@ -215,8 +225,40 @@ export function toCard(row: UkolRow): KanbanCardData | null {
  * přihlášeného uživatele; `user_id` se tu neposílá ani nefiltruje
  * (ochrana je v databázi, ne v klientu — `CLAUDE.md`, Čeho se vyvarovat).
  */
-export function createSupabaseTaskSource(client: typeof supabase = supabase): TaskSource {
+export interface SupabaseTaskSourceOptions {
+  /** Engine pro `cal_pridat`; bez něj `addToCalendar` není. */
+  engine?: EngineClient | null;
+}
+
+export function createSupabaseTaskSource(client: typeof supabase = supabase, options: SupabaseTaskSourceOptions = {}): TaskSource {
+  const engine = options.engine ?? null;
+
+  const addToCalendar = async (task: TaskDetail): Promise<{ calUid: string }> => {
+    if (!engine) throw new EngineError("not_configured", cs.udalosti.engineNepropojen);
+    if (!task.dueDate) throw new Error(cs.ukoly.detail.kalendarBezTerminu);
+    if (task.calUid) return { calUid: task.calUid };
+    const data = await engine.call<{ ok: boolean; kal_uid?: string; uid?: string }>("cal_pridat", {
+      kalendar: TASK_CALENDAR,
+      nazev: task.title,
+      datum: task.dueDate,
+      cas: task.dueTime ?? "",
+      ...(task.dueTime ? { minut: 30 } : {}),
+      celodenni: !task.dueTime,
+      popis: task.description ?? "",
+      // Idempotence: opakované kliknutí engine odmítne přes zdroj_id, duplikát nevznikne.
+      zdroj_id: `ukol:${task.id}`,
+      // Zápis do kalendáře je vždy z tlačítka; engine chce potvrzení výslovně, a to řetězcem.
+      potvrzeni: "PRIDAT",
+    });
+    const calUid = data.kal_uid ?? data.uid;
+    if (!calUid) throw new EngineError("bad_response", cs.engine.neplatnaOdpoved);
+    const { error } = await client.from("ukoly").update({ kal_uid: calUid }).eq("id", task.id);
+    if (error) throw new Error(error.message);
+    return { calUid };
+  };
+
   return {
+    ...(engine ? { addToCalendar } : {}),
     async load() {
       const { data, error } = await client
         .from("ukoly")

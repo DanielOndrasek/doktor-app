@@ -215,6 +215,14 @@ kontaktu (odkaz `/ukoly?ukol=`) a „Úkol z mailu" (`ukoly`, `zdroj = email`, `
 našeptávač adres v okně psaní z adresáře (`ContactSource.list`). Z K3 zbývá K3.2 pole triage
 a autosave nad `polozky` (čeká na první běh), K3.3 podpisy, K3.4 přílohy z jiného mailu a Disku,
 K3.6 úkol → iCloud, K3.9 přehled běhů; mimo K3 kontrakt „Vrátit zpět".
+
+**22. 9. 2026 — úkol → iCloud „Pracovní se Simčou" (K3.6 dokončeno).** `TaskSource.addToCalendar`
+(jen když je engine): `cal_pridat(kalendar = TASK_CALENDAR, nazev, datum = termin, cas, minut 30
+u času, celodenni bez času, popis, zdroj_id = 'ukol:<id>', potvrzeni PRIDAT)` → `ukoly.kal_uid`.
+Tlačítko je v kontextu dialogu úkolu, jen u uloženého úkolu s termínem; když je termín v dialogu
+rozepsaný a neuložený, hlásí „nejdřív ulož". Opakované kliknutí engine odmítne přes `zdroj_id`.
+Název kalendáře je konstanta v `lib/tasks.ts` (plán ho jmenuje výslovně); až bude víc kalendářů
+pro úkoly, půjde do `schranky`/nastavení.
 Zbývá v Supabase → Authentication → URL Configuration: Site URL = produkční adresa,
 Redirect URLs += `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
 Vlastní doména a CSP (`connect-src` Supabase + engine) až s K2.3.
