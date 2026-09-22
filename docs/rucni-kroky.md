@@ -44,7 +44,17 @@ musí udělat člověk nebo serverový Claude, a co se tím odblokuje. Odškrtá
 
 ## C. Server `uvn-mail-mcp` (serverový Claude na `root@2.28.234.7`, `/opt/uvn-mail-mcp`)
 
-Zadání jsou v `docs/zadani-serveru-doktor-k1.md`, `…-gmail.md`, `docs/zadani-k2-schema-a-rest.md`.
+Souhrnné zadání se závazným pořadím: **`docs/zadani-serveru-doktor-k3.md`** (ÚKOLy 47–54 + odkazy
+na 39–41 a zbytek 44). Kopie je i v repozitáři enginu jako `docs/zadani-k3.md`. Jak to spustit:
+
+```
+ssh root@2.28.234.7
+cd /opt/uvn-mail-mcp && git pull
+claude
+> Přečti docs/zadani-k3.md a udělej ÚKOLy v uvedeném pořadí, jeden po druhém: po každém
+> testy, commit, push, zápis do docs/stav-serveru.md a `docker compose up -d --build mcp`.
+> Nic neodesílej bez potvrzeni='ODESLAT' a SEND_ENABLED, nic nemaž. Až skončíš, vypiš, co zbylo.
+```
 
 - [ ] **ÚKOL 39 `opravy_sber`** — páry návrh ↔ skutečně odesláno do `doktor.opravy`, návrhy
   poučení do `pouceni` (`stav = navrh`, `zdroj_opravy`). Odblokuje přehled oprav v aplikaci.
