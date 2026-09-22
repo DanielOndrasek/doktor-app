@@ -367,3 +367,11 @@ proti kontraktu z CRM). S filtrem se hledá ve všech složkách obou schránek,
 „Zeptat se Clauda" zapíše dotaz s kontextem hledání do `fronta_claude` (`druh = dotaz`); Dnes
 ukazuje dotazy a `vysledek.odpoved` v „Rozpracováno v Claude". Jak odpovídat je v
 `docs/most-claude.md`. Co zůstává: uložené pohledy (K4.2), proklik z odpovědi na položku (K0.3).
+
+**22. 9. 2026 — Pravidla pro Clauda a „Poznámka pro Clauda" (kontrolní seznam: korekce, pravidla).**
+Nastavení má oddíl Pravidla pro Clauda nad `pouceni`: návrhy z běhů ke schválení, schválená
+a zamítnutá, vlastní pravidlo (rovnou schválené), úprava textu; nic se nemaže. V detailu zprávy
+je „Poznámka pro Clauda" — zapíše `fronta_claude` (`druh = poznamka`) s refem, Message-ID,
+předmětem a `polozka_id`; Dnes ji ukazuje vedle dotazů a odpověď Clauda po zpracování. Kontrakt
+pro Clauda je v `docs/most-claude.md`. Co zůstává: přehled `opravy` (páry návrh ↔ odesláno)
+přijde, až je engine začne plnit (ÚKOL 39 `opravy_sber`); dnes by byl prázdný.

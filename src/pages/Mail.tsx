@@ -16,7 +16,7 @@ import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/en
 import { emailSignatureToEditorHtml } from "@/lib/email/signature";
 import type { MailAttachmentMeta, MailListMessage, MailMessageDetail, MailSearchFilter } from "@/lib/email/types";
 import type { ClaudeWorkSource } from "@/lib/claudeProjects";
-import type { ItemSource } from "@/lib/items";
+import type { ItemSource, TriageItem } from "@/lib/items";
 import { loadMailboxes } from "@/lib/mailboxes";
 import type { SignatureSource } from "@/lib/signatures";
 import { getAccessToken } from "@/lib/supabase/token";
@@ -250,6 +250,21 @@ export default function Mail({
     [claudeWork, mailboxId],
   );
 
+  // „Poznámka pro Clauda" ke zprávě: do `fronta_claude` (druh poznamka) s refem, Message-ID a položkou.
+  const onNoteForClaude = useCallback(
+    (detail: MailMessageDetail, item: TriageItem | null, text: string) =>
+      claudeWork.note(text, {
+        zdroj: "posta",
+        schranka: mailboxId,
+        ref: detail.id,
+        message_id: detail.messageId,
+        predmet: detail.subject,
+        od: detail.from,
+        polozka_id: item?.id ?? null,
+      }),
+    [claudeWork, mailboxId],
+  );
+
   // Našeptávač adres z adresáře (kontakty s e-mailem).
   const searchRecipients = useCallback(
     async (query: string): Promise<EmailRecipientSuggestion[]> => {
@@ -317,6 +332,7 @@ export default function Mail({
           openRef={openRef}
           onOpened={clearItemParam}
           onAskClaude={onAskClaude}
+          onNoteForClaude={onNoteForClaude}
           renderContext={renderContext}
         />
       </div>

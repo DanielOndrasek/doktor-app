@@ -171,6 +171,15 @@ export const cs = {
       rozepsano: "Máš rozepsanou odpověď — Odpovědět ji otevře.",
       rozepsaneUlozeno: "Rozepsaný text uložen",
       rozepsaneNeulozeno: "Rozepsaný text se nepodařilo uložit.",
+      /** „Poznámka pro Clauda" k této zprávě — do fronty, ne na model. */
+      poznamka: "Poznámka pro Clauda",
+      poznamkaPopis:
+        "Co má Claude u této zprávy udělat jinak (např. „přepiš návrh stručněji“, „tohle je šum“, „odpověď pošlu sám“). Zapíše se do fronty; Claude ji vezme při dalším běhu. Nic se neodesílá.",
+      poznamkaPlaceholder: "Např. Návrh přepiš formálněji a nabídni termín až po 10. 10.",
+      poznamkaUlozit: "Předat Claudovi",
+      poznamkaUlozena: "Poznámka je ve frontě pro Clauda.",
+      poznamkaSelhala: "Poznámku se nepodařilo zapsat.",
+      chybiPoznamka: "Napište poznámku.",
     },
 
     /** Vyřízeno s lištou „Vrátit zpět" (kontrakt t22 v `docs/prevzato`). */
@@ -566,8 +575,12 @@ export const cs = {
       naposledy: "naposledy",
       veFronte: (n: number) => (n === 1 ? "1 požadavek ve frontě pro Clauda" : `${n} požadavků ve frontě pro Clauda`),
       zobrazitUkoly: "Zobrazit úkoly",
-      /** Dotazy z Pošty („Zeptat se") a odpovědi Clauda z `fronta_claude`. */
-      dotazy: "Dotazy pro Clauda",
+      /** Dotazy z Pošty („Zeptat se") a poznámky ke zprávám s odpověďmi Clauda z `fronta_claude`. */
+      dotazy: "Dotazy a poznámky pro Clauda",
+      druh: {
+        dotaz: "dotaz",
+        poznamka: "poznámka",
+      } as Record<string, string>,
       dotazStav: {
         ceka: "čeká",
         bezi: "zpracovává se",
@@ -755,6 +768,36 @@ export const cs = {
   /** Nastavení (`src/pages/Settings.tsx`). */
   nastaveni: {
     nadpis: "Nastavení",
+    /** Pravidla pro Clauda (`pouceni`): návrhy z běhů ke schválení a vlastní pravidla. */
+    pravidla: {
+      nadpis: "Pravidla pro Clauda",
+      napoveda:
+        "Jak má Claude psát odpovědi a třídit poštu. Návrhy vznikají z rozdílů mezi návrhem z běhu a tím, co jste skutečně odeslali; tady je schválíte nebo zamítnete. Claude se řídí jen schválenými. Nic se nemaže — nepotřebné pravidlo zamítněte.",
+      nove: "Nové pravidlo",
+      novePlaceholder: "Např. Kolegům z kliniky tykám a podepisuji se jen křestním jménem.",
+      pridat: "Přidat pravidlo",
+      chybiText: "Napište text pravidla.",
+      nacteniSelhalo: "Pravidla se nepodařilo načíst.",
+      ulozeniSelhalo: "Pravidlo se nepodařilo uložit.",
+      ulozeno: "Pravidlo uloženo",
+      zadna: "Zatím žádná pravidla. První návrhy přijdou z běhů, vlastní přidáte výše.",
+      stav: {
+        navrh: "návrh",
+        schvaleno: "schváleno",
+        zamitnuto: "zamítnuto",
+      } as Record<string, string>,
+      skupiny: {
+        navrh: "Návrhy ke schválení",
+        schvaleno: "Schválená",
+        zamitnuto: "Zamítnutá",
+      } as Record<string, string>,
+      schvalit: "Schválit",
+      zamitnout: "Zamítnout",
+      upravit: "Upravit",
+      ulozit: "Uložit",
+      zrusit: "Zrušit",
+      zOprav: (n: number) => `z ${n} oprav`,
+    },
     podpisy: {
       nadpis: "Podpisy e-mailu",
       napoveda: "Podpis se vloží na konec nové zprávy podle schránky, ze které se odesílá. Podpisy se nemažou, jdou přejmenovat nebo vyprázdnit.",

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, PenLine, Plus } from "lucide-react";
 
 import { SignatureEditor } from "@/components/email/SignatureEditor";
+import { RulesSection } from "@/components/settings/RulesSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { loadMailboxes } from "@/lib/mailboxes";
+import type { RuleSource } from "@/lib/rules";
 import { signatureHtmlToText, type Signature, type SignatureSource } from "@/lib/signatures";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +21,10 @@ const LANGUAGES = ["cs", "en"] as const;
 /**
  * Nastavení (K3.3): podpisy e-mailu. Seznam vlevo, vpravo údaje (název, jazyk,
  * výchozí pro schránku) a editor podpisu převzatý z CRM. Nic se nemaže.
- * Další oddíly (schránky, pravidla) přijdou, až budou mít co nastavovat.
+ * Pod tím pravidla pro Clauda (`pouceni`, kontrolní seznam „pravidla").
+ * Oddíl schránek přijde, až bude co nastavovat.
  */
-export default function Settings({ signatures: source }: { signatures: SignatureSource }) {
+export default function Settings({ signatures: source, rules }: { signatures: SignatureSource; rules: RuleSource }) {
   const t = cs.nastaveni;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -92,8 +95,8 @@ export default function Settings({ signatures: source }: { signatures: Signature
   const metaDirty = !!selected && (name !== selected.name || (language || "") !== (selected.language ?? "") || (mailboxId || "") !== (selected.defaultForMailboxId ?? ""));
 
   return (
-    <div className="mx-auto w-full max-w-5xl p-4 md:p-6">
-      <h1 className="mb-4 text-xl font-semibold text-foreground">{t.nadpis}</h1>
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
+      <h1 className="text-xl font-semibold text-foreground">{t.nadpis}</h1>
 
       <section className="rounded-lg border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -194,6 +197,8 @@ export default function Settings({ signatures: source }: { signatures: Signature
           </div>
         )}
       </section>
+
+      <RulesSection source={rules} />
     </div>
   );
 }

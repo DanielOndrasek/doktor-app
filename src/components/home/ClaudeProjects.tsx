@@ -134,7 +134,11 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
                 <li key={q.id} className="py-2 text-[12.5px]">
                   <div className="flex items-start gap-2">
                     <span className={cn("mt-0.5 shrink-0 rounded px-1 text-[10px] font-medium", QUESTION_TONE[q.state])}>{t.dotazStav[q.state] ?? q.state}</span>
-                    <span className="min-w-0 flex-1 font-medium">{q.question}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="mr-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">{t.druh[q.kind] ?? q.kind}</span>
+                      <span className="font-medium">{q.question}</span>
+                      {q.subject ? <span className="block truncate text-[11.5px] text-muted-foreground">{q.subject}</span> : null}
+                    </span>
                     <span className="shrink-0 text-[11px] text-muted-foreground" title={when.title}>
                       {when.label}
                     </span>

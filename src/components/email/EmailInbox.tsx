@@ -13,6 +13,7 @@ import {
   Loader2,
   Mail,
   MailOpen,
+  MessageSquarePlus,
   Paperclip,
   PenSquare,
   RefreshCw,
@@ -26,6 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -106,6 +108,8 @@ interface EmailInboxProps {
    * pro Clauda. Žádný model se z aplikace nevolá; bez propu se tlačítko neukáže.
    */
   onAskClaude?: (question: string, context: { query: string; filter: MailSearchFilter; folderId: string }) => Promise<void>;
+  /** „Poznámka pro Clauda" k otevřené zprávě (kontrolní seznam plánu) — do fronty, ne na model. */
+  onNoteForClaude?: (detail: MailMessageDetail, item: TriageItem | null, text: string) => Promise<void>;
   /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
@@ -139,6 +143,7 @@ export function EmailInbox({
   openRef,
   onOpened,
   onAskClaude,
+  onNoteForClaude,
   renderContext,
 }: EmailInboxProps) {
   const isMobile = useIsMobile();
@@ -600,6 +605,7 @@ export function EmailInbox({
       item={detailItem?.messageId === detail.messageId ? detailItem : (items.get(detail.id) ?? null)}
       attachmentUrl={attachmentUrl}
       loadThread={loadThread}
+      onNoteForClaude={onNoteForClaude}
       renderContext={renderContext}
     />
   ) : null;
@@ -873,6 +879,7 @@ function DetailView({
   item,
   attachmentUrl,
   loadThread,
+  onNoteForClaude,
   renderContext,
 }: {
   detail: MailMessageDetail;
@@ -889,11 +896,39 @@ function DetailView({
   item?: TriageItem | null;
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
   loadThread?: (message: MailMessageDetail) => Promise<ThreadMessage[]>;
+  onNoteForClaude?: (detail: MailMessageDetail, item: TriageItem | null, text: string) => Promise<void>;
   renderContext?: (detail: MailMessageDetail) => ReactNode;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
   const { displayName, email } = parseEmailFromHeader(detail.from);
+
+  // „Poznámka pro Clauda": krátký text do fronty; při přepnutí zprávy se dialog zavře.
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [noteBusy, setNoteBusy] = useState(false);
+  useEffect(() => {
+    setNoteOpen(false);
+    setNoteText("");
+  }, [detail.id]);
+  const submitNote = async () => {
+    if (!onNoteForClaude) return;
+    if (!noteText.trim()) {
+      toast({ title: cs.posta.triage.chybiPoznamka, variant: "destructive" });
+      return;
+    }
+    setNoteBusy(true);
+    try {
+      await onNoteForClaude(detail, item ?? null, noteText.trim());
+      toast({ title: cs.posta.triage.poznamkaUlozena });
+      setNoteOpen(false);
+      setNoteText("");
+    } catch (err) {
+      toast({ title: cs.posta.triage.poznamkaSelhala, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    } finally {
+      setNoteBusy(false);
+    }
+  };
 
   // Vlákno: ostatní zprávy chronologicky, sbalené; otevřená zpráva je v něm jen značka.
   const [thread, setThread] = useState<ThreadMessage[]>([]);
@@ -1188,6 +1223,30 @@ function DetailView({
         )}
       </div>
 
+      {onNoteForClaude && (
+        <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{cs.posta.triage.poznamka}</DialogTitle>
+              <DialogDescription>{cs.posta.triage.poznamkaPopis}</DialogDescription>
+            </DialogHeader>
+            <p className="truncate text-xs text-muted-foreground" title={detail.subject}>
+              {detail.subject || cs.posta.seznam.bezPredmetu}
+            </p>
+            <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder={cs.posta.triage.poznamkaPlaceholder} rows={4} autoFocus />
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setNoteOpen(false)} disabled={noteBusy}>
+                {cs.ui.zavrit}
+              </Button>
+              <Button onClick={() => void submitNote()} disabled={noteBusy}>
+                {noteBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <MessageSquarePlus className="mr-1.5 h-3.5 w-3.5" />}
+                {cs.posta.triage.poznamkaUlozit}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
         <DialogContent className="flex h-[90vh] max-w-5xl flex-col gap-0 p-0">
           <DialogHeader className="px-4 pb-2 pr-12 pt-4 text-left">
@@ -1239,6 +1298,12 @@ function DetailView({
           <Forward className="mr-1.5 h-4 w-4" />
           {cs.posta.detail.preposlat}
         </Button>
+        {onNoteForClaude && (
+          <Button variant="outline" size="sm" onClick={() => setNoteOpen(true)}>
+            <MessageSquarePlus className="mr-1.5 h-4 w-4" />
+            {cs.posta.triage.poznamka}
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={onMarkUnread}>
           <MailOpen className="mr-1.5 h-4 w-4" />
           {cs.posta.detail.neprectene}

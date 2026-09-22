@@ -33,10 +33,18 @@ export interface ClaudeProject {
 
 export type ClaudeQuestionState = "ceka" | "bezi" | "hotovo" | "chyba";
 
-/** Dotaz z Pošty („Zeptat se") ve `fronta_claude` (`druh = dotaz`) a odpověď Clauda. */
+export type ClaudeQuestionKind = "dotaz" | "poznamka";
+
+/**
+ * Dotaz z Pošty („Zeptat se", `druh = dotaz`) nebo poznámka ke zprávě
+ * („Poznámka pro Clauda", `druh = poznamka`) ve `fronta_claude` a odpověď Clauda.
+ */
 export interface ClaudeQuestion {
   id: string;
+  kind: ClaudeQuestionKind;
   question: string;
+  /** U poznámky předmět zprávy, ke které patří. */
+  subject: string | null;
   state: ClaudeQuestionState;
   /** `vysledek.odpoved` — prostý text; `null`, dokud Claude neodpověděl. */
   answer: string | null;
@@ -60,11 +68,17 @@ export interface ClaudeWorkSource {
    * Claude z něj ví, kde hledat. Žádný model se odsud nevolá.
    */
   ask: (question: string, context: Record<string, unknown>) => Promise<void>;
+  /**
+   * „Poznámka pro Clauda" ke konkrétní zprávě (`druh = poznamka`): co u ní
+   * udělat jinak. `context` nese ref, Message-ID, předmět, odesílatele a id položky.
+   */
+  note: (text: string, context: Record<string, unknown>) => Promise<void>;
 }
 
 export const EMPTY_CLAUDE_WORK_SOURCE: ClaudeWorkSource = {
   load: async () => ({ projects: [], queued: 0, questions: [] }),
   ask: async () => {},
+  note: async () => {},
 };
 
 const QUESTION_STATES = new Set<string>(["ceka", "bezi", "hotovo", "chyba"]);
@@ -92,22 +106,26 @@ export function createSupabaseClaudeWorkSource(client: typeof supabase = supabas
         client.from("fronta_claude").select("id", { count: "exact", head: true }).in("stav", ["ceka", "bezi"]),
         client
           .from("fronta_claude")
-          .select("id, vstup, stav, vysledek, vytvoreno, upraveno")
-          .eq("druh", "dotaz")
+          .select("id, druh, vstup, stav, vysledek, vytvoreno, upraveno")
+          .in("druh", ["dotaz", "poznamka"])
           .order("vytvoreno", { ascending: false })
-          .limit(10),
+          .limit(12),
       ]);
       if (tasksRes.error) throw new Error(tasksRes.error.message);
       if (queueRes.error) throw new Error(queueRes.error.message);
       if (questionsRes.error) throw new Error(questionsRes.error.message);
 
       const questions: ClaudeQuestion[] = questionsRes.data.flatMap((row) => {
-        const question = readString(row.vstup, "otazka");
+        const kind: ClaudeQuestionKind = row.druh === "poznamka" ? "poznamka" : "dotaz";
+        const question = readString(row.vstup, kind === "poznamka" ? "text" : "otazka");
         if (!question) return [];
+        const context = row.vstup && typeof row.vstup === "object" && !Array.isArray(row.vstup) ? (row.vstup as Record<string, Json | undefined>).kontext : undefined;
         return [
           {
             id: row.id,
+            kind,
             question,
+            subject: readString(context, "predmet"),
             state: QUESTION_STATES.has(row.stav) ? (row.stav as ClaudeQuestionState) : "chyba",
             answer: readString(row.vysledek ?? undefined, "odpoved"),
             createdAt: row.vytvoreno,
@@ -139,19 +157,22 @@ export function createSupabaseClaudeWorkSource(client: typeof supabase = supabas
       return { projects, queued: queueRes.count ?? 0, questions };
     },
 
-    async ask(question, context) {
-      // RLS chce `user_id = auth.uid()` — bere se ze session, ne z formuláře.
-      const {
-        data: { session },
-      } = await client.auth.getSession();
-      if (!session) throw new Error(cs.engine.neprihlasen);
-      const { error } = await client.from("fronta_claude").insert({
-        user_id: session.user.id,
-        druh: "dotaz",
-        vstup: { otazka: question, kontext: context } as NonNullable<Json>,
-        stav: "ceka",
-      });
-      if (error) throw new Error(error.message);
-    },
+    ask: (question, context) => enqueue("dotaz", { otazka: question, kontext: context }),
+    note: (text, context) => enqueue("poznamka", { text, kontext: context }),
   };
+
+  async function enqueue(druh: ClaudeQuestionKind, vstup: Record<string, unknown>) {
+    // RLS chce `user_id = auth.uid()` — bere se ze session, ne z formuláře.
+    const {
+      data: { session },
+    } = await client.auth.getSession();
+    if (!session) throw new Error(cs.engine.neprihlasen);
+    const { error } = await client.from("fronta_claude").insert({
+      user_id: session.user.id,
+      druh,
+      vstup: vstup as NonNullable<Json>,
+      stav: "ceka",
+    });
+    if (error) throw new Error(error.message);
+  }
 }

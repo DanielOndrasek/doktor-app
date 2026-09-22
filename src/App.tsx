@@ -20,6 +20,7 @@ import { createSupabaseContactSource } from "@/lib/contacts";
 import { createEngineClientFromEnv } from "@/lib/engine/client";
 import { createSupabaseEventSource } from "@/lib/events";
 import { createSupabaseItemSource } from "@/lib/items";
+import { createSupabaseRuleSource } from "@/lib/rules";
 import { createSupabaseRunsSource } from "@/lib/runs";
 import { createSupabaseSignatureSource } from "@/lib/signatures";
 import { createSupabaseTaskSource } from "@/lib/tasks";
@@ -46,6 +47,8 @@ const signatureSource = createSupabaseSignatureSource();
 const itemSource = createSupabaseItemSource();
 /** Běhy a zásahy Clauda (`behy` + zápisové řádky `audit`, K3.9) na Dnes. */
 const runsSource = createSupabaseRunsSource();
+/** Pravidla pro Clauda (`pouceni`): návrhy z běhů ke schválení a vlastní pravidla v Nastavení. */
+const ruleSource = createSupabaseRuleSource();
 
 /**
  * Kořen aplikace. Přihlášení a obnova hesla jsou veřejné, všechno ostatní
@@ -79,7 +82,7 @@ export default function App() {
                       {/* Kontakty (K4.1 přitažené do K3): adresář a karta s poznámkami a úkoly. */}
                       <Route path={CONTACTS_PATH} element={<Contacts source={contactSource} taskSource={taskSource} />} />
                       {/* Nastavení: podpisy (K3.3). */}
-                      <Route path={SETTINGS_PATH} element={<Settings signatures={signatureSource} />} />
+                      <Route path={SETTINGS_PATH} element={<Settings signatures={signatureSource} rules={ruleSource} />} />
                       <Route path="*" element={<Navigate to={TODAY_PATH} replace />} />
                     </Routes>
                   </AppShell>

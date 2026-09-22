@@ -91,6 +91,31 @@ s `vysledek.odpoved` = proč. Dnes ukazuje `vysledek.odpoved` v „Rozpracováno
 refy zatím jen jako text (proklik na položku přijde s K0.3, až refy půjdou párovat na `polozky`).
 Do odpovědi nepatří rodná čísla (pravidlo 7) — jména pacientů ano.
 
+## Poznámka pro Clauda ke zprávě (od 22. 9.)
+
+V detailu zprávy je „Poznámka pro Clauda": co u téhle zprávy udělat jinak („přepiš návrh
+stručněji", „tohle je šum", „odpověď pošlu sám"). Aplikace zapíše do `fronta_claude`:
+
+```
+druh = 'poznamka', stav = 'ceka',
+vstup = {text, kontext: {zdroj: 'posta', schranka, ref, message_id, predmet, od, polozka_id}}
+```
+
+Běh (nebo Claude v chatu) poznámky čte **před** tříděním a návrhy: `select id, vstup from
+doktor.fronta_claude where druh = 'poznamka' and stav = 'ceka'`. Podle poznámky upraví
+položku (`navrh_telo`, `kategorie`, `priorita`, `stav`; `rozepsano_telo` nikdy — E3) nebo
+zprávu (přesun do šumu přes `mail_move`), a zapíše `stav = 'hotovo'`, `vysledek =
+jsonb_build_object('odpoved', 'co se udělalo')`. Poznámka nikdy neznamená odeslání —
+odeslání je vždy kliknutí v aplikaci (pravidlo 8).
+
+## Pravidla pro Clauda (`pouceni`, od 22. 9.)
+
+Nastavení → Pravidla pro Clauda. Claude před psaním návrhů čte **jen schválená**:
+`select text from doktor.pouceni where stav = 'schvaleno' order by vytvoreno`. Vlastní
+pravidla lékaře jsou schválená rovnou; návrhy z běhů (`opravy_sber`, ÚKOL 39; K4.7 týdenní
+poučení) se zakládají se `stav = 'navrh'` a `zdroj_opravy = array[id oprav]`, lékař je
+v Nastavení schválí nebo zamítne. Nic se nemaže.
+
 ## Co se 21. 9. naplnilo
 
 - `schranky`: ÚVN (`stepan.suchanek@uvn.cz`). Gmail přibude, až bude adresa a účet na enginu.
