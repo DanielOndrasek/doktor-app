@@ -762,6 +762,38 @@ export function EmailInbox({
   );
 }
 
+/** Kolik posledních zpráv vlákna se ukáže po rozbalení; starší na kliknutí. */
+const THREAD_PREVIEW = 6;
+/** Kolik adresátů se vejde na řádek; zbytek za „+N dalších". */
+const RECIPIENTS_PREVIEW = 3;
+
+/** Adresáti na jednom řádku s rozkliknutím — hromadné zprávy mívají desítky adres. */
+function RecipientsLine({ label, value }: { label: string; value: string }) {
+  const [open, setOpen] = useState(false);
+  const all = (value || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (all.length <= RECIPIENTS_PREVIEW) {
+    return (
+      <div className="mt-0.5 truncate text-xs text-muted-foreground" title={value}>
+        {label} {all.join(", ")}
+      </div>
+    );
+  }
+  const hidden = all.length - RECIPIENTS_PREVIEW;
+  return (
+    <div className={cn("mt-0.5 text-xs text-muted-foreground", !open && "flex min-w-0 items-baseline gap-1")}>
+      <span className={cn(!open && "truncate")}>
+        {label} {(open ? all : all.slice(0, RECIPIENTS_PREVIEW)).join(", ")}
+      </span>{" "}
+      <button type="button" onClick={() => setOpen((o) => !o)} className="flex-shrink-0 text-secondary hover:underline">
+        {open ? cs.posta.detail.skrytAdresy : cs.posta.detail.dalsichAdres(hidden)}
+      </button>
+    </div>
+  );
+}
+
 // --- Detail zprávy v iframe ---
 
 function DetailView({
@@ -802,10 +834,14 @@ function DetailView({
   // Vlákno: ostatní zprávy chronologicky, sbalené; otevřená zpráva je v něm jen značka.
   const [thread, setThread] = useState<ThreadMessage[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [threadOpen, setThreadOpen] = useState(false);
+  const [showAllThread, setShowAllThread] = useState(false);
   useEffect(() => {
     let cancelled = false;
     setThread([]);
     setExpanded(new Set());
+    setThreadOpen(false);
+    setShowAllThread(false);
     if (!loadThread) return;
     loadThread(detail)
       .then((messages) => {
@@ -914,9 +950,7 @@ function DetailView({
               <span className="text-sm font-medium text-foreground">{displayName}</span>
               {email && <span className="truncate text-xs text-muted-foreground">&lt;{email}&gt;</span>}
             </div>
-            <div className="mt-0.5 text-xs text-muted-foreground">
-              {cs.posta.detail.komu} {detail.to}
-            </div>
+            <RecipientsLine label={cs.posta.detail.komu} value={detail.to} />
             <div className="mt-0.5 text-xs text-muted-foreground" title={detail.date}>
               {formatDetailDate(detail.date)}
             </div>
@@ -955,57 +989,6 @@ function DetailView({
           </div>
         ) : null}
         {renderContext && <div className="mb-3">{renderContext(detail)}</div>}
-
-        {thread.length > 1 && (
-          <div className="mb-4 rounded-lg border border-border">
-            <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {cs.posta.detail.vlakno} ({thread.length})
-            </div>
-            <ol className="divide-y divide-border">
-              {thread.map((m) => {
-                const current = m.id === detail.id;
-                const who = parseEmailFromHeader(m.from);
-                const open = expanded.has(m.id);
-                return (
-                  <li key={m.id} className={cn("text-sm", current && "bg-muted/40")}>
-                    <button
-                      type="button"
-                      onClick={() => !current && toggleExpanded(m.id)}
-                      disabled={current}
-                      aria-expanded={current ? undefined : open}
-                      aria-label={current ? undefined : open ? cs.posta.detail.skryt : cs.posta.detail.zobrazit}
-                      className="flex w-full items-start gap-2 px-3 py-2 text-left disabled:cursor-default"
-                    >
-                      {current ? (
-                        <span className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                      ) : open ? (
-                        <ChevronDown className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-baseline gap-2">
-                          <span className={cn("truncate font-medium", m.labelIds.includes("SENT") && "text-secondary")}>
-                            {who.displayName}
-                          </span>
-                          <span className="ml-auto flex-shrink-0 text-xs text-muted-foreground" title={m.date}>
-                            {formatDetailDate(m.date)}
-                          </span>
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {current ? cs.posta.detail.tatoZprava : m.snippet || m.subject}
-                        </span>
-                      </span>
-                    </button>
-                    {open && !current && (
-                      <div className="whitespace-pre-wrap break-words px-9 pb-3 text-sm leading-relaxed text-foreground">{m.body}</div>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        )}
 
         <iframe
           ref={iframeRef}
@@ -1062,6 +1045,81 @@ function DetailView({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Vlákno až pod hlavní zprávou, sbalené; rozbalené ukáže posledních pár, starší na kliknutí. */}
+        {thread.length > 1 && (
+          <div className="mt-4 rounded-lg border border-border">
+            <button
+              type="button"
+              onClick={() => setThreadOpen((o) => !o)}
+              aria-expanded={threadOpen}
+              className={cn(
+                "flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground",
+                threadOpen && "border-b border-border",
+              )}
+            >
+              {threadOpen ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
+              {cs.posta.detail.vlakno} ({thread.length})
+              <span className="ml-auto truncate font-normal normal-case tracking-normal">
+                {cs.posta.detail.vlaknoRozsah(formatDetailDate(thread[0].date), formatDetailDate(thread[thread.length - 1].date))}
+              </span>
+            </button>
+            {threadOpen && !showAllThread && thread.length > THREAD_PREVIEW && (
+              <button
+                type="button"
+                onClick={() => setShowAllThread(true)}
+                className="w-full border-b border-border px-3 py-1.5 text-center text-xs text-secondary hover:underline"
+              >
+                {cs.posta.detail.zobrazitStarsi(thread.length - THREAD_PREVIEW)}
+              </button>
+            )}
+            {threadOpen && (
+            <ol className="divide-y divide-border">
+              {(showAllThread ? thread : thread.slice(-THREAD_PREVIEW)).map((m) => {
+                const current = m.id === detail.id;
+                const who = parseEmailFromHeader(m.from);
+                const open = expanded.has(m.id);
+                return (
+                  <li key={m.id} className={cn("text-sm", current && "bg-muted/40")}>
+                    <button
+                      type="button"
+                      onClick={() => !current && toggleExpanded(m.id)}
+                      disabled={current}
+                      aria-expanded={current ? undefined : open}
+                      aria-label={current ? undefined : open ? cs.posta.detail.skryt : cs.posta.detail.zobrazit}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-left disabled:cursor-default"
+                    >
+                      {current ? (
+                        <span className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                      ) : open ? (
+                        <ChevronDown className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline gap-2">
+                          <span className={cn("truncate font-medium", m.labelIds.includes("SENT") && "text-secondary")}>
+                            {who.displayName}
+                          </span>
+                          <span className="ml-auto flex-shrink-0 text-xs text-muted-foreground" title={m.date}>
+                            {formatDetailDate(m.date)}
+                          </span>
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {current ? cs.posta.detail.tatoZprava : m.snippet || m.subject}
+                        </span>
+                      </span>
+                    </button>
+                    {open && !current && (
+                      <div className="whitespace-pre-wrap break-words px-9 pb-3 text-sm leading-relaxed text-foreground">{m.body}</div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+            )}
           </div>
         )}
       </div>

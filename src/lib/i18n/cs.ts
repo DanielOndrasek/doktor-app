@@ -71,6 +71,10 @@ export const cs = {
       tatoZprava: "tato zpráva",
       zobrazit: "Zobrazit",
       skryt: "Skrýt",
+      zobrazitStarsi: (n: number) => `Zobrazit ${n} starších`,
+      vlaknoRozsah: (od: string, doKdy: string) => `${od} – ${doKdy}`,
+      dalsichAdres: (n: number) => `+${n} dalších`,
+      skrytAdresy: "skrýt",
     },
 
     psani: {

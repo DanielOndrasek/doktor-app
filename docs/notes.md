@@ -327,3 +327,9 @@ jde do toastu. Co zůstává na serveru: `REST_LIMIT_ZA_MINUTU=60` je pro listov
 asymetrické podepisování JWT (Project Settings → JWT Keys), s legacy HS256 vrátí engine
 „neznámý klíč"; CORS zná jen produkční adresu a `localhost:5173`, ne náhledová nasazení.
 
+
+**22. 9. 2026 — detail zprávy: hlavní tělo dostává prostor.** Adresáti (`Komu`) se ukazují na
+jednom řádku, od čtvrté adresy je „+N dalších" s rozkliknutím (hromadné zprávy z ÚVN mívají
+desítky adres). Blok vlákna se přesunul až pod tělo a přílohy, je sbalený (v hlavičce rozsah
+dat), po rozbalení ukáže posledních 6 zpráv a starší na „Zobrazit N starších". Stav rozbalení
+se při přepnutí zprávy resetuje.
