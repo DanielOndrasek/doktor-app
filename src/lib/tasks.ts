@@ -78,8 +78,8 @@ export interface TaskSource {
    * (`stav_zdroj = klik`) a zmizí z tabule i seznamu. `uncancel` ho vrátí do
    * stavu, ve kterém byl — lišta „Vrátit zpět" v toastu.
    */
-  cancel: (card: KanbanCardData) => Promise<void>;
-  uncancel: (card: KanbanCardData) => Promise<void>;
+  cancel: (card: { id: string; state: TaskState }) => Promise<void>;
+  uncancel: (card: { id: string; state: TaskState }) => Promise<void>;
   /**
    * Úkol → iCloud „Pracovní se Simčou" (K3.6). Volá se **jen** z kliknutí; engine
    * `cal_pridat` založí událost a `ukoly.kal_uid` si ji zapamatuje. `undefined`

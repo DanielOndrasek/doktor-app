@@ -339,6 +339,7 @@ export const cs = {
     detail: {
       novyUkol: "Nový úkol",
       detailUkolu: "Detail úkolu",
+      smazat: "Smazat úkol",
       coSeMaUdelat: "Co se má udělat",
       popis: "Popis",
       popisPlaceholder: "Volitelný popis…",

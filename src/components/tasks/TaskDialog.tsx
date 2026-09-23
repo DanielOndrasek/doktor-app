@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { addDays, format, isValid, parseISO } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
-import { CalendarPlus, Loader2, Mail } from "lucide-react";
+import { CalendarPlus, Loader2, Mail, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription } from "@/components/ui/dialog";
+import { ToastAction } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TASK_STATES, type TaskState } from "@/components/kanban";
@@ -73,6 +74,7 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const open = target !== null;
   const editing = target?.mode === "edit";
@@ -131,6 +133,39 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
       toast({ title: t.ulozeniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // „Smazat" = `zruseno` (nic se nemaže, pravidlo 3); tabule i seznam úkol přestanou ukazovat, toast ho umí vrátit.
+  const cancelTask = async () => {
+    if (!task) return;
+    const before = { id: task.id, state: task.state };
+    setCancelling(true);
+    try {
+      await source.cancel(before);
+      onSaved({ ...task, state: "zruseno" });
+      onClose();
+      toast({
+        title: cs.ukoly.seznam.smazano,
+        description: cs.ukoly.seznam.smazanoPopis,
+        action: (
+          <ToastAction
+            altText={cs.ukoly.seznam.vratitZpet}
+            onClick={() => {
+              source
+                .uncancel(before)
+                .then(() => onSaved(task))
+                .catch((err: unknown) => toast({ title: cs.ukoly.kanban.chybaPresunu, description: err instanceof Error ? err.message : undefined, variant: "destructive" }));
+            }}
+          >
+            {cs.ukoly.seznam.vratitZpet}
+          </ToastAction>
+        ),
+      });
+    } catch (err) {
+      toast({ title: cs.ukoly.seznam.smazaniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -311,6 +346,12 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
         </TaskDialogBody>
         <TaskDialogFooterBar>
           <div className="flex items-center justify-end gap-2">
+            {task ? (
+              <Button type="button" variant="ghost" className="mr-auto text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void cancelTask()} disabled={saving || cancelling}>
+                {cancelling ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="mr-1.5 h-4 w-4" aria-hidden />}
+                {t.smazat}
+              </Button>
+            ) : null}
             <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
               {t.zrusit}
             </Button>
