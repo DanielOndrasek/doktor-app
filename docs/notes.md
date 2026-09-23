@@ -399,5 +399,5 @@ v `src/types/database.ts` doplněny ručně (CLI `supabase gen types` tu není a
 
 **23. 9. 2026 — „Smazat úkol" v seznamu.** Koš u řádku seznamu úkolů (na přání). Úkol se nemaže
 (pravidlo 3): dostane `stav = zruseno`, `stav_zdroj = klik`, zmizí z tabule i seznamu a toast
-nabídne „Vrátit zpět" (`TaskSource.cancel` / `uncancel`, vrací původní stav). Kanban koš nemá —
-tam je zrušení v detailu karty.
+nabídne „Vrátit zpět" (`TaskSource.cancel` / `uncancel`, vrací původní stav). Detail úkolu (z kanbanu
+i odjinud) má v patičce „Smazat úkol" se stejným chováním.
