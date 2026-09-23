@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
  * `secondary`). Texty chodí propsy z `cs`, komponenta žádné nemá.
  */
 export const taskDialogContentClassName = cn(
-  "flex max-h-[min(92dvh,880px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,680px)] border-border/70 shadow-xl sm:rounded-xl",
+  "flex max-h-[min(92dvh,920px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,880px)] border-border/70 shadow-xl sm:rounded-2xl",
   "max-sm:top-[max(2.75rem,env(safe-area-inset-top))] max-sm:translate-y-0 max-sm:max-h-[calc(100dvh-3.5rem)]",
 );
 
@@ -76,18 +76,18 @@ export function TaskDialogBodyLayout({ main, context }: { main: React.ReactNode;
   return (
     <div
       className={cn(
-        "grid min-h-0 min-w-0 gap-4",
-        context ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_min(260px,38%)] sm:items-start sm:gap-x-4" : "grid-cols-1",
+        "grid min-h-0 min-w-0 gap-5",
+        context ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_min(300px,36%)] sm:items-start sm:gap-x-6" : "grid-cols-1",
       )}
     >
-      <div className="min-h-0 min-w-0 space-y-3">{main}</div>
-      {context ? <div className="min-h-0 min-w-0">{context}</div> : null}
+      <div className="min-h-0 min-w-0 space-y-5">{main}</div>
+      {context ? <div className="min-h-0 min-w-0 rounded-xl border border-border/70 bg-muted/40 p-4">{context}</div> : null}
     </div>
   );
 }
 
 export function TaskDialogBody({ className, children }: React.PropsWithChildren<{ className?: string }>) {
-  return <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-4", className)}>{children}</div>;
+  return <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7 sm:py-6", className)}>{children}</div>;
 }
 
 /**
@@ -142,18 +142,18 @@ export function TaskFieldLabel({ htmlFor, children, className }: { htmlFor?: str
 
 export function TaskDialogMetaSection({ title, children }: React.PropsWithChildren<{ title: string }>) {
   return (
-    <div className="space-y-2">
-      <TaskFieldLabel>{title}</TaskFieldLabel>
-      <div className="space-y-1.5">{children}</div>
+    <div className="space-y-3">
+      <TaskFieldLabel className="uppercase tracking-wide">{title}</TaskFieldLabel>
+      <div className="space-y-2.5">{children}</div>
     </div>
   );
 }
 
 export function TaskDialogMetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 text-sm">
-      <span className="shrink-0 pt-0.5 text-muted-foreground">{label}</span>
-      <div className="min-w-0 text-right font-medium leading-snug text-foreground">{children}</div>
+    <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start gap-2 text-sm">
+      <span className="pt-0.5 text-xs text-muted-foreground">{label}</span>
+      <div className="min-w-0 font-medium leading-snug text-foreground">{children}</div>
     </div>
   );
 }

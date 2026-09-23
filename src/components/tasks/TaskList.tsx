@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cs } from "@/lib/i18n/cs";
 import { OPEN_BUCKETS, bucketOf, daysOverdue, iso, isOverdue, splitDue, type TaskBucket } from "@/lib/taskDue";
 import { cn } from "@/lib/utils";
+import { PriorityBadge } from "./PriorityFlag";
 
 interface TaskListProps {
   cards: KanbanCardData[];
@@ -94,7 +95,7 @@ export function TaskList({ cards, today, onOpen, onToggleDone, onReschedule, onC
             onClick={() => onOpen(card)}
             className={cn("block max-w-full truncate text-left text-[14.5px] font-medium leading-snug hover:text-secondary", done && "text-muted-foreground line-through")}
           >
-            {card.priority ? <span className="mr-1.5 rounded bg-muted px-1 text-[10.5px] font-semibold text-muted-foreground">{card.priority}</span> : null}
+            {card.priority ? <PriorityBadge priority={card.priority} className="mr-1.5 align-[2px]" /> : null}
             {card.title}
           </button>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-muted-foreground">

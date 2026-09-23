@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { addDays, format, isValid, parseISO } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
-import { CalendarPlus, Loader2, Mail, Trash2 } from "lucide-react";
+import { CalendarPlus, Flag, Loader2, Mail, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TASK_STATES, type TaskState } from "@/components/kanban";
+import { PriorityBadge, PriorityFlag, TASK_PRIORITIES, priorityFlagClass } from "./PriorityFlag";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { draftOf, emptyTaskDraft, type TaskDetail, type TaskDraft, type TaskSource } from "@/lib/tasks";
@@ -27,7 +28,6 @@ import {
   taskDialogContentClassName,
 } from "./TaskDialogChrome";
 
-const PRIORITIES = ["P1", "P2", "P3"] as const;
 const NONE = "__none__";
 const QUICK_DATES: [keyof typeof cs.ukoly.detail.rychle, number][] = [
   ["dnes", 0],
@@ -192,6 +192,9 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
 
   const context = task ? (
     <TaskDialogMetaSection title={t.kontext}>
+      <TaskDialogMetaRow label={t.priorita}>
+        {draft.priority ? <PriorityBadge priority={draft.priority} long /> : <span className="text-muted-foreground">{t.bezPriority}</span>}
+      </TaskDialogMetaRow>
       {task.contactLabel ? <TaskDialogMetaRow label={t.kontakt}>{task.contactLabel}</TaskDialogMetaRow> : null}
       <TaskDialogMetaRow label={t.zdroj}>{t.zdroje[task.source]}</TaskDialogMetaRow>
       {task.itemHref ? (
@@ -250,51 +253,83 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
               context={context}
               main={
                 <>
+                  {/* Název: největší pole nahoře, vlaječka priority v něm — na první pohled je vidět, o co jde a jak to hoří. */}
                   <div className="space-y-1.5">
                     <TaskFieldLabel htmlFor="ukol-nazev">{t.coSeMaUdelat}</TaskFieldLabel>
-                    <Input
-                      id="ukol-nazev"
-                      autoFocus
-                      value={draft.title}
-                      onChange={(e) => set({ title: e.target.value })}
-                      className="text-[15px] font-medium"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          void save();
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <TaskFieldLabel htmlFor="ukol-termin">{t.termin}</TaskFieldLabel>
-                    <TaskDeadlinePicker
-                      id="ukol-termin"
-                      size="sm"
-                      date={draft.dueDate}
-                      time={draft.dueTime}
-                      onChange={({ date, time }) => set({ dueDate: date, dueTime: time })}
-                    />
-                    <div className="flex flex-wrap gap-1 text-[11.5px]">
-                      {QUICK_DATES.map(([key, days]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => set({ dueDate: format(addDays(new Date(), days), "yyyy-MM-dd") })}
-                          className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground hover:text-foreground"
-                        >
-                          {t.rychle[key]}
-                        </button>
-                      ))}
+                    <div className="relative">
+                      {draft.priority ? (
+                        <PriorityFlag priority={draft.priority} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                      ) : null}
+                      <Input
+                        id="ukol-nazev"
+                        autoFocus
+                        value={draft.title}
+                        onChange={(e) => set({ title: e.target.value })}
+                        className={cn("h-11 text-base font-medium", draft.priority && "pl-9")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void save();
+                          }
+                        }}
+                      />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Priorita: čtyři tlačítka místo rozbalovací nabídky — jedno kliknutí, barva i text (vlaječka sama by nestačila). */}
+                  <div className="space-y-1.5">
+                    <TaskFieldLabel>{t.priorita}</TaskFieldLabel>
+                    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4" role="radiogroup" aria-label={t.priorita}>
+                      {[NONE, ...TASK_PRIORITIES].map((p) => {
+                        const active = (draft.priority || NONE) === p;
+                        const isPriority = p !== NONE;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            onClick={() => set({ priority: isPriority ? p : "" })}
+                            className={cn(
+                              "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-2 text-[13px] font-medium transition-colors",
+                              active ? "border-foreground/30 bg-background shadow-sm" : "border-border/70 bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
+                            )}
+                          >
+                            <Flag className={cn("h-3.5 w-3.5", isPriority && "fill-current", isPriority ? priorityFlagClass(p) : "text-muted-foreground/60")} aria-hidden />
+                            <span className={cn(active && isPriority && "text-foreground")}>{isPriority ? t.priority[p as (typeof TASK_PRIORITIES)[number]] : t.bezPriority}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                    <div className="space-y-1.5">
+                      <TaskFieldLabel htmlFor="ukol-termin">{t.termin}</TaskFieldLabel>
+                      <TaskDeadlinePicker
+                        id="ukol-termin"
+                        size="sm"
+                        date={draft.dueDate}
+                        time={draft.dueTime}
+                        onChange={({ date, time }) => set({ dueDate: date, dueTime: time })}
+                      />
+                      <div className="flex flex-wrap gap-1 text-[11.5px]">
+                        {QUICK_DATES.map(([key, days]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => set({ dueDate: format(addDays(new Date(), days), "yyyy-MM-dd") })}
+                            className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            {t.rychle[key]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="space-y-1.5">
                       <TaskFieldLabel htmlFor="ukol-stav">{t.stav}</TaskFieldLabel>
                       <Select value={draft.state} onValueChange={(v) => set({ state: v as TaskState })}>
-                        <SelectTrigger id="ukol-stav" className="h-8 text-sm">
+                        <SelectTrigger id="ukol-stav" className="h-9 text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -306,32 +341,16 @@ export function TaskDialog({ target, source, onClose, onSaved }: TaskDialogProps
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <TaskFieldLabel htmlFor="ukol-priorita">{t.priorita}</TaskFieldLabel>
-                      <Select value={draft.priority || NONE} onValueChange={(v) => set({ priority: v === NONE ? "" : v })}>
-                        <SelectTrigger id="ukol-priorita" className={cn("h-8 text-sm", !draft.priority && "text-muted-foreground")}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NONE}>{t.bezPriority}</SelectItem>
-                          {PRIORITIES.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {t.priority[p]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <TaskFieldLabel htmlFor="ukol-oblast">{t.oblast}</TaskFieldLabel>
-                      <Input id="ukol-oblast" className="h-8 text-sm" placeholder={t.oblastPlaceholder} value={draft.area} onChange={(e) => set({ area: e.target.value })} />
+                      <Input id="ukol-oblast" className="h-9 text-sm" placeholder={t.oblastPlaceholder} value={draft.area} onChange={(e) => set({ area: e.target.value })} />
                     </div>
                     <div className="space-y-1.5">
                       <TaskFieldLabel htmlFor="ukol-druh">{t.druh}</TaskFieldLabel>
-                      <Input id="ukol-druh" className="h-8 text-sm" placeholder={t.druhPlaceholder} value={draft.kind} onChange={(e) => set({ kind: e.target.value })} />
+                      <Input id="ukol-druh" className="h-9 text-sm" placeholder={t.druhPlaceholder} value={draft.kind} onChange={(e) => set({ kind: e.target.value })} />
                     </div>
                   </div>
 

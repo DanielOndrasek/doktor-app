@@ -439,3 +439,16 @@ BODY.PEEK, takže se tím nic neoznačí jako přečtené). Navíc: odpověď p�
 zahodí (dřív mohla stará složka přepsat novou) a „Jen nepřečtené" filtruje místně podle značek
 (engine filtr nemá; dřív tlačítko jen znovu načetlo totéž). Na server jde ÚKOL 55 (levnější živé
 příznaky). Favicon: `public/favicon.svg` + PNG 32/180 (obálka na `--secondary`), `theme-color`.
+
+**23. 9. 2026 — druhý běh třídění, UI na přání.** Běh z chatu (behy `8c78bd90`): 10 položek, 12 úkolů
+(z toho 4 ze slibů a zadání v odeslané poště, stav `ceka`), 2 události, 4 karty pacientů (návrhy
+z vláken: žádost o převzetí, posouzení rizika, objednání manželů v Mediendu). Nástroje enginu pro
+zápis (`beh_zacni`, `polozka_zapis`, …) v MCP téhle relace nejsou vidět (konektor je starší než
+ÚKOL 54), takže se psalo přímým SQL podle pravidel z `most-claude.md`. **Závada:** `mail_move` do
+`_Triage/Šum` selhal u všech 18 zpráv („na IMAPu není“), i když jsou v indexu — k prověření na
+enginu (zapsáno do `behy.chyba`). UI: sekce „Běhy a zásahy Clauda“ z Dnes do Nastavení → Systém
+(provozní věc). Tělo zprávy: `tidyEmailHtml` po sanitizaci vyhodí prázdné odstavce z Outlooku
+a citovanou/přeposlanou část sbalí do `<details>` „Citovaná zpráva“ (iframe bez skriptů, rodič
+poslouchá `toggle` a přepočítá výšku) — vzhled jako v Mailu/Gmailu. Detail úkolu: širší dialog,
+priorita jako čtyři tlačítka s barevnou vlaječkou (P1 červená, P2 oranžová, P3 modrozelená) a textem,
+vlaječka i v názvu, v seznamu a na kartě kanbanu (`PriorityFlag.tsx`), kontext v panelu vpravo.

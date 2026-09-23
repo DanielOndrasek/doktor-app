@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
-import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, splitAddressHeader, textToHtml } from "@/lib/email/html";
+import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, splitAddressHeader, textToHtml, tidyEmailHtml } from "@/lib/email/html";
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import { activeFilterCount } from "@/lib/email/search";
@@ -1093,7 +1093,13 @@ function DetailView({
     try {
       const doc = iframe.contentDocument;
       if (doc) {
-        iframe.style.height = doc.body.scrollHeight + 32 + "px";
+        const fit = () => {
+          iframe.style.height = doc.body.scrollHeight + 32 + "px";
+        };
+        fit();
+        // Rozbalení citované zprávy mění výšku; iframe bez skriptů to sám neohlásí (`allow-same-origin` stačí k poslechu odsud).
+        for (const d of Array.from(doc.querySelectorAll("details"))) d.addEventListener("toggle", fit);
+        for (const img of Array.from(doc.images)) if (!img.complete) img.addEventListener("load", fit, { once: true });
       }
     } catch {
       iframe.style.height = "600px";
@@ -1103,8 +1109,21 @@ function DetailView({
   // Prostý text (zpráva bez HTML části) by se v iframu slil do jednoho odstavce —
   // převádí se se zachovaným zalomením a klikacími odkazy. Odkazy se otvírají
   // v nové kartě (`<base target>`), sandbox to dovoluje jen přes popup.
-  const bodyHtml = detail.bodyType === "html" ? sanitizeEmailHtml(detail.body) : textToHtml(detail.body);
-  const srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_blank"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;background:#fff;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word;max-width:100%;overflow-x:hidden}img{max-width:100%;height:auto}a{color:#1a73e8}table{max-width:100%!important}blockquote{margin:8px 0;padding-left:12px;border-left:3px solid #ddd;color:#555}</style></head><body>${bodyHtml}</body></html>`;
+  // Po sanitizaci se HTML ještě upraví jako v Mailu / Gmailu: bez prázdných odstavců
+  // z Outlooku a s citovanou částí sbalenou pod „Citovaná zpráva" (`tidyEmailHtml`).
+  const bodyHtml = detail.bodyType === "html" ? tidyEmailHtml(sanitizeEmailHtml(detail.body), cs.posta.detail.citace) : tidyEmailHtml(textToHtml(detail.body), cs.posta.detail.citace);
+  const srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base target="_blank"><style>
+body{margin:0;padding:20px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;background:#fff;font-size:14.5px;line-height:1.5;word-wrap:break-word;overflow-wrap:break-word;max-width:100%;overflow-x:hidden}
+p,div.MsoNormal{margin:0 0 .65em}p:last-child{margin-bottom:0}
+img{max-width:100%;height:auto}a{color:#1a73e8}table{max-width:100%!important}td,th{vertical-align:top}
+blockquote{margin:8px 0;padding-left:12px;border-left:3px solid #ddd;color:#555}
+details.citace{margin-top:18px;border-top:1px solid #e6e6e6;padding-top:10px}
+details.citace>summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;list-style:none;padding:4px 12px;border:1px solid #d9d9d9;border-radius:999px;color:#5f6368;font-size:12.5px;user-select:none}
+details.citace>summary::-webkit-details-marker{display:none}
+details.citace>summary::before{content:"···";letter-spacing:1px;font-weight:700;line-height:1}
+details.citace[open]>summary{margin-bottom:12px}
+details.citace>*:not(summary){color:#444}
+</style></head><body>${bodyHtml}</body></html>`;
 
   const attachments = detail.attachments || [];
 

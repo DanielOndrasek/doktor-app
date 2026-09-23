@@ -6,6 +6,7 @@ import type { MouseEvent } from "react";
 
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
+import { PriorityBadge } from "@/components/tasks/PriorityFlag";
 import type { KanbanCard as KanbanCardData } from "./types";
 
 function daysInState(card: KanbanCardData): number | null {
@@ -117,11 +118,7 @@ export function KanbanCard({ card, stateLabel, onClick, overlay = false }: Props
               {due.relative}
             </span>
           ) : null}
-          {card.priority ? (
-            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold uppercase leading-[16px] text-primary">
-              {card.priority}
-            </span>
-          ) : null}
+          {card.priority ? <PriorityBadge priority={card.priority} className="ml-auto" /> : null}
         </div>
       </div>
 

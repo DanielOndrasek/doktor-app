@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, PenLine, Plus } from "lucide-react";
+import { History, Loader2, PenLine, Plus } from "lucide-react";
 
 import { SignatureEditor } from "@/components/email/SignatureEditor";
+import { RunsHistory } from "@/components/runs/RunsHistory";
 import { RulesSection } from "@/components/settings/RulesSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { loadMailboxes } from "@/lib/mailboxes";
 import type { RuleSource } from "@/lib/rules";
+import type { RunsSource } from "@/lib/runs";
 import { signatureHtmlToText, type Signature, type SignatureSource } from "@/lib/signatures";
 import { cn } from "@/lib/utils";
 
@@ -21,15 +23,18 @@ const LANGUAGES = ["cs", "en"] as const;
 /**
  * Nastavení (K3.3): podpisy e-mailu. Seznam vlevo, vpravo údaje (název, jazyk,
  * výchozí pro schránku) a editor podpisu převzatý z CRM. Nic se nemaže.
- * Pod tím pravidla pro Clauda (`pouceni`, kontrolní seznam „pravidla").
+ * Pod tím pravidla pro Clauda (`pouceni`, kontrolní seznam „pravidla") a
+ * oddíl Systém s přehledem běhů a zásahů Clauda (`RunsHistory`, K3.9; z Dnes
+ * přesunuto 23. 9. — provozní věc, k práci není potřeba).
  * Oddíl schránek přijde, až bude co nastavovat.
  */
-export default function Settings({ signatures: source, rules }: { signatures: SignatureSource; rules: RuleSource }) {
+export default function Settings({ signatures: source, rules, runs }: { signatures: SignatureSource; rules: RuleSource; runs: RunsSource }) {
   const t = cs.nastaveni;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: signatures = [], isLoading, error } = useQuery({ queryKey: ["podpisy"], queryFn: () => source.list() });
   const { data: mailboxes = [] } = useQuery({ queryKey: ["schranky"], queryFn: () => loadMailboxes() });
+  const { data: runList = [], isLoading: loadingRuns } = useQuery({ queryKey: ["behy"], queryFn: () => runs.list(), staleTime: 60_000 });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected: Signature | null = signatures.find((s) => s.id === selectedId) ?? signatures[0] ?? null;
@@ -199,6 +204,15 @@ export default function Settings({ signatures: source, rules }: { signatures: Si
       </section>
 
       <RulesSection source={rules} />
+
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <History className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <h2 className="text-sm font-semibold text-foreground">{t.system.nadpis}</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">{t.system.napoveda}</p>
+        <RunsHistory runs={runList} loading={loadingRuns} onLoadOutcomes={runs.outcomes} />
+      </section>
     </div>
   );
 }

@@ -84,6 +84,8 @@ export const cs = {
     detail: {
       komu: "Komu:",
       telo: "Tělo zprávy",
+      /** Sbalená citace / přeposlaná část pod tělem zprávy (jako v Mailu a Gmailu). */
+      citace: "Citovaná zpráva",
       prilohy: "Přílohy",
       odpovedet: "Odpovědět",
       preposlat: "Přeposlat",
@@ -818,6 +820,11 @@ export const cs = {
   /** Nastavení (`src/pages/Settings.tsx`). */
   nastaveni: {
     nadpis: "Nastavení",
+    /** Systémový oddíl: běhy třídění a zásahy Clauda (dřív na Dnes; k práci nejsou potřeba). */
+    system: {
+      nadpis: "Systém",
+      napoveda: "Běhy třídění pošty a zásahy Clauda — jen pro kontrolu, že běhy chodí (7:00, 13:00, 17:00) a co v nich vzniklo.",
+    },
     /** Pravidla pro Clauda (`pouceni`): návrhy z běhů ke schválení a vlastní pravidla. */
     pravidla: {
       nadpis: "Pravidla pro Clauda",

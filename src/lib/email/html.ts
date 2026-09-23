@@ -97,6 +97,81 @@ export function sanitizeEmailHtml(html: string): string {
   return String(DOMPurify.sanitize(html || "", EMAIL_SANITIZE));
 }
 
+const BLOCK_TAGS = new Set(["P", "DIV", "BLOCKQUOTE", "TABLE", "HR", "UL", "OL", "PRE", "SECTION", "ARTICLE"]);
+
+/** Začátek citované nebo přeposlané části podle textu prvního řádku bloku (Outlook, Apple Mail, Gmail, Thunderbird, Seznam). */
+const QUOTE_START = /^\s*(?:-{2,}\s*(?:Původní|Puvodni|Přeposlaná|Preposlana|Original|Forwarded)\b|(?:From|Od|Von|De)\s*:\s*\S[^\n]{0,240}?\s(?:Sent|Odesláno|Date|Datum|Gesendet|To|Komu)\s*:|(?:Dne|On)\s.{4,80}\s(?:napsal|wrote)\b)/i;
+
+function isEmptyBlock(el: Element): boolean {
+  if (el.querySelector("img, table, hr, iframe, video, audio, svg")) return false;
+  return (el.textContent ?? "").replace(/[\s\u00a0\u200b]+/g, "") === "";
+}
+
+/**
+ * Úprava už sanitizovaného HTML, ať zpráva vypadá jako v Mailu nebo Gmailu:
+ * 1. prázdné odstavce (`<p>&nbsp;</p>`, kterými Outlook dělá mezery) se vyhodí —
+ *    mezeru mezi odstavci dává CSS iframu, jinak jsou v textu díry přes dva řádky;
+ * 2. citovaná nebo přeposlaná část (hlavička From/Sent, „Původní e-mail",
+ *    `blockquote`, `.gmail_quote`, Outlook `#divRplyFwdMsg`) se sbalí do
+ *    `<details>` s popiskem `quoteLabel`; rozbalí se kliknutím, bez skriptu.
+ * Vstup musí být výstup `sanitizeEmailHtml` — tady se nic nečistí.
+ */
+export function tidyEmailHtml(html: string, quoteLabel: string): string {
+  const doc = new DOMParser().parseFromString(`<body>${html || ""}</body>`, "text/html");
+  const body = doc.body;
+
+  for (const el of Array.from(body.querySelectorAll("p, div"))) {
+    // Jen listové bloky; obal, ve kterém je něco vidět, zůstává.
+    if (el.children.length && Array.from(el.children).some((c) => BLOCK_TAGS.has(c.tagName))) continue;
+    if (isEmptyBlock(el)) el.remove();
+  }
+
+  const quoteStart = findQuoteStart(body);
+  if (quoteStart) {
+    const details = doc.createElement("details");
+    details.className = "citace";
+    const summary = doc.createElement("summary");
+    summary.textContent = quoteLabel;
+    details.appendChild(summary);
+    const parent = quoteStart.parentElement ?? body;
+    let node: ChildNode | null = quoteStart;
+    const moved: ChildNode[] = [];
+    while (node) {
+      moved.push(node);
+      node = node.nextSibling;
+    }
+    parent.insertBefore(details, quoteStart);
+    for (const n of moved) details.appendChild(n);
+  }
+  return body.innerHTML;
+}
+
+function findQuoteStart(body: HTMLElement): Element | null {
+  const explicit = body.querySelector("#divRplyFwdMsg, .gmail_quote, blockquote[type='cite'], .moz-cite-prefix, .yahoo_quoted");
+  if (explicit) return outermostBlock(explicit, body);
+  for (const el of Array.from(body.querySelectorAll("p, div, blockquote, hr"))) {
+    if (el.tagName === "HR") continue;
+    const text = (el.textContent ?? "").replace(/\u00a0/g, " ");
+    if (text.length < 4) continue;
+    if (QUOTE_START.test(text)) return outermostBlock(el, body);
+  }
+  return null;
+}
+
+/** Blok se sbalí i s obalem (Outlook dává hlavičku do `<div style="border-top…">`), ale ne s celým tělem. */
+function outermostBlock(el: Element, body: HTMLElement): Element {
+  let current = el;
+  while (current.parentElement && current.parentElement !== body) {
+    const parent = current.parentElement;
+    // Obal, jehož viditelný text začíná citací, patří k ní; jinak by se sbalil i text před ní.
+    const before = (parent.textContent ?? "").replace(/[\s\u00a0]+/g, " ").trim();
+    const own = (current.textContent ?? "").replace(/[\s\u00a0]+/g, " ").trim();
+    if (!before.startsWith(own.slice(0, 40))) break;
+    current = parent;
+  }
+  return current;
+}
+
 function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }

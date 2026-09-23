@@ -76,7 +76,7 @@ export default function App() {
                   <AppShell>
                     <Routes>
                       {/* Dnes nad `dnes()`; odložení signálu jde do `signaly_odlozene`. */}
-                      <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} runs={runsSource} />} />
+                      <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} />} />
                       {/* Pošta nad enginem; kontext u e-mailu (K3.8) z kontaktů a úkolů, „Úkol z mailu" do `ukoly`. */}
                       <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} itemSource={itemSource} claudeWork={claudeWork} />} />
                       {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}
@@ -88,7 +88,7 @@ export default function App() {
                       {/* Nastavení: podpisy (K3.3). */}
                       {/* Pacienti nad `pripady`: karty navržené během, schválení / zamítnutí kliknutím. */}
                       <Route path={PATIENTS_PATH} element={<Patients source={caseSource} />} />
-                      <Route path={SETTINGS_PATH} element={<Settings signatures={signatureSource} rules={ruleSource} />} />
+                      <Route path={SETTINGS_PATH} element={<Settings signatures={signatureSource} rules={ruleSource} runs={runsSource} />} />
                       <Route path="*" element={<Navigate to={TODAY_PATH} replace />} />
                     </Routes>
                   </AppShell>
