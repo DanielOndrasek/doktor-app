@@ -33,7 +33,7 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
 
 ### Po dokončení serveru (ÚKOLy 47–54, 23. 9.) — rozhodnutí a tajemství
 
-- [ ] **`ZALOHA_HESLO`** z `/opt/uvn-mail-mcp/.env` uložit do správce hesel. Bez něj se žádná
+- [x] **`ZALOHA_HESLO`** z `/opt/uvn-mail-mcp/.env` uložit do správce hesel. Bez něj se žádná
   noční záloha neotevře. Nikam jinam (ne do chatu, ne do gitu).
 - [ ] **`SUPABASE_DB_URL`** do `.env` enginu (connection string z Supabase → Project Settings →
   Database, jen na server) a `apt install postgresql-client`: do té doby se schéma `doktor`
