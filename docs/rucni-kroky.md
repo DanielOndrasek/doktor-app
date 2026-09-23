@@ -14,7 +14,9 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
     a `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
   - Authentication → Sign-in / Providers → Email: `password_min_length = 12`.
   - Settings → API: vypnout „Automatically expose new tables“ (práva řídí migrace).
-  - Organization → Legal: podepsat DPA se Supabase (podmínka O3).
+  - [x] DPA: Supabase ho má od 2025 zabudované v Terms of Service (Organization → Legal
+    Documents, „no separate signed DPA is needed“) — ověřeno 23. 9., stáhnout k projektu
+    „View DPA“ a „Download TIA“ (Transfer Impact Assessment) jako doklad k O3.
 - [ ] **Vlastní doména** pro aplikaci (O4 je rozhodnuto: Gmail bez OAuth, doména je jen věc
   Vercelu). Po ní: doména do `REST_CORS_ORIGINS` na enginu, do Supabase Redirect URLs a CSP
   (`connect-src` Supabase + engine) ve Vercelu.

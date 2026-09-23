@@ -43,8 +43,9 @@ obrazovka `src/pages/Patients.tsx`, oddíl v `docs/most-claude.md`.
 **O3 — Supabase EU** (D, 21. 9. 2026). Samostatný projekt v regionu EU — založen 21. 9. jako `doktor` (ref `dwwwdeagnqiibwraxyjx`) v `eu-west-1` (Irsko), ne ve Frankfurtu; podmínka EU platí. Auth + TOTP MFA + RLS + zálohy jsou
 hotové a přihlášení na nich stojí; v Supabase jsou jen metadata (pravidlo 5), těla, přílohy
 a rodná čísla zůstávají na enginu. Hetzner by znamenal provozovat Postgres, auth a zálohy
-vlastními silami před K1/K2. Podmínky: region EU, DPA se Supabase, a ověřit, jestli ÚVN
-nemá politiku k cloudu u dat se jmény pacientů.
+vlastními silami před K1/K2. Podmínky: region EU, DPA se Supabase (23. 9. ověřeno: DPA je součástí Terms of Service,
+samostatný podpis není třeba; doklad = „View DPA“ + „Download TIA“ v Organization → Legal
+Documents), a ověřit, jestli ÚVN nemá politiku k cloudu u dat se jmény pacientů.
 
 **Engine na Hetzneru zůstává.** O3 rozhodovalo jen o databázi. Engine je dál jediný
 zapisovač nad schránkami a drží index, těla, přílohy a jejich text, MCP nástroje, kalendáře
