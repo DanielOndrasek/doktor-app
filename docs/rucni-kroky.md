@@ -8,7 +8,7 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
 - [ ] **Claude Code bez dotazů na oprávnění.** Soubory `settings.json` (uživatelské i místní)
   mají `bypassPermissions`, ale webová relace claude.ai/code bere režim z přepínače v UI —
   přepnout tam na „auto“ nebo „bypass“. V terminálu: `claude --permission-mode bypassPermissions`.
-- [ ] **Supabase dashboard** (přes MCP to nejde):
+- [x] **Supabase dashboard** (hotovo 23. 9.):
   - Authentication → URL Configuration: Site URL `https://doktor-app.vercel.app`; Redirect URLs
     přidat `https://doktor-app.vercel.app/reset-hesla`
     a `https://doktor-app-danielondraseks-projects.vercel.app/reset-hesla`.
@@ -17,9 +17,10 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
   - [x] DPA: Supabase ho má od 2025 zabudované v Terms of Service (Organization → Legal
     Documents, „no separate signed DPA is needed“) — ověřeno 23. 9., stáhnout k projektu
     „View DPA“ a „Download TIA“ (Transfer Impact Assessment) jako doklad k O3.
-- [ ] **Vlastní doména** pro aplikaci (O4 je rozhodnuto: Gmail bez OAuth, doména je jen věc
-  Vercelu). Po ní: doména do `REST_CORS_ORIGINS` na enginu, do Supabase Redirect URLs a CSP
-  (`connect-src` Supabase + engine) ve Vercelu.
+- [x] **Vlastní doména**: rozhodnuto 23. 9. **zatím ne**, aplikace zůstává na
+  `https://doktor-app.vercel.app`. CSP se nastavuje pro tuhle adresu (Supabase + engine
+  v `connect-src`, `vercel.json`). Až doména bude: Vercel → Domains, DNS CNAME, pak
+  `REST_CORS_ORIGINS` na enginu, Supabase Redirect URLs.
 - [x] **Pravidelné běhy třídění** (7:00 · 13:00 · 17:00 Praha = `0 5,11,15 * * *` UTC).
   Routine `trig_01VFwZW5a3Svv5VkhvuXvHjj` (23. 9.) budí **tuhle relaci Claude Code**
   (`session_01Ndu1HWBxywyTDF821bQLHZ`), která konektory UVN_Email a Supabase má — novou relaci

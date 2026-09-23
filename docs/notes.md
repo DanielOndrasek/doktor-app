@@ -413,3 +413,13 @@ Routine prompt aktualizován. Zjištění: `audit.vysledek` je od ÚKOLU 48 vžd
 větev v `runs.ts` zůstává jen pro staré řádky. Přehled `opravy` v aplikaci čeká, až `opravy_sber`
 poprvé poběží (tabulka je prázdná); obecný výběr přílohy z libovolné jiné zprávy (ne jen
 z odpovídané) zůstává na později.
+
+**23. 9. 2026 — CSP pro `doktor-app.vercel.app`.** Vlastní doména zatím nebude, tak je hlavička
+`Content-Security-Policy` ve `vercel.json` napsaná pro tuhle adresu: `connect-src` jen Supabase
+(https + wss) a engine, `frame-src`/`media-src` engine kvůli náhledům příloh, `img-src https:`
+kvůli obrázkům v HTML zpráv, `style-src 'unsafe-inline'` kvůli Radix/Tailwind inline stylům,
+`script-src 'self'` bez výjimek — proto se skript motivu přesunul z inline `<script>` v `index.html`
+do `public/theme-init.js` (Vite ho kopíruje do `dist/`, Vercel ho obslouží ze souborového systému
+před rewrite na `index.html`). Ověřeno: bundle nepoužívá `eval` ani blob workery (Supabase realtime
+worker se zapíná jen s `worker: true`, což aplikace nedělá). Až doména bude, přidat ji do
+`connect-src` není třeba — mění se jen origin, ne cíle.

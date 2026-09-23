@@ -7,25 +7,11 @@
     <meta name="description" content="Pošta, úkoly a kontakty na jednom místě." />
     <meta name="robots" content="noindex, nofollow" />
 
-    <!-- Téma před prvním paintem. Bez toho dostane <html> barvy z OS, a jakmile
-         se `ThemeHost` dostane k uloženému nastavení, přepne se → viditelný
-         záblesk. Klíč musí sedět s `THEME_STORAGE_KEY` v
-         `src/lib/theme.ts`. -->
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem("doktor:theme");
-          var dark =
-            stored === "dark" ||
-            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-          var root = document.documentElement;
-          root.classList.remove("light", "dark");
-          root.classList.add(dark ? "dark" : "light");
-        } catch (e) {
-          /* localStorage nedostupné — platí výchozí světlé téma z CSS */
-        }
-      })();
-    </script>
+    <!-- Téma před prvním paintem (synchronní, blokující skript — záměrně, aby
+         nebyl záblesk). Kód je v `public/theme-init.js`, ne inline, kvůli CSP
+         `script-src 'self'` ve `vercel.json`. Klíč musí sedět
+         s `THEME_STORAGE_KEY` v `src/lib/theme.ts`. -->
+    <script src="/theme-init.js"></script>
 
     <!-- Inter musí začít tahat dřív než bundle, jinak se po načtení `index.css`
          přeformátuje už vykreslený text. Dancing Script je písmo „podpisu"
