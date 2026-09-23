@@ -35,9 +35,10 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
 
 - [x] **`ZALOHA_HESLO`** z `/opt/uvn-mail-mcp/.env` uložit do správce hesel. Bez něj se žádná
   noční záloha neotevře. Nikam jinam (ne do chatu, ne do gitu).
-- [ ] **`SUPABASE_DB_URL`** do `.env` enginu (connection string z Supabase → Project Settings →
-  Database, jen na server) a `apt install postgresql-client`: do té doby se schéma `doktor`
-  zálohuje jen jako data v JSON, bez DDL, indexů, RLS a funkcí.
+- [x] **`SUPABASE_DB_URL`** v `.env` enginu a `postgresql-client-17` (23. 9.): záloha jede
+  `pg_dump` (schéma `doktor` 440 kB). Heslo databáze bylo při nastavování prozrazeno v chatu
+  a v historii shellu → **resetovat v Supabase** (Project Settings → Database), pokud se
+  nestalo, a zapsat nový URI stejným postupem (`read -rs`, nikdy do příkazu).
 - [ ] **E-mail hlídače běhů** (`HLIDAC_MAIL=true` v `.env`): jediná výjimka z „nic se neodesílá
   samo“ — hlídač by poslal e-mail sám sobě, když běh nepřijde. Rozhodnout se Štěpánem; do té
   doby jen audit a wiki.
