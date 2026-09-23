@@ -26,6 +26,7 @@
  * klient, a právě proto musí paměť žít na úrovni modulu.
  */
 
+import { isMessageGone } from "@/lib/engine/client";
 import type { EngineMailbox, EngineMailboxId } from "./engineMailbox";
 import type { ThreadMessage } from "./thread";
 import type { MailFolderLayout, MailListMessage, MailListPage, MailListParams, MailMessageDetail } from "./types";
@@ -218,7 +219,17 @@ export function withMailCache(inner: EngineMailbox, mailbox: EngineMailboxId): E
   };
 
   const moveMessage: EngineMailbox["moveMessage"] = async (ref, folderId) => {
-    const result = await inner.moveMessage(ref, folderId);
+    let result: Awaited<ReturnType<EngineMailbox["moveMessage"]>>;
+    try {
+      result = await inner.moveMessage(ref, folderId);
+    } catch (err) {
+      // Zpráva už ve schránce není (smazaná v Mailu) — z cache pryč, ať se neukazuje jako duch.
+      if (isMessageGone(err)) {
+        dropFromLists(ref);
+        details.delete(ref);
+      }
+      throw err;
+    }
     // Přesunem se mění ref i složky na obou stranách — zprávu ze seznamů pryč, zbytek načíst příště znovu.
     dropFromLists(ref);
     details.delete(ref);

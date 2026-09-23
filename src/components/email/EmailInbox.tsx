@@ -40,6 +40,7 @@ import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import { activeFilterCount } from "@/lib/email/search";
 import { MAIL_PAGE_SIZE } from "@/lib/email/cache";
+import { isMessageGone } from "@/lib/engine/client";
 import type { ComposeForwardContext, ComposeSourceAttachment } from "@/lib/email/compose";
 import type { ThreadMessage } from "@/lib/email/thread";
 import type {
@@ -252,8 +253,22 @@ export function EmailInbox({
         }
       }
     } catch (err) {
+      if (isMessageGone(err)) {
+        dropGone(messageId);
+        return;
+      }
       toast({ title: errorMessage(err, cs.posta.chyby.presun), variant: "destructive" });
     }
+  };
+
+  /** Zpráva je v indexu enginu, ale ve schránce už ne (smazaná v Mailu): ze seznamu pryč, bez chyby. */
+  const dropGone = (messageId: string) => {
+    setEmails((prev) => prev.filter((e) => e.id !== messageId));
+    if (selectedId === messageId) {
+      setSelectedId(null);
+      setDetail(null);
+    }
+    toast({ title: cs.posta.chyby.zpravaUzNeni, description: cs.posta.chyby.zpravaUzNeniPopis });
   };
 
   /* „Vrátit zpět" (kontrakt t22, `docs/prevzato/README.md`): po Vyřízeno běží 10 s odpočet
@@ -285,6 +300,11 @@ export function EmailInbox({
       const newRef = withMove.moveMessage ? (await withMove.moveMessage(message.id, "archive")).newRef : (await mailbox.archiveMessage(message.id), undefined);
       onArchived?.(message, newRef);
     } catch (err) {
+      if (isMessageGone(err)) {
+        // Už ve schránce není — vracet ji do seznamu by ukazovalo ducha.
+        toast({ title: cs.posta.chyby.zpravaUzNeni, description: cs.posta.chyby.zpravaUzNeniPopis });
+        return;
+      }
       restoreMessage(message, index);
       toast({ title: errorMessage(err, cs.posta.vyrizeno.presunSelhal), variant: "destructive" });
     }

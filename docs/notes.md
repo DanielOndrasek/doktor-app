@@ -452,3 +452,12 @@ a citovanou/přeposlanou část sbalí do `<details>` „Citovaná zpráva“ (i
 poslouchá `toggle` a přepočítá výšku) — vzhled jako v Mailu/Gmailu. Detail úkolu: širší dialog,
 priorita jako čtyři tlačítka s barevnou vlaječkou (P1 červená, P2 oranžová, P3 modrozelená) a textem,
 vlaječka i v názvu, v seznamu a na kartě kanbanu (`PriorityFlag.tsx`), kontext v panelu vpravo.
+
+**23. 9. 2026 — „duchové“ v indexu a obrázky.** Selhání `mail_move` do Šumu mělo prostou příčinu:
+zprávy někdo smazal v Mailu, ale index ÚVN je dál vede (`sync_folder` bere jen UID nad `last_uid`,
+nic neodebírá; ověřeno `mail_najdi`). Aplikace: engine `kod` teď chodí do `EngineError.kod`,
+`isMessageGone` (`neplatny_ref`) → přesun i Vyřízeno zprávu potichu odeberou ze seznamu a z cache
+s toastem „Zpráva už ve schránce není“ místo chyby. Engine: ÚKOL 56 (označit zmizelé zprávy
+`smazano_at`, nevracet je). Obrázky ve zprávách chybí záměrně — `html_telo.sanitizuj` nechává jen
+vložené `cid:` obrázky (sledovací pixely); ÚKOL 57 přidá `mail_get(obrazky="vse")`, aplikace pak
+pošle parametr (REST dnes neznámé parametry odmítá, takže dřív to poslat nejde).

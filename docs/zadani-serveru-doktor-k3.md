@@ -187,6 +187,57 @@ Aplikace od 23. 9. posílá `zive_priznaky` výslovně: seznam nejdřív `false`
 (změřit, zapsat do `docs/stav-serveru.md`), po přečtení zprávy v Mailu ÚVN se do 10 minut
 změní `flags` v indexu bez živého čtení, `mail_folders` podruhé za minutu bez IMAP přihlášení.
 
+## ÚKOL 56 — index ÚVN: odebírat zprávy, které ze schránky zmizely (doplněno 23. 9. 2026)
+
+**Proč:** 23. 9. selhal `mail_move` do `_Triage/Šum` u 18 zpráv s `neplatny_ref` („na IMAPu
+není“). Ověřeno `mail_najdi` — zprávy na IMAPu opravdu nejsou (smazané v Mailu / na iPhonu),
+ale `mail_search` je dál vrací jako Doručené. `sync_folder` (`app/mailstore.py`) bere jen UID nad
+`last_uid`; smazané a přesunuté zprávy z indexu nikdy nezmizí. Aplikace pak ukazuje „duchy“,
+otevře je z indexu, a přesun i vlaječka selžou.
+
+**Co:**
+1. V každém syncu složky ÚVN navíc `UID SEARCH ALL` (levné: jen čísla) a porovnat s UID
+   v indexu pro tu složku a `uidvalidity`. Řádky, které na serveru nejsou, **nemazat** (nic se
+   nemaže, pravidlo 3 aplikace; audit a `polozky.ref_cache` na ně odkazují), ale označit —
+   nový sloupec `messages.smazano_at` (ISO čas, NULL = živá). U `folder` se nic nemění.
+2. `mail_search`, `mail_thread`, `stav_vlaken` a `mail_stats` vracejí jen řádky se
+   `smazano_at IS NULL` (parametr `vcetne_smazanych=True` je vrátí). `mail_get` označenou zprávu
+   vrátí s `smazano: true`, `mail_move` / `mail_flag` u ní rovnou vrátí `neplatny_ref` bez
+   IMAPu.
+3. Zpráva, která se ve složce znovu objeví (stejný UID po vrácení z koše), dostane
+   `smazano_at = NULL`. Zpráva přesunutá do jiné povolené složky se tam při syncu stáhne
+   znovu (jiný UID) — to už funguje, jen původní řádek dostane `smazano_at`.
+4. Stav ze schránky (ÚKOL 49): položka, jejíž zpráva je `smazano_at` a nemá nový ref v jiné
+   složce, se **nezavírá** automaticky — jen `ref_cache` zůstane a `mail_najdi` ji dohledá,
+   kdyby se vrátila. Hlídač nic neposílá.
+5. Gmail má CONDSTORE/VANISHED, ověřit, že totéž (smazání v Gmailu) index už dnes odebere;
+   pokud ne, stejný sloupec i pro `[Gmail]/Všechny zprávy`.
+
+**Hotovo, když:** smazání zprávy v Mailu se do 15 minut projeví v `mail_search` (zpráva
+zmizí), `mail_move` na ni vrátí `neplatny_ref` bez IMAP přihlášení, a `mail_stats` ÚVN sedí
+s počtem v Mailu.
+
+## ÚKOL 57 — obrázky ve zprávě (doplněno 23. 9. 2026)
+
+**Proč:** `html_telo.sanitizuj` vyhazuje všechny vzdálené `<img>` (jen `data:` z `cid:`), takže
+v aplikaci chybí obrázky v newsletterech, pozvánkách i loga v podpisech. Mail i Gmail je
+ukazují (Gmail přes proxy). Sledovací pixely jsou skutečné riziko, proto volitelně.
+
+**Co:**
+1. `mail_get(..., format="html", obrazky="vlozene" | "vse")`, výchozí `vlozene` (dnešní chování).
+   `vse` ponechá u `<img src>` i `background` také `http(s):` URL (nikdy `javascript:`,
+   `file:`; `data:` jen `image/*`); přidat `loading="lazy"` a `referrerpolicy="no-referrer"`
+   na každý vzdálený obrázek, ať odchozí požadavek nenese adresu aplikace.
+2. Volitelně (lepší, jako Gmail): `mail_obrazek(url)` — proxy přes engine s cache 24 h,
+   limit 5 MB, jen `image/*`, bez cookies; `obrazky="proxy"` pak přepíše `src` na
+   `/api/v1/mail_obrazek?url=…`. IP lékaře se tak odesílateli neukáže. Může být později.
+3. REST: parametr `obrazky` propustit (REST odmítá neznámé parametry), `REST_VYCHOZI`
+   nechat na `vlozene` — aplikace si řekne o `vse` sama (nastavení „Zobrazovat obrázky“).
+
+**Hotovo, když:** `mail_get(ref, format="html", obrazky="vse")` vrátí newsletter s obrázky,
+`obrazky="vlozene"` totéž co dnes, a v HTML nikdy není `<img src="http…">` bez
+`referrerpolicy="no-referrer"`.
+
 ---
 
 ## Co v tomhle zadání není

@@ -24,13 +24,24 @@ export class EngineError extends Error {
   readonly code: EngineErrorCode;
   /** `duvod` z odpovědi enginu, když ho poslal. */
   readonly reason?: string;
+  /** `kod` z odpovědi enginu (`neplatny_ref`, `rodne_cislo`, …), když ho poslal. */
+  readonly kod?: string;
 
-  constructor(code: EngineErrorCode, message: string, reason?: string) {
+  constructor(code: EngineErrorCode, message: string, reason?: string, kod?: string) {
     super(message);
     this.name = "EngineError";
     this.code = code;
     this.reason = reason;
+    this.kod = kod;
   }
+}
+
+/**
+ * Zpráva je v indexu enginu, ale ve schránce už ne — smazaná nebo přesunutá v Mailu
+ * (engine `neplatny_ref`). Obrazovka ji odebere ze seznamu místo hlášení chyby.
+ */
+export function isMessageGone(err: unknown): boolean {
+  return err instanceof EngineError && err.kod === "neplatny_ref";
 }
 
 /** Obálka každé odpovědi enginu. */
@@ -38,6 +49,7 @@ export interface WireEnvelope {
   ok: boolean;
   duvod?: string;
   chyba?: string;
+  kod?: string;
 }
 
 export interface EngineClientOptions {
@@ -78,7 +90,7 @@ export function createEngineClient(options: EngineClientOptions): EngineClient {
     if (!response.ok || !body.ok) {
       // Engine: `duvod` = kód (`mfa_required`, `neplatny_ref`, …), `chyba` = věta pro uživatele.
       const code: EngineErrorCode = response.status === 401 || response.status === 403 ? "unauthorized" : "engine";
-      throw new EngineError(code, body.chyba ?? body.duvod ?? cs.engine.neplatnaOdpoved, body.duvod);
+      throw new EngineError(code, body.chyba ?? body.duvod ?? cs.engine.neplatnaOdpoved, body.duvod, body.kod);
     }
     return body;
   }

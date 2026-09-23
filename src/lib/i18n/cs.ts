@@ -163,6 +163,9 @@ export const cs = {
       nacteniSlozek: "Nepodařilo se načíst složky.",
       oznaceni: "Nepodařilo se označit e-mail.",
       presun: "Nepodařilo se přesunout e-mail.",
+      /** Engine `neplatny_ref`: zpráva je v indexu, ale ve schránce už ne (smazaná nebo přesunutá v Mailu). */
+      zpravaUzNeni: "Zpráva už ve schránce není",
+      zpravaUzNeniPopis: "Někdo ji smazal nebo přesunul mimo aplikaci. Ze seznamu ji odebíráme.",
     },
 
     presunuto: "Přesunuto do",
