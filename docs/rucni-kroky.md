@@ -40,8 +40,9 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
   noční záloha neotevře. Nikam jinam (ne do chatu, ne do gitu).
 - [x] **`SUPABASE_DB_URL`** v `.env` enginu a `postgresql-client-17` (23. 9.): záloha jede
   `pg_dump` (schéma `doktor` 440 kB). Heslo databáze bylo při nastavování prozrazeno v chatu
-  a v historii shellu → **resetovat v Supabase** (Project Settings → Database), pokud se
-  nestalo, a zapsat nový URI stejným postupem (`read -rs`, nikdy do příkazu).
+  a v historii shellu → resetováno v Supabase 23. 9., nový URI zapsán přes `read -rs`.
+- [x] **CSP** pro `doktor-app.vercel.app` nasazeno 23. 9. (commit `00c44ea`); zkontrolovat
+  v prohlížeči konzoli, jestli nic nehlásí „Refused to …“.
 - [ ] **E-mail hlídače běhů** (`HLIDAC_MAIL=true` v `.env`): jediná výjimka z „nic se neodesílá
   samo“ — hlídač by poslal e-mail sám sobě, když běh nepřijde. Rozhodnout se Štěpánem; do té
   doby jen audit a wiki.
