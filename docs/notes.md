@@ -423,3 +423,19 @@ do `public/theme-init.js` (Vite ho kopíruje do `dist/`, Vercel ho obslouží ze
 před rewrite na `index.html`). Ověřeno: bundle nepoužívá `eval` ani blob workery (Supabase realtime
 worker se zapíná jen s `worker: true`, což aplikace nedělá). Až doména bude, přidat ji do
 `connect-src` není třeba — mění se jen origin, ne cíle.
+
+**23. 9. 2026 — pošta rychleji a z cache.** Příčina pomalého seznamu byla na enginu: REST si u
+`mail_search` vynucuje `zive_priznaky=True` (nové IMAP přihlášení k ÚVN i Gmailu, ~2,4 s), zatímco
+z indexu je seznam v milisekundách (`docs/stav-serveru.md` enginu). Aplikace teď posílá
+`zive_priznaky` výslovně: seznam nejdřív z indexu (`liveFlags: false`), živé příznaky se dotáhnou
+na pozadí a obrazovka si převezme jen značky (`watchMessages`). Nová vrstva `src/lib/email/cache.ts`
+(`withMailCache`, obaluje klienta z `createEngineMailboxFromEnv`): seznamy, detaily, složky a vlákna
+v paměti stránky (ne v Supabase, ne v `localStorage` — pravidlo 5; odhlášení volá `clearMailCache`),
+dedupe souběžných dotazů (StrictMode, hledání), `peekMessages` pro okamžité zobrazení po přepnutí
+schránky/složky, `refetchMessages` pro Obnovit a minutové obnovení, opravy cache při přečteno /
+vlaječka / přesun / odeslání. `Mail.tsx` po 1,5 s přednačte Doručené a složky ostatních schránek,
+`EmailInbox` po načtení seznamu předem stáhne první 3 detaily (engine čte přes readonly SELECT /
+BODY.PEEK, takže se tím nic neoznačí jako přečtené). Navíc: odpověď předběhnutá novějším dotazem se
+zahodí (dřív mohla stará složka přepsat novou) a „Jen nepřečtené" filtruje místně podle značek
+(engine filtr nemá; dřív tlačítko jen znovu načetlo totéž). Na server jde ÚKOL 55 (levnější živé
+příznaky). Favicon: `public/favicon.svg` + PNG 32/180 (obálka na `--secondary`), `theme-color`.

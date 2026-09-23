@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { contactDisplayName, type ContactSource } from "@/lib/contacts";
 import type { EmailRecipientSuggestion } from "@/lib/email/compose";
+import { MAIL_PAGE_SIZE } from "@/lib/email/cache";
 import { createEngineMailboxFromEnv, type EngineMailboxId } from "@/lib/email/engineMailbox";
 import { emailSignatureToEditorHtml } from "@/lib/email/signature";
 import type { MailAttachmentMeta, MailListMessage, MailMessageDetail, MailSearchFilter } from "@/lib/email/types";
@@ -69,8 +70,23 @@ export default function Mail({
   const { toast } = useToast();
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
 
-  // Klient je levný; nový vzniká jen při přepnutí schránky.
+  // Klient je levný; nový vzniká jen při přepnutí schránky. Cache seznamů je společná (`lib/email/cache.ts`).
   const mailbox = useMemo(() => createEngineMailboxFromEnv(getAccessToken, mailboxId), [mailboxId]);
+
+  // Přednačtení ostatních schránek (Doručené + složky) chvíli po otevření, ať je přepnutí okamžité.
+  // Cache je společná, takže se to při dalším přepnutí neopakuje, dokud je stránka čerstvá.
+  useEffect(() => {
+    if (!mailbox) return;
+    const timer = window.setTimeout(() => {
+      for (const other of MAILBOXES) {
+        if (other === mailboxId) continue;
+        const client = createEngineMailboxFromEnv(getAccessToken, other);
+        client?.listMessages({ folderId: "inbox", maxResults: MAIL_PAGE_SIZE }).catch(() => undefined);
+        client?.listFolders().catch(() => undefined);
+      }
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [mailbox, mailboxId]);
 
   // „Odeslat z": schránky z `schranky` (K3.3). Předvolba pro nový e-mail = schránka, ve které se dívám.
   const { data: mailboxes = [] } = useQuery({ queryKey: ["schranky"], queryFn: () => loadMailboxes() });

@@ -160,6 +160,33 @@ nesmí), `audit` řádek, REST **nevystavovat** (aplikace to nepotřebuje).
 **Hotovo, když:** běh třídění z chatu projde jen přes tyhle nástroje bez jediného
 `execute_sql`; `docs/most-claude.md` v `doktor-app` se přepíše na nástroje (udělá aplikace).
 
+## ÚKOL 55 — rychlý seznam pošty: levnější živé příznaky (doplněno 23. 9. 2026)
+
+**Proč:** seznam v aplikaci trval sekundy. REST si u `mail_search` vynucuje `zive_priznaky=True`
+(`REST_VYCHOZI` v `app/rest_api.py`), a to znamená při každém seznamu nové IMAP přihlášení k ÚVN
+a k Gmailu za sebou (~2,4 s podle `docs/stav-serveru.md`), zatímco z indexu je seznam za 5 ms.
+Aplikace od 23. 9. posílá `zive_priznaky` výslovně: seznam nejdřív `false` (index), pak na pozadí
+`true` (příznaky). Živé příznaky tedy zůstávají, jen ať jsou levné.
+
+**Co:**
+1. `mail_search` se `zive_priznaky=True`: ÚVN a Gmail číst **souběžně** (dnes `for` smyčka za
+   sebou), IMAP timeout pro čtení FLAGS snížit z 60 s na ~5 s (při chybě se vrátí index, jako dnes).
+2. `UPDATE messages SET flags` jen u řádků, kde se příznak opravdu změnil — dnes se přepisuje
+   všech 30 řádků a každý spouští FTS trigger s celým `body_clean`; a `WHERE schranka, folder, uid`
+   u Gmailu prochází všechny řádky složky `[Gmail]/Všechny zprávy` (index jen na `folder`).
+   Doplnit index `(schranka, folder, uid)`.
+3. Sync ÚVN aktualizovat FLAGS i u už stažených zpráv v INBOXu (dnes `sync_folder` bere jen UID
+   nad `last_uid`, takže `\Seen` z ÚVN v indexu zamrzne na stavu při prvním stažení). Stačí
+   posledních ~200 UID při každém syncu. Pak může aplikace časem živé příznaky vypnout úplně.
+4. `mail_folders` a `mail_stats` dnes při každém volání přihlašují k IMAPu — cache na enginu
+   60 s (aplikace si je cachuje 15 min, ale Claude ne).
+5. Volitelně: `mail_get` s `format=html` stahuje celé RFC822 živě (Gmail 2–4 s); u zpráv už
+   jednou stažených držet sanitizované HTML v indexu (`body_html`), ať je detail z indexu.
+
+**Hotovo, když:** `mail_search(schranka="vse", limit=30, zive_priznaky=True)` pod 1 s
+(změřit, zapsat do `docs/stav-serveru.md`), po přečtení zprávy v Mailu ÚVN se do 10 minut
+změní `flags` v indexu bez živého čtení, `mail_folders` podruhé za minutu bez IMAP přihlášení.
+
 ---
 
 ## Co v tomhle zadání není

@@ -91,6 +91,12 @@ export interface MailListParams {
   maxResults?: number;
   /** Doktor navíc proti CRM: „Hledat" bez AI (plán K0.4) — osoba, období, směr, příloha. */
   filter?: MailSearchFilter;
+  /**
+   * Doktor navíc: příznaky (přečteno, vlaječka) číst živě z IMAPu místo z indexu enginu.
+   * Živé čtení stojí přihlášení ke schránce (~2 s); seznam z indexu je v milisekundách.
+   * Bez hodnoty = z indexu.
+   */
+  liveFlags?: boolean;
 }
 
 /**
@@ -188,6 +194,16 @@ export interface MailboxClient {
   unreadCount(): Promise<number>;
   send(request: MailSendRequest): Promise<MailSendResult>;
   findByContacts(params: MailContactSearchParams): Promise<MailContactSearchResult>;
+
+  /* Doktor navíc proti CRM: paměťová cache seznamu (`lib/email/cache.ts`). Nepovinné —
+   * obrazovka bez nich jen ukáže kostru místo uloženého seznamu. */
+
+  /** Uložená stránka seznamu bez volání serveru, i prošlá; `null` když nic není. */
+  peekMessages?(params: MailListParams): MailListPage | null;
+  /** Seznam vždy ze serveru (Obnovit, pravidelné obnovení); výsledek jde do cache. */
+  refetchMessages?(params: MailListParams): Promise<MailListPage>;
+  /** Volá `listener`, kdykoli se uložená stránka pro `params` změní (např. dojdou živé příznaky). Vrací odhlášení. */
+  watchMessages?(params: MailListParams, listener: (page: MailListPage) => void): () => void;
 }
 
 /** Složky, které umí každá implementace. */

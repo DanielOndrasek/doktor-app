@@ -39,6 +39,7 @@ import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEdito
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import { activeFilterCount } from "@/lib/email/search";
+import { MAIL_PAGE_SIZE } from "@/lib/email/cache";
 import type { ComposeForwardContext, ComposeSourceAttachment } from "@/lib/email/compose";
 import type { ThreadMessage } from "@/lib/email/thread";
 import type {
@@ -119,6 +120,13 @@ interface EmailInboxProps {
   renderContext?: (detail: MailMessageDetail) => ReactNode;
 }
 
+/** Kolik detailů se načte předem po načtení seznamu (postupně; každý je 1–2 volání enginu). */
+const DETAIL_PREFETCH = 3;
+
+function sameLabels(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((l) => b.includes(l));
+}
+
 /**
  * Obrazovka schránky: složky · seznam · detail. Převzato z vividbooks CRM
  * (`831f9ae6`).
@@ -151,14 +159,17 @@ export function EmailInbox({
 }: EmailInboxProps) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const [emails, setEmails] = useState<MailListMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Uložená první stránka z cache (`lib/email/cache.ts`): po přepnutí schránky nebo návratu
+  // na Poštu se seznam ukáže hned a potichu se vymění, místo kostry a čekání na engine.
+  const peekInbox = () => mailbox?.peekMessages?.({ folderId: "inbox", maxResults: MAIL_PAGE_SIZE }) ?? null;
+  const [emails, setEmails] = useState<MailListMessage[]>(() => peekInbox()?.emails ?? []);
+  const [loading, setLoading] = useState(() => !peekInbox());
   const [searchQuery, setSearchQuery] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   // „Hledat" bez AI (K0.4): s filtrem se hledá ve všech složkách, ne jen v otevřené.
   const [filter, setFilter] = useState<MailSearchFilter>({});
   const filterActive = activeFilterCount(filter) > 0;
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(() => peekInbox()?.nextPageToken ?? null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -341,59 +352,112 @@ export function EmailInbox({
       labelIds: d.labelIds,
     };
 
+  /** Parametry seznamu pro aktuální složku, dotaz a filtr; totéž pro cache, obnovení i sledování změn. */
+  const listParams = useCallback(
+    (folderId?: string, search?: string, pageToken?: string) => ({
+      folderId: filterActive ? "all" : folderId || activeFolder,
+      // Bez výslovného dotazu platí ten uplatněný — efekt po změně filtru či složky ho nesmí zahodit.
+      search: (search === undefined ? appliedQuery : search) || undefined,
+      unreadOnly: showUnreadOnly,
+      pageToken,
+      maxResults: MAIL_PAGE_SIZE,
+      filter: filterActive ? filter : undefined,
+    }),
+    [activeFolder, appliedQuery, showUnreadOnly, filter, filterActive],
+  );
+
+  // Pořadí požadavků: odpověď, kterou předběhl novější dotaz (jiná složka, jiné hledání), se zahodí,
+  // jinak by pomalá stará odpověď přepsala seznam nové složky.
+  const listRequest = useRef(0);
+
+  /** Předběžně načte detaily prvních zpráv, ať je kliknutí okamžité. Postupně, ne najednou — engine má limit 60 volání za minutu. */
+  const prefetchDetails = useCallback(
+    (messages: MailListMessage[]) => {
+      if (!mailbox) return;
+      const ids = messages.slice(0, DETAIL_PREFETCH).map((m) => m.id);
+      void (async () => {
+        for (const id of ids) {
+          try {
+            await mailbox.getMessage(id);
+          } catch {
+            /* jen předběžné — chyba se ukáže až při otevření */
+          }
+        }
+      })();
+    },
+    [mailbox],
+  );
+
   const fetchEmails = useCallback(
-    async (folderId?: string, search?: string, pageToken?: string) => {
+    async (folderId?: string, search?: string, pageToken?: string, fresh = false) => {
       if (!mailbox) {
         setLoading(false);
         return;
       }
       const isMore = !!pageToken;
+      const params = listParams(folderId, search, pageToken);
+      const seq = isMore ? listRequest.current : ++listRequest.current;
       if (isMore) setLoadingMore(true);
-      else setLoading(true);
+      // Kostra jen když pro tenhle dotaz nic uloženého není — jinak zůstane starý seznam a potichu se vymění.
+      else if (!mailbox.peekMessages?.(params)) setLoading(true);
 
       try {
-        const page = await mailbox.listMessages({
-          folderId: filterActive ? "all" : folderId || activeFolder,
-          // Bez výslovného dotazu platí ten uplatněný — efekt po změně filtru či složky ho nesmí zahodit.
-          search: (search === undefined ? appliedQuery : search) || undefined,
-          unreadOnly: showUnreadOnly,
-          pageToken,
-          maxResults: 30,
-          filter: filterActive ? filter : undefined,
-        });
-
+        const page = fresh && mailbox.refetchMessages ? await mailbox.refetchMessages(params) : await mailbox.listMessages(params);
+        if (seq !== listRequest.current) return;
         if (isMore) setEmails((prev) => [...prev, ...page.emails]);
-        else setEmails(page.emails);
+        else {
+          setEmails(page.emails);
+          prefetchDetails(page.emails);
+        }
         setNextPageToken(page.nextPageToken);
         refreshItems(page.emails);
       } catch (err) {
+        if (seq !== listRequest.current) return;
         console.error(cs.posta.chyby.nacteniSeznamu, err);
         toast({ title: errorMessage(err, cs.posta.chyby.nacteniSeznamu), variant: "destructive" });
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (seq === listRequest.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
-    [activeFolder, appliedQuery, mailbox, showUnreadOnly, toast, refreshItems, filter, filterActive],
+    [mailbox, listParams, toast, refreshItems, prefetchDetails],
   );
 
   useEffect(() => {
     void fetchEmails();
   }, [fetchEmails]);
 
-  // Pravidelné obnovení seznamu; jen první stránka, ať se nepřepíše donačtené.
+  // Cache hlásí změnu první stránky (dojdou živé příznaky z IMAPu, obnovení z jiné instance):
+  // převezmou se jen značky (přečteno, vlaječka), ať se nepřepíše donačtené ani místní úpravy seznamu.
+  useEffect(() => {
+    if (!mailbox?.watchMessages) return;
+    return mailbox.watchMessages(listParams(), (page) => {
+      const byId = new Map(page.emails.map((m) => [m.id, m]));
+      setEmails((prev) => {
+        let changed = false;
+        const next = prev.map((m) => {
+          const fresh = byId.get(m.id);
+          if (!fresh || sameLabels(m.labelIds, fresh.labelIds)) return m;
+          changed = true;
+          return { ...m, labelIds: fresh.labelIds };
+        });
+        return changed ? next : prev;
+      });
+    });
+  }, [mailbox, listParams]);
+
+  // Pravidelné obnovení seznamu vždy z enginu (živé příznaky); jen první stránka, ať se nepřepíše donačtené.
   useEffect(() => {
     if (!mailbox) return;
     const interval = setInterval(() => {
-      mailbox
-        .listMessages({
-          folderId: filterActive ? "all" : activeFolder,
-          search: appliedQuery || undefined,
-          unreadOnly: showUnreadOnly,
-          maxResults: 30,
-          filter: filterActive ? filter : undefined,
-        })
+      const params = listParams();
+      const seq = listRequest.current;
+      (mailbox.refetchMessages ? mailbox.refetchMessages(params) : mailbox.listMessages(params))
         .then((page) => {
+          // Mezitím se přepnula složka — odpověď patří té staré.
+          if (seq !== listRequest.current) return;
           setEmails(page.emails);
           setNextPageToken(page.nextPageToken);
           refreshItems(page.emails);
@@ -404,7 +468,10 @@ export function EmailInbox({
         });
     }, 60000);
     return () => clearInterval(interval);
-  }, [activeFolder, appliedQuery, mailbox, showUnreadOnly, refreshItems, filter, filterActive]);
+  }, [mailbox, listParams, refreshItems]);
+
+  // „Jen nepřečtené" je místní filtr nad načteným seznamem (engine ho nezná).
+  const visibleEmails = showUnreadOnly ? emails.filter((e) => e.labelIds.includes("UNREAD")) : emails;
 
   const handleSearch = () => {
     setAppliedQuery(searchQuery);
@@ -426,10 +493,12 @@ export function EmailInbox({
     // S filtrem se hledá ve všech složkách; výběr složky filtr zruší — uživatel chce právě tu složku.
     if (filterActive) setFilter({});
     setActiveFolder(folder.id);
-    setEmails([]);
+    // Uložená stránka složky se ukáže hned; efekt nad `fetchEmails` ji pak potichu vymění.
+    const cached = mailbox?.peekMessages?.({ folderId: folder.id, maxResults: MAIL_PAGE_SIZE }) ?? null;
+    setEmails(cached?.emails ?? []);
     setSelectedId(null);
     setDetail(null);
-    setNextPageToken(null);
+    setNextPageToken(cached?.nextPageToken ?? null);
     setComposing(false);
     setReplyData(null);
     // Načtení udělá efekt nad `fetchEmails` (mění se `activeFolder`, případně filtr).
@@ -597,7 +666,7 @@ export function EmailInbox({
         setReplyData(null);
         if (isMobile) handleBack();
       }}
-      onSent={() => void fetchEmails(activeFolder, appliedQuery)}
+      onSent={() => void fetchEmails(activeFolder, appliedQuery, undefined, true)}
     />
   );
 
@@ -705,10 +774,10 @@ export function EmailInbox({
               variant={showUnreadOnly ? "default" : "ghost"}
               size="icon"
               onClick={() => {
+                // Engine filtr nepřečtených nemá — filtruje se tady podle značek, seznam zůstává.
                 setShowUnreadOnly((prev) => !prev);
                 setSelectedId(null);
                 setDetail(null);
-                setEmails([]);
               }}
               className="flex-shrink-0"
             >
@@ -720,7 +789,7 @@ export function EmailInbox({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => void fetchEmails(activeFolder, appliedQuery)}
+          onClick={() => void fetchEmails(activeFolder, appliedQuery, undefined, true)}
           className="flex-shrink-0"
           title={cs.posta.seznam.obnovit}
         >
@@ -747,13 +816,13 @@ export function EmailInbox({
               </div>
             ))}
           </div>
-        ) : emails.length === 0 ? (
+        ) : visibleEmails.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             {mailbox ? cs.posta.seznam.zadneEmaily : cs.posta.chyby.bezSchranky}
           </div>
         ) : (
           <>
-            {emails.map((email) => (
+            {visibleEmails.map((email) => (
               <EmailListItem
                 key={email.id}
                 id={email.id}

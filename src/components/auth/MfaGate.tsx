@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
+import { clearMailCache } from "@/lib/email/cache";
 import { cs } from "@/lib/i18n/cs";
 import { supabase } from "@/lib/supabase/client";
 import { loadMfaStatus, needsMfaChallenge, type MfaStatus } from "@/lib/supabase/mfa";
@@ -42,6 +43,8 @@ export default function MfaGate({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const signOut = async () => {
+    // Paměťová cache pošty (těla zpráv) nesmí přežít odhlášení.
+    clearMailCache();
     await supabase.auth.signOut();
     navigate(LOGIN_PATH, { replace: true });
   };

@@ -1,4 +1,5 @@
 import { cs } from "@/lib/i18n/cs";
+import { withMailCache } from "./cache";
 import type { ComposeSendRequest } from "@/lib/email/compose";
 import type { ThreadMessage } from "@/lib/email/thread";
 import { EngineError, createEngineClient, type EngineClient, type WireEnvelope } from "@/lib/engine/client";
@@ -126,6 +127,10 @@ export interface EngineMailbox extends MailboxClient {
   attachmentLink(messageId: string, attachment: MailAttachmentMeta): Promise<string>;
   /** Celé vlákno chronologicky (`mail_thread`) z indexu enginu, včetně zprávy samé. Obě schránky. */
   thread(threadId: string): Promise<ThreadMessage[]>;
+  /* Cache (`lib/email/cache.ts`) — holý klient je nemá, `createEngineMailboxFromEnv` ho obaluje. */
+  peekMessages(params: MailListParams): MailListPage | null;
+  refetchMessages(params: MailListParams): Promise<MailListPage>;
+  watchMessages(params: MailListParams, listener: (page: MailListPage) => void): () => void;
 }
 
 /* ── Drátové tvary ─────────────────────────────────────────────────────────
@@ -316,6 +321,13 @@ function compact(payload: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0)));
 }
 
+/**
+ * Ref → schránka podle řádků, které engine vrátil. Na úrovni modulu, ne klienta:
+ * přepnutí schránky vytváří nový klient a seznam z cache (`cache.ts`) by jinak
+ * přišel o schránku svých refů.
+ */
+const known = new Map<string, string>();
+
 export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbox {
   const mailbox = options.mailbox ?? "all";
   const archiveFolder = options.archiveFolder ?? "_Triage/Vyřízeno";
@@ -333,7 +345,6 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
   // a operace nad jednou zprávou (`mail_get`, `mail_flag`, …) ji potřebují zpět —
   // drží se v `known` podle refu, záložně podle tvaru refu.
   const searchSchranka = mailbox === "all" ? "vse" : mailbox === "uvn" ? undefined : mailbox;
-  const known = new Map<string, string>();
   const schrankaOf = (ref: string): string | undefined => {
     if (mailbox !== "all") return searchSchranka;
     const s = known.get(ref) ?? (ref.startsWith(GMAIL_REF_PREFIX) ? "gmail" : "uvn");
@@ -402,6 +413,9 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       ma_prilohu: f?.hasAttachment ? true : undefined,
       limit,
       offset,
+      // REST si jinak vynucuje živé FLAGS z IMAPu (~2 s na přihlášení k oběma schránkám);
+      // z indexu je seznam v milisekundách. Živé příznaky si obal s cache dotáhne zvlášť.
+      zive_priznaky: params.liveFlags === true,
     });
     const more = zpravy.length >= limit;
     return {
@@ -415,6 +429,10 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
     provider: "engine",
 
     listMessages,
+    // Bez cache: nic uloženého, obnovení = obyčejný seznam se živými příznaky, změny nikdo nehlásí.
+    peekMessages: () => null,
+    refetchMessages: (params) => listMessages({ ...params, liveFlags: true }),
+    watchMessages: () => () => undefined,
 
     async getMessage(messageId): Promise<MailMessageDetail> {
       const s = schrankaOf(messageId);
@@ -599,5 +617,5 @@ export function createEngineMailboxFromEnv(
 ): EngineMailbox | null {
   const baseUrl = import.meta.env.VITE_ENGINE_URL?.trim();
   if (!baseUrl) return null;
-  return createEngineMailbox({ baseUrl, mailbox, getToken });
+  return withMailCache(createEngineMailbox({ baseUrl, mailbox, getToken }), mailbox);
 }
