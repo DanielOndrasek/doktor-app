@@ -112,7 +112,11 @@ export const cs = {
       odpoved: "Odpovědět",
       preposlani: "Přeposlat",
       /** Režim přeposlání: engine skládá předmět, hlavičky, text i přílohy původní zprávy. */
-      preposlaniPoznamka: "Poznámka nad přeposlanou zprávou. Původní hlavičky, text a přílohy doplní engine, předmět bude „Fwd: …“.",
+      preposlaniPoznamka: "Poznámka nad přeposlanou zprávou. Původní hlavičky, text a přílohy doplní engine, předmět bude „Fwd: …“. Další přílohy a kopie jdou přidat jako u nové zprávy.",
+      /** K3.4 „příloha z jiného mailu": přílohy zprávy, na kterou se odpovídá. */
+      prilohyZPuvodni: "Přiložit z původní zprávy:",
+      prilohaZPuvodniPridat: "Přiložit k odpovědi",
+      prilohaZPuvodniOdebrat: "Nepřikládat",
       preposlaniPrilohy: (n: number) => `Přeposílané přílohy (${n}):`,
       preposlaniBezPriloh: "Původní zpráva nemá přílohy.",
       preposlano: "Přeposláno",
@@ -209,7 +213,6 @@ export const cs = {
     engine: {
       nevystaveno: "Tahle operace se v aplikaci nevystavuje — nic se nemaže.",
       prilohaOdkazem: "Příloha se předává odkazem, ne base64. Použijte odkaz na přílohu nebo nahrání na engine.",
-      preposlaniJenUvn: "Přeposlání s původními přílohami umí engine zatím jen pro schránku ÚVN.",
     },
 
     podpis: {

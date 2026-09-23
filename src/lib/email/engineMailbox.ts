@@ -1,6 +1,5 @@
 import { cs } from "@/lib/i18n/cs";
 import type { ComposeSendRequest } from "@/lib/email/compose";
-import { htmlToPlainText } from "@/lib/email/html";
 import type { ThreadMessage } from "@/lib/email/thread";
 import { EngineError, createEngineClient, type EngineClient, type WireEnvelope } from "@/lib/engine/client";
 import type {
@@ -110,8 +109,13 @@ export interface EngineMailbox extends MailboxClient {
    * převede na text — engine skládá zprávu sám). Engine to umí jen nad ÚVN.
    */
   forward(request: EngineSendRequest & { forwardOf: string }): Promise<EngineForwardResult>;
-  /** Jestli `forward` pro tenhle ref půjde (jen ÚVN) — obrazovka podle toho tlačítko schová. */
+  /** Jestli `forward` pro tenhle ref půjde — od ÚKOLU 47 vždy; obrazovka podle toho tlačítko schová. */
   forwardSupported(messageId: string): boolean;
+  /**
+   * Aktuální ref podle RFC Message-ID (`mail_najdi`, obě schránky) — když je
+   * `polozky.ref_cache` prošlý po přesunu mimo aplikaci. `null` = nenalezeno.
+   */
+  findRef(messageId: string): Promise<string | null>;
   /** Nahrání přílohy multipartem; vrací `upload_id` (pravidlo 2). */
   upload(file: File | Blob, name?: string): Promise<EngineUploadResult>;
   /**
@@ -223,6 +227,16 @@ interface WireForward extends WireSend {
   priloh?: number;
   /** Názvy překopírovaných příloh. */
   prilohy?: string[];
+  /** ÚKOL 47: schránka původní zprávy a adresa odeslání. */
+  schranka?: string;
+  odeslano_z?: string;
+}
+
+/** `mail_najdi`: ref podle Message-ID, s předmětem ke kontrole. */
+interface WireNajdi extends WireEnvelope {
+  ref?: string;
+  predmet?: string;
+  priznaky?: string;
 }
 
 interface WireStats extends WireEnvelope {
@@ -345,8 +359,14 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       odpoved_na_message_id: request.inReplyTo,
       odeslat_z: request.sendFrom,
       podpis_id: request.signatureId,
-      prilohy: (request.uploadIds ?? []).map((id) => ({ zdroj: "upload", id })),
+      prilohy: attachmentsPayload(request),
     });
+
+  /** Přílohy odkazem: nahrané (`upload`) a z jiné zprávy (`zprava`, ÚKOL 51) — bajty skládá engine. */
+  const attachmentsPayload = (request: EngineSendRequest) => [
+    ...(request.uploadIds ?? []).map((id) => ({ zdroj: "upload", id })),
+    ...(request.messageAttachments ?? []).map((a) => ({ zdroj: "zprava", ref: a.ref, index: a.index })),
+  ];
 
   async function moveMessage(messageId: string, folderId: string): Promise<EngineMoveResult> {
     const data = await call<WireMove>(
@@ -491,24 +511,30 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
       return { ref: data.ref ?? "" };
     },
 
-    forwardSupported(messageId) {
-      // `mail_preposlat` nezná `schranka` ani `odeslat_z`: čte i odesílá jen ÚVN (22. 9.).
-      return schrankaOf(messageId) === undefined;
+    forwardSupported() {
+      // Od ÚKOLU 47 (23. 9.) umí `mail_preposlat` obě schránky — schránku pozná z refu.
+      return true;
     },
 
     async forward(request): Promise<EngineForwardResult> {
-      if (!client.forwardSupported(request.forwardOf)) {
-        throw new EngineError("not_exposed", cs.posta.engine.preposlaniJenUvn);
-      }
-      // REST odmítá neznámé parametry — jde jen to, co nástroj má.
-      const data = await call<WireForward>("mail_preposlat", {
-        ref: request.forwardOf,
-        komu: request.to,
-        telo: request.isHtml ? htmlToPlainText(request.body) : request.body,
-        zpusob: "cast",
-        // Odeslání je vždy za potvrzením uživatele v aplikaci (pravidlo 8).
-        potvrzeni: "ODESLAT",
-      });
+      // REST odmítá neznámé parametry — jde jen to, co nástroj má (ÚKOL 47: schranka, odeslat_z, kopie, html, prilohy).
+      const data = await call<WireForward>(
+        "mail_preposlat",
+        compact({
+          ref: request.forwardOf,
+          schranka: schrankaOf(request.forwardOf) ?? "uvn",
+          komu: request.to,
+          kopie: request.cc,
+          skryta_kopie: request.bcc,
+          telo: request.body,
+          html: request.isHtml ? true : undefined,
+          odeslat_z: request.sendFrom,
+          prilohy: attachmentsPayload(request),
+          zpusob: "cast",
+          // Odeslání je vždy za potvrzením uživatele v aplikaci (pravidlo 8).
+          potvrzeni: "ODESLAT",
+        }),
+      );
       return {
         sentVia: "engine",
         total: request.to.length,
@@ -516,6 +542,22 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
         attachments: data.prilohy ?? [],
         flagged: data.priznak_nastaven === true,
       };
+    },
+
+    async findRef(messageId) {
+      // `mail_najdi` hledá v jedné schránce; ÚVN je častější, Gmail záložně. Jen čtení.
+      for (const schranka of ["uvn", "gmail"]) {
+        try {
+          const data = await call<WireNajdi>("mail_najdi", { message_id: messageId, schranka });
+          if (data.ref) {
+            known.set(data.ref, schranka);
+            return data.ref;
+          }
+        } catch {
+          /* v téhle schránce není — zkusí se další */
+        }
+      }
+      return null;
     },
 
     async upload(file, name) {

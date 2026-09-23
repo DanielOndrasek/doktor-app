@@ -1,117 +1,118 @@
 # Most do Clauda: jak Claude čte a zapisuje do schématu `doktor`
 
 Aplikace nevolá žádný model (CLAUDE.md, Stack). „Most do Clauda“ z plánu je obráceně:
-**Claude přes MCP** čte poštu z enginu (`mcp__UVN_Email__*`) a zapisuje metadata
-do Supabase (`mcp__Supabase__execute_sql` / `apply_migration`), aplikace to jen ukazuje.
-Tenhle dokument říká, co smí Claude zapsat, kam a jak, aby to aplikace i RLS unesly.
-Až vzniknou MCP nástroje na enginu (K2.4: `polozka_zapis`, `ukol_zalozit`, …), budou
-dělat totéž; do té doby jde přímý SQL přes Supabase MCP.
+**Claude přes MCP** čte poštu z enginu (`mcp__UVN_Email__*`) a zapisuje metadata do Supabase,
+aplikace to jen ukazuje. Tenhle dokument říká, co smí Claude zapsat, kam a jak, aby to
+aplikace i RLS unesly.
+
+**Od 23. 9. 2026 (ÚKOL 54, K2.4) se zapisuje přes nástroje enginu**, ne přímým SQL. Nástroje
+mají pravidla zadrátovaná v jedné implementaci: `user_id` doplní engine, rodné číslo se
+**odmítne** (nic se nezapíše), `rozepsano_telo` se nezapisuje nikdy, `stav_zdroj = klik` se
+nepřepisuje, idempotence přes `(schranka_id, message_id)` a `zdroj_id`, každé volání jde do
+`audit`. Přímé SQL (`mcp__Supabase__execute_sql`) zůstává jen pro **čtení**, pro `pripady`
+(nástroj zatím není) a pro nouzové opravy.
 
 ## Dvě spojení, jeden uživatel
 
 | Spojení | K čemu | Co nikdy |
 |---|---|---|
-| Engine `uvn-mail-mcp` (MCP `UVN_Email`) | index pošty, těla, přílohy, kalendáře, adresář (`mail_search`, `mail_get`, `mail_thread`, `mail_kontakty`, `cal_*`) | posílat ven rodná čísla; mazat; odesílat bez potvrzení |
-| Supabase projekt `doktor` (MCP `Supabase`, ref `dwwwdeagnqiibwraxyjx`) | metadata: `polozky`, `ukoly`, `udalosti`, `kontakty`, `poznamky`, `behy`, `fronta_claude`, `audit` | těla zpráv, bajty a text příloh (pravidlo 5); rodná čísla (pravidlo 7) |
+| Engine `uvn-mail-mcp` (MCP `UVN_Email`) | pošta: `mail_search`, `mail_get`, `mail_thread`, `mail_kontakty`, `mail_flag`, `mail_move`, `cal_*`, `kb_*`; **zápis do Supabase**: `beh_zacni`, `beh_ukonci`, `polozka_zapis`, `ukol_zaloz`, `udalost_navrhni`, `fronta_vezmi`, `fronta_hotovo`, `pouceni_schvalena`, `pouceni_navrhni`; styl: `kontakt_profil`, `opravy_sber` | posílat ven rodná čísla; mazat; odesílat (`mail_send`, `mail_preposlat`) bez výslovného pokynu; `cal_pridat` z běhu |
+| Supabase projekt `doktor` (MCP `Supabase`, ref `dwwwdeagnqiibwraxyjx`) | **čtení** stavu (`polozky`, `ukoly`, `pripady`, `pouceni`, `behy`, `audit`), zápis `pripady` | těla zpráv, bajty a text příloh (pravidlo 5); rodná čísla (pravidlo 7) |
 
-Každý řádek má `user_id`. Uživatel je zatím jeden — id se zjistí
-`select id from auth.users where email = '…'` a dosadí do každého insertu. Supabase MCP
-běží jako service role a RLS obchází, proto je `user_id` **povinnost Clauda**, ne databáze.
+Uživatel je zatím jeden — nástroje enginu `user_id` doplní samy; u přímého SQL (jen `pripady`)
+se zjistí `select id from auth.users where email = 'stepan.suchanek@uvn.cz'`.
 
-## Idempotence — každý zápis nese `zdroj_id`
+## Nástroje enginu pro zápis (ÚKOL 54)
 
-| Tabulka | Klíč | Tvar `zdroj_id` |
+| Nástroj | Co dělá | Klíč idempotence |
 |---|---|---|
-| `polozky` | `(schranka_id, message_id)` | RFC Message-ID z `mail_get` (ne `ref`, ten se přesunem mění) |
-| `ukoly` | `(user_id, zdroj_id)` | `email:<message_id>`, `claude:<projekt>:<slug>`, `plaud:<id nahrávky>` |
-| `udalosti` | `(user_id, zdroj_id)` | `email:<message_id>:<index návrhu>` |
-| `poznamky` | `(user_id, zdroj_id)` | `plaud:<id>`, `claude:<session>:<n>` |
-| `kontakty` | `id = md5('doktor:kontakt:' || klíč)::uuid` | klíč = `prijmeni|jmeno` bez diakritiky; adresy `unique (user_id, hodnota)` |
+| `beh_zacni(schranky=["uvn","gmail"])` → `beh_id` | založí řádek `behy` (`stav = bezi`) | — |
+| `beh_ukonci(beh_id, stav, pocty, chyba)` | uzavře běh (`hotovo` / `chyba` / `zruseno`); `pocty` = `{zpravy_uvn, zpravy_gmail, polozky, koncepty, ukoly, udalosti, pripady, sum_uvn, sum_gmail, prilohy_precteno}` | — |
+| `polozka_zapis(beh_id, polozka)` | upsert `polozky`; `polozka = {schranka_id, message_id, vlakno, ref_cache, od, od_email, predmet, datum, kategorie, priorita, stav, co_resit, navrh_predmet, navrh_telo, komu[], kopie[], prilohy_meta, kontakt_id, pripad_id}` | `(schranka_id, message_id)`; **`ref_cache` povinný** (`ref` z `mail_search`); stav `klik` se nechá (`stav_ponechan`) |
+| `ukol_zaloz(ukol)` | upsert `ukoly`; `ukol = {nazev, popis, termin, cas, priorita, druh, oblast, zdroj, zdroj_id, polozka_id, kontakt_id, claude_projekt}` | `zdroj_id` (`email:<message_id>`, `claude:<projekt>:<slug>`, `plaud:<id>`) |
+| `udalost_navrhni(udalost)` | návrh do `udalosti` (`stav = novy`); `udalost = {nazev, zacatek, konec, celodenni, misto, kalendar, kolize[], polozka_id, zdroj_id}` — **nikdy `cal_pridat`** | `zdroj_id` (`email:<message_id>:<n>`) |
+| `fronta_vezmi(druh?, limit)` → `[{id, druh, vstup}]` | vezme čekající řádky `fronta_claude` a označí je `bezi` (zabere si je) | — |
+| `fronta_hotovo(id, vysledek, stav)` | uzavře řádek fronty (`hotovo` / `chyba`) | — |
+| `pouceni_schvalena()` → `[text]` | jen `stav = schvaleno` | — |
+| `pouceni_navrhni(text, zdroj_opravy[])` | návrh pravidla ke schválení (`stav = navrh`) | — |
 
-Vždy `insert … on conflict do nothing` (nebo `do update` jen u sloupců, které Claude vlastní).
-Rozepsaný text uživatele (`polozky.rozepsano_telo`) se **nikdy** nepřepisuje (E3).
+Návratové hodnoty: `{ok, id | beh_id | pocet, kod?, duvod?}`; `kod: "rodne_cislo"` = nic se
+nezapsalo, oprav vstup. `schranka_id`: ÚVN `2e19d638-c598-46ad-abcf-6f34c39606cd`, Gmail
+`44068697-283a-4163-a0be-bce3260f6d8c` (tabulka `schranky`).
 
 ## Stav se odvozuje ze schránky (pravidlo 4)
 
 `polozky.stav` a `ukoly.stav` mají `stav_zdroj in ('klik', 'schranka', 'beh')`:
 
-- Claude v běhu zapisuje `stav_zdroj = 'beh'`.
-- Když engine vidí odpověď odeslanou z Mailu nebo iPhonu, položka se uzavře
-  se `stav_zdroj = 'schranka'` — to přijde s K2.6 na enginu, Claude to nesimuluje.
+- Claude v běhu zapisuje `stav_zdroj = 'beh'` (nástroje to dělají samy).
+- **Engine od ÚKOLU 49 sám uzavírá** položky, na které přišla odpověď z Mailu nebo iPhonu
+  (`stav = odeslano`, `stav_zdroj = schranka`, každých 15 min), a po každém `mail_move`
+  obnovuje `ref_cache`. Běh to nesimuluje.
 - Klik uživatele v aplikaci (`stav_zdroj = 'klik'`) má přednost; běh ho nepřepisuje.
 
 ## Co běh třídění (skill `email-triage`) zapíše místo artefaktu „Schránka“
 
-1. `behy`: jeden řádek na běh (`zacatek`, `stav = 'bezi'` → `hotovo` / `chyba`, `pocty`).
-2. `polozky`: na zprávu jeden řádek — `schranka_id`, `message_id`, `vlakno`, `ref_cache`,
-   `od`, `od_email`, `predmet`, `datum`, `kategorie`, `priorita 1–3`, `stav`, `co_resit`,
-   `navrh_predmet`, `navrh_telo`, `komu[]`, `kopie[]`, `prilohy_meta` (jen názvy, typy,
-   velikosti, SHA), `kontakt_id` (podle `kontakt_adresy.hodnota = od_email`), `beh_id`.
-   **`ref_cache` je povinný** (`ref` z `mail_search`, tvar `složka:uid`): seznam zpráv
-   v aplikaci nemá Message-ID a položky k němu páruje právě přes `ref_cache`; po přesunu
-   ho aplikace přepíše na `novy_ref`, běh ho při dalším průchodu obnoví. `navrh_telo` je
-   prostý text (odstavce oddělené prázdným řádkem), aplikace ho převede do editoru.
-   **`stav`** je `nove` · `ceka` · `odeslano` · `hotovo` (= Vyřízeno v UI) · `zamitnuto`;
-   `dnes()` počítá s `hotovo`/`zamitnuto` jako uzavřenými. Kliknutí v aplikaci zapisuje
-   `hotovo`/`nove` se `stav_zdroj = klik` — běh takový stav nepřepisuje.
-3. `ukoly`: sliby a termíny z pošty — `zdroj = 'email'`, `zdroj_id = 'email:<message_id>'`,
-   `polozka_id`, `kontakt_id`; `claude_projekt`, když úkol patří do rozpracovaného projektu.
-4. `udalosti`: návrhy termínů — `stav = 'novy'`, `kolize` z `cal_free`; **nikdy** `cal_pridat`
-   (do kalendáře jen kliknutím v aplikaci).
-5. `audit`: `kdo = 'beh'`, nástroj, parametry bez těl.
-
-Souhrn běhu zůstává v chatu; „Dnes“ ho neukazuje, ukazuje `dnes()`.
+1. `beh_zacni` → `beh_id`; na konci `beh_ukonci` s `pocty`.
+2. `fronta_vezmi()` **před tříděním**: poznámky ke zprávám (`druh = poznamka`) a dotazy
+   (`druh = dotaz`) — viz níž; každý uzavřít `fronta_hotovo`.
+3. `pouceni_schvalena()` a řídit se jimi (jádro skillů `email-styl-suchanek` a `email-triage`
+   tam je od 22. 9.; lékař doplňuje).
+4. Na zprávu `polozka_zapis` — **`ref_cache` je povinný** (seznam v aplikaci nemá Message-ID
+   a položky páruje právě přes něj), `navrh_telo` prostý text (odstavce prázdným řádkem,
+   bez podpisu — ten vkládá aplikace), `kontakt_id` podle `kontakt_adresy.hodnota = od_email`,
+   `prilohy_meta` jen názvy, typy, velikosti, SHA. **`stav`** je `nove` · `ceka` · `odeslano` ·
+   `hotovo` (= Vyřízeno v UI) · `zamitnuto`.
+5. `ukol_zaloz` na sliby a termíny (`zdroj = email`, `zdroj_id = email:<message_id>`,
+   `polozka_id`, `kontakt_id`); `udalost_navrhni` na termíny (`kolize` z `cal_free`;
+   **nikdy `cal_pridat`**).
+6. Karty pacientů (`pripady`) přímým SQL — viz níž.
+7. P1 vlaječka `mail_flag`, jednoznačný šum `mail_move` do `_Triage/Šum`.
+8. `beh_ukonci(beh_id, "hotovo", pocty)`. Souhrn zůstává v chatu; „Dnes“ ukazuje `dnes()`.
 
 ## Rozpracováno v Claude
 
-Sekce na Dnes čte `ukoly` s vyplněným `claude_projekt` (ne hotovo / zruseno) a počet
-řádků `fronta_claude` ve stavu `ceka` / `bezi`. Projekt tedy existuje, dokud má otevřený
-úkol. Když Claude začne na něčem pracovat, založí úkol se `zdroj = 'claude'`,
-`claude_projekt = '<název projektu>'`, `zdroj_id = 'claude:<projekt>:<slug>'`; po dokončení
-ho přepne na `hotovo` (`stav_zdroj = 'beh'`). Dlouhé požadavky jdou do `fronta_claude`
-(`druh`, `vstup`, `stav`, `vysledek`).
+Sekce na Dnes čte `ukoly` s vyplněným `claude_projekt` (ne hotovo / zruseno) a počet řádků
+`fronta_claude` ve stavu `ceka` / `bezi`. Když Claude začne na něčem pracovat, založí úkol
+`ukol_zaloz({zdroj: 'claude', claude_projekt: '<projekt>', zdroj_id: 'claude:<projekt>:<slug>', …})`;
+po dokončení ho přepne na `hotovo` (`stav_zdroj = beh`).
 
-## Dotazy z aplikace („Zeptat se", od 22. 9.)
+## Dotazy z aplikace („Zeptat se“, od 22. 9.)
 
-Pošta má vedle hledání bez AI tlačítko „Zeptat se Clauda". Aplikace **žádný model nevolá**
-— dotaz zapíše do `fronta_claude`:
+Pošta má vedle hledání bez AI tlačítko „Zeptat se Clauda“. Aplikace **žádný model nevolá** —
+dotaz zapíše do `fronta_claude`:
 
 ```
 druh = 'dotaz', stav = 'ceka',
 vstup = {otazka, kontext: {zdroj: 'posta', schranka, klicove_slovo, filtr: {from, to, dateFrom, dateTo, direction, hasAttachment}, slozka}}
 ```
 
-Claude (v chatu nebo v běhu) frontu čte: `select id, vstup from doktor.fronta_claude where
-druh = 'dotaz' and stav = 'ceka' order by vytvoreno`. Odpověď hledá přes `mail_search`
-(kontext říká, kde: `filtr.from` → `odesilatel`, období → `od_data`/`do_data`, klíčové slovo →
-`dotaz`), `mail_thread`, `kb_search` a `archiv_search`; nikdy nic neodesílá ani nepřesouvá.
-Zapíše `update … set stav = 'hotovo', vysledek = jsonb_build_object('odpoved', '<prostý text,
-odstavce prázdným řádkem>', 'refy', '["INBOX:95420", …]')`; při neúspěchu `stav = 'chyba'`
-s `vysledek.odpoved` = proč. Dnes ukazuje `vysledek.odpoved` v „Rozpracováno v Claude";
-refy zatím jen jako text (proklik na položku přijde s K0.3, až refy půjdou párovat na `polozky`).
-Do odpovědi nepatří rodná čísla (pravidlo 7) — jména pacientů ano.
+Claude: `fronta_vezmi("dotaz")`, odpověď hledá přes `mail_search` (kontext říká, kde: `filtr.from`
+→ `odesilatel`, období → `od_data`/`do_data`, klíčové slovo → `dotaz`), `mail_thread`,
+`kb_search` a `archiv_search`; nikdy nic neodesílá ani nepřesouvá. Uzavře
+`fronta_hotovo(id, {odpoved: '<prostý text, odstavce prázdným řádkem>', refy: ['INBOX:95420', …]}, 'hotovo')`;
+při neúspěchu `stav = 'chyba'` s `odpoved` = proč. Dnes ukazuje `vysledek.odpoved`
+v „Rozpracováno v Claude“. Do odpovědi nepatří rodná čísla (pravidlo 7) — jména pacientů ano.
 
 ## Poznámka pro Clauda ke zprávě (od 22. 9.)
 
-V detailu zprávy je „Poznámka pro Clauda": co u téhle zprávy udělat jinak („přepiš návrh
-stručněji", „tohle je šum", „odpověď pošlu sám"). Aplikace zapíše do `fronta_claude`:
+V detailu zprávy je „Poznámka pro Clauda“: co u téhle zprávy udělat jinak („přepiš návrh
+stručněji“, „tohle je šum“, „odpověď pošlu sám“). Aplikace zapíše:
 
 ```
 druh = 'poznamka', stav = 'ceka',
 vstup = {text, kontext: {zdroj: 'posta', schranka, ref, message_id, predmet, od, polozka_id}}
 ```
 
-Běh (nebo Claude v chatu) poznámky čte **před** tříděním a návrhy: `select id, vstup from
-doktor.fronta_claude where druh = 'poznamka' and stav = 'ceka'`. Podle poznámky upraví
-položku (`navrh_telo`, `kategorie`, `priorita`, `stav`; `rozepsano_telo` nikdy — E3) nebo
-zprávu (přesun do šumu přes `mail_move`), a zapíše `stav = 'hotovo'`, `vysledek =
-jsonb_build_object('odpoved', 'co se udělalo')`. Poznámka nikdy neznamená odeslání —
-odeslání je vždy kliknutí v aplikaci (pravidlo 8).
+Běh: `fronta_vezmi("poznamka")` **před** tříděním. Podle poznámky upraví položku
+(`polozka_zapis` s novým `navrh_telo`, `kategorie`, `priorita`, `stav`; `rozepsano_telo` nikdy —
+E3) nebo zprávu (šum přes `mail_move`), a uzavře `fronta_hotovo(id, {odpoved: 'co se udělalo'})`.
+Poznámka nikdy neznamená odeslání — odeslání je vždy kliknutí v aplikaci (pravidlo 8).
 
 ## Karty pacientů (`pripady`, O2 změněno 22. 9.)
 
-Když je vlákno o **konkrétním pacientovi** (jméno stojí ve zprávě nebo v příloze — žádost
-o převzetí, konzultace, objednání, výsledek), běh navrhne kartu:
+Nástroj enginu zatím není — jediné místo, kde běh píše přímým SQL. Když je vlákno
+o **konkrétním pacientovi** (jméno stojí ve zprávě nebo v příloze — žádost o převzetí,
+konzultace, objednání, výsledek), běh navrhne kartu:
 
 ```sql
 insert into doktor.pripady (user_id, nazev, kontakt_id, shrnuti, zdroj_id, stav, stav_zdroj, beh_id, posledni_zprava)
@@ -119,49 +120,31 @@ values (<user_id>, '<Jméno Příjmení pacienta>', <kontakt_id odesílajícího
         '<1–2 věty: co se řeší, co je další krok>', 'vlakno:<vlakno>', 'navrh', 'beh', <beh_id>, <datum zprávy>)
 on conflict (user_id, zdroj_id) do update set posledni_zprava = excluded.posledni_zprava
 returning id;
-update doktor.polozky set pripad_id = <id> where id = <polozka id>;
 ```
+
+a položce dá `pripad_id` (`polozka_zapis` s `pripad_id`).
 
 - Dřív než založíš novou: `select id from doktor.pripady where user_id = … and stav <> 'zamitnuto'
   and lower(nazev) = lower('<jméno>')` — týž pacient ve druhém vlákně se **připojí** k existující
-  kartě (`polozky.pripad_id`, `posledni_zprava`), nová se nezakládá. `zamitnuto` se nezakládá znovu.
+  kartě, nová se nezakládá. `zamitnuto` se nezakládá znovu.
 - `nazev` je jméno, jak stojí ve vlákně; bez titulů, bez rodného čísla, bez data narození.
   `shrnuti` bez rodného čísla a bez čísel pojištěnce (pravidlo 7). Údaje jen z téhož vlákna.
 - Kartu, kterou lékař změnil (`stav_zdroj = 'klik'`), běh nepřepisuje — jen doplňuje zprávy.
 - Karta z jedné zprávy bez jména pacienta nevzniká (`[PACIENT]` není karta).
 
-## Pravidla pro Clauda (`pouceni`, od 22. 9.)
+## Pravidla pro Clauda (`pouceni`)
 
 Nastavení → Pravidla pro Clauda. 22. 9. tam bylo nahráno 18 schválených pravidel — jádro
-skillů `email-styl-suchanek` a `email-triage` (registry, tykání, podpisy, „Termín potvrdím po
-domluvě.", priority, co se přesouvá). Skilly zůstávají úplným zněním; `pouceni` je to, co lékař
-vidí a doplňuje. Claude před psaním návrhů čte **jen schválená**:
-`select text from doktor.pouceni where stav = 'schvaleno' order by vytvoreno`. Vlastní
-pravidla lékaře jsou schválená rovnou; návrhy z běhů (`opravy_sber`, ÚKOL 39; K4.7 týdenní
-poučení) se zakládají se `stav = 'navrh'` a `zdroj_opravy = array[id oprav]`, lékař je
-v Nastavení schválí nebo zamítne. Nic se nemaže.
+skillů `email-styl-suchanek` a `email-triage`. Claude před psaním návrhů čte **jen schválená**
+(`pouceni_schvalena()`). Návrhy z běhů (`opravy_sber`, ÚKOL 39) zakládá engine přes
+`pouceni_navrhni` se `stav = navrh` a `zdroj_opravy`; lékař je v Nastavení schválí nebo
+zamítne. Vlastní pravidla lékaře jsou schválená rovnou. Nic se nemaže.
 
-## Co se 21. 9. naplnilo
+## Historie naplnění
 
-- `schranky`: ÚVN (`stepan.suchanek@uvn.cz`). Gmail přibude, až bude adresa a účet na enginu.
-- `organizace` (44) a `kontakty` (174) se `kontakt_adresy` (198) z `mail_kontakty(limit 200)`:
-  tituly odděleny, jméno a příjmení podle seznamu českých křestních jmen, víc adres jedné
-  osoby sloučeno, organizace podle domény. `zdroj = 'adresar_enginu'`. Vlastní adresy
-  lékaře vynechány.
-- `ukoly` v projektu „Doktor — aplikace“: REST enginu, Gmail IMAP, běh do DB, kontakty,
-  Supabase dashboard, doména a CSP.
-- `polozky` **ne**: `mail_kontakty` ani `mail_search` nevrací Message-ID a bez něj by
-  seed kolidoval s budoucím během. První běh třídění je naplní správně.
-
-## První běh třídění (22. 9. 2026, `behy` d930633b)
-
-Ručně z chatu podle skillu `email-triage`, okno 19.–22. 9.: 45 zpráv ÚVN INBOX, 8 Gmail.
-Zapsáno 19 `polozky` (Message-ID přes `mail_get`, `ref_cache` = ref, `kontakt_id` přes
-`kontakt_adresy`), 8 návrhů odpovědí v `navrh_telo` (styl `email-styl-suchanek`, bez podpisu —
-ten vkládá aplikace podle schránky), 3 `udalosti` (porada IK 14. 10. s kolizí z `cal_events`,
-dvě celodenní lhůty) a 11 `ukoly` (`zdroj = email`, `zdroj_id = email:<message_id>`).
-Šum a roboti (newslettery, MDPI notifikace, výpadky léčiv) se do `polozky` nezapisovali a nic
-se v ÚVN nepřesouvalo ani neoznačovalo — první běh je jen zápis, úklid schránky přijde
-s dalšími běhy. Stav odvozený ze schránky: zpráva s `\Answered` dostala `stav = odeslano`,
-`stav_zdroj = schranka`. Co příští běh musí navíc: `mail_flag` P1 vlaječkou, šum do
-`_Triage/Šum`, přílohy přes `mail_priloha`, `kb_upsert` hlášení.
+- **21. 9.** `schranky` (ÚVN, Gmail), `organizace` (44), `kontakty` (174) se `kontakt_adresy`
+  (198) z `mail_kontakty`; `ukoly` projektu „Doktor — aplikace“.
+- **22. 9. první běh třídění** (`behy` d930633b, ručně z chatu, ještě přímým SQL): 45 zpráv ÚVN,
+  8 Gmail → 19 `polozky`, 8 návrhů, 3 `udalosti`, 11 `ukoly`; nic se nepřesouvalo.
+- **23. 9.** engine ÚKOLy 47–54: nástroje pro zápis, stav ze schránky, hlídač běhů, zálohy.
+  Od teď běhy jen přes nástroje.

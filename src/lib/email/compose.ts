@@ -35,6 +35,19 @@ export interface ComposeSendRequest extends Omit<MailSendRequest, "attachments">
    * `$Forwarded`; předmět „Fwd: …" skládá sám. Aplikace přílohy nikdy nedrží.
    */
   forwardOf?: string;
+  /**
+   * Přílohy z jiné zprávy (K3.4): engine je vezme z IMAPu sám
+   * (`{zdroj: "zprava", ref, index}`), přes prohlížeč nikdy neprojdou (pravidlo 2).
+   */
+  messageAttachments?: { ref: string; index: number }[];
+}
+
+/** Příloha původní zprávy, kterou jde jedním kliknutím přiložit k odpovědi (K3.4). */
+export interface ComposeSourceAttachment {
+  ref: string;
+  index: number;
+  name: string;
+  size: number;
 }
 
 /** Co okno psaní potřebuje vědět o přeposílané zprávě: ref a názvy příloh, které engine překopíruje. */

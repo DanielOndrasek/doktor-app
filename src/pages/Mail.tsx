@@ -224,13 +224,17 @@ export default function Mail({
     let cancelled = false;
     itemSource
       .byId(itemId)
-      .then((item) => {
+      .then(async (item) => {
         if (cancelled) return;
-        if (item?.ref) {
+        // `ref_cache` může být po přesunu mimo aplikaci prošlý — engine ho dohledá podle Message-ID (`mail_najdi`).
+        const fresh = item?.messageId && mailbox ? await mailbox.findRef(item.messageId).catch(() => null) : null;
+        const ref = fresh ?? item?.ref ?? null;
+        if (cancelled) return;
+        if (ref) {
           // Zpráva z jiné schránky, než na které Pošta stojí, by se z ní nenačetla — přepnout na sjednocenou.
-          const itemMailbox: EngineMailboxId = item.ref.startsWith("[Gmail]/") ? "gmail" : "uvn";
+          const itemMailbox: EngineMailboxId = ref.startsWith("[Gmail]/") ? "gmail" : "uvn";
           if (mailboxId !== "all" && mailboxId !== itemMailbox) switchMailbox("all");
-          setOpenRef(item.ref);
+          setOpenRef(ref);
         } else {
           toast({ title: cs.posta.chyby.polozkaBezZpravy, variant: "destructive" });
           clearItemParam();
@@ -244,7 +248,7 @@ export default function Mail({
     return () => {
       cancelled = true;
     };
-    // `mailboxId` se tu jen čte pro přepnutí; jeho změna nemá položku hledat znovu.
+    // `mailboxId` a `mailbox` se tu jen čtou pro přepnutí a dohledání; jejich změna nemá položku hledat znovu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, itemSource, toast, clearItemParam]);
 

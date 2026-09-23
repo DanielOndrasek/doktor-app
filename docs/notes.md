@@ -401,3 +401,15 @@ v `src/types/database.ts` doplněny ručně (CLI `supabase gen types` tu není a
 (pravidlo 3): dostane `stav = zruseno`, `stav_zdroj = klik`, zmizí z tabule i seznamu a toast
 nabídne „Vrátit zpět" (`TaskSource.cancel` / `uncancel`, vrací původní stav). Detail úkolu (z kanbanu
 i odjinud) má v patičce „Smazat úkol" se stejným chováním.
+
+**23. 9. 2026 — navázání na engine po ÚKOLech 47–54.** Přeposlání jde z obou schránek
+(`forwardSupported` vždy true; `mail_preposlat` dostává `schranka`, `odeslat_z`, `kopie`,
+`skryta_kopie`, `html`, `prilohy`), okno přeposlání má zpět kopie, „Odeslat z" i sponku.
+K3.4 „příloha z jiného mailu": u odpovědi jsou pod editorem chipy s přílohami původní zprávy,
+kliknutí je přiloží (`ComposeSendRequest.messageAttachments` → `{zdroj: "zprava", ref, index}`,
+bajty skládá engine). `/posta?polozka=` dohledá aktuální ref přes `mail_najdi` (obě schránky),
+takže prošlý `ref_cache` už nevadí. `docs/most-claude.md` přepsán na nástroje enginu (ÚKOL 54),
+Routine prompt aktualizován. Zjištění: `audit.vysledek` je od ÚKOLU 48 vždy JSON, Python-repr
+větev v `runs.ts` zůstává jen pro staré řádky. Přehled `opravy` v aplikaci čeká, až `opravy_sber`
+poprvé poběží (tabulka je prázdná); obecný výběr přílohy z libovolné jiné zprávy (ne jen
+z odpovídané) zůstává na později.

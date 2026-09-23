@@ -39,7 +39,7 @@ import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEdito
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import { activeFilterCount } from "@/lib/email/search";
-import type { ComposeForwardContext } from "@/lib/email/compose";
+import type { ComposeForwardContext, ComposeSourceAttachment } from "@/lib/email/compose";
 import type { ThreadMessage } from "@/lib/email/thread";
 import type {
   MailAttachmentMeta,
@@ -193,6 +193,8 @@ export function EmailInbox({
     arrivedAt?: string;
     /** Přeposlání: ref původní zprávy a názvy jejích příloh (engine je překopíruje). */
     forwardOf?: ComposeForwardContext;
+    /** Odpověď: přílohy původní zprávy k přiložení jedním kliknutím (K3.4). */
+    sourceAttachments?: ComposeSourceAttachment[];
   } | null>(null);
 
   /** Do které z našich schránek zpráva přišla — podle adres v „Komu". */
@@ -513,6 +515,7 @@ export function EmailInbox({
       references: detail.messageId,
       arrivedAt: arrivedAt(detail),
       body,
+      sourceAttachments: detail.attachments.map((a) => ({ ref: detail.id, index: Number(a.attachmentId), name: a.filename, size: a.size })),
     });
     setComposing(true);
   };
@@ -588,6 +591,7 @@ export function EmailInbox({
       references={replyData?.references || undefined}
       replyMailbox={replyData?.arrivedAt}
       forwardOf={replyData?.forwardOf}
+      sourceAttachments={replyData?.sourceAttachments}
       onClose={() => {
         setComposing(false);
         setReplyData(null);

@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { useEditor } from "@tiptap/react";
 import {
   AlertTriangle,
+  Check,
   ChevronDown,
   FileIcon,
   Loader2,
@@ -29,6 +30,7 @@ import type {
   AttachmentUploadRef,
   ComposeForwardContext,
   ComposeSendRequest,
+  ComposeSourceAttachment,
   EmailRecipientSuggestion,
   EmailSenderOption,
   EmailTemplate,
@@ -121,10 +123,15 @@ interface EmailComposeProps extends EmailComposeSharedProps {
   replyMailbox?: string;
   /**
    * Režim přeposlání (`mail_preposlat`): tělo je jen poznámka, předmět, původní
-   * hlavičky, text a přílohy skládá engine. Vlastní přílohy nejdou přidat
-   * (nástroj je nebere) a „Odeslat z" se neukazuje — engine přeposílá z ÚVN.
+   * hlavičky, text a původní přílohy skládá engine; kopie, „Odeslat z" i další
+   * přílohy jdou jako u odeslání (od ÚKOLU 47 pro obě schránky).
    */
   forwardOf?: ComposeForwardContext;
+  /**
+   * Přílohy zprávy, na kterou se odpovídá (K3.4 „z jiného mailu"): chipy pod
+   * editorem, kliknutím se přiloží — bajty bere engine z IMAPu, ne prohlížeč.
+   */
+  sourceAttachments?: ComposeSourceAttachment[];
   /** Přepíše min. výšku editačního pole těla (kompaktní composer). */
   bodyMinHeightClass?: string;
   onClose: () => void;
@@ -168,9 +175,10 @@ export function EmailCompose({
   references,
   replyMailbox,
   forwardOf,
+  sourceAttachments,
   signatureHtml,
   signatureFor,
-  senders: sendersProp,
+  senders,
   defaultSender,
   recipientSuggestions,
   onSearchRecipients,
@@ -178,7 +186,7 @@ export function EmailCompose({
   onSaveTemplate,
   onDeleteTemplate,
   onTemplateUsed,
-  onUploadAttachment: onUploadAttachmentProp,
+  onUploadAttachment,
   onSend,
   onBodyChange,
   bodyMinHeightClass,
@@ -186,9 +194,9 @@ export function EmailCompose({
   onSent,
 }: EmailComposeProps) {
   const { toast } = useToast();
-  // Přeposlání: bez „Odeslat z" (engine přeposílá z ÚVN) a bez vlastních příloh (nástroj je nebere).
-  const senders = forwardOf ? undefined : sendersProp;
-  const onUploadAttachment = forwardOf ? undefined : onUploadAttachmentProp;
+  // Přílohy původní zprávy vybrané k odpovědi — klíč `ref#index`.
+  const [attachedSource, setAttachedSource] = useState<Set<string>>(() => new Set());
+  const sourceKey = (a: ComposeSourceAttachment) => `${a.ref}#${a.index}`;
 
   const [to, setTo] = useState<string[]>(parseEmails(defaultTo));
   const [cc, setCc] = useState<string[]>([]);
@@ -314,6 +322,7 @@ export function EmailCompose({
       return;
     }
     const uploadIds = attachments.flatMap((a) => (a.upload ? [a.upload.uploadId] : []));
+    const messageAttachments = (sourceAttachments ?? []).filter((a) => attachedSource.has(sourceKey(a))).map((a) => ({ ref: a.ref, index: a.index }));
 
     setSending(true);
     try {
@@ -328,6 +337,7 @@ export function EmailCompose({
         inReplyTo,
         references,
         uploadIds: uploadIds.length ? uploadIds : undefined,
+        messageAttachments: messageAttachments.length ? messageAttachments : undefined,
         sendFrom: sendFrom || undefined,
         forwardOf: forwardOf?.ref,
       });
@@ -396,8 +406,7 @@ export function EmailCompose({
               placeholder={cs.posta.psani.adresaPlaceholder}
             />
           </div>
-          {/* Přeposlání: `mail_preposlat` bere jen Komu — kopie se nenabízejí, aby se tiše neztratily. */}
-          {!showCc && !forwardOf && (
+          {!showCc && (
             <Button
               variant="ghost"
               size="sm"
@@ -407,7 +416,7 @@ export function EmailCompose({
               CC
             </Button>
           )}
-          {!showBcc && !forwardOf && (
+          {!showBcc && (
             <Button
               variant="ghost"
               size="sm"
@@ -629,6 +638,40 @@ export function EmailCompose({
             editorRef={editorRef}
           />
         </div>
+        {sourceAttachments && sourceAttachments.length > 0 && (
+          <div className="mt-2 flex flex-shrink-0 flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground">{cs.posta.psani.prilohyZPuvodni}</span>
+            {sourceAttachments.map((a) => {
+              const key = sourceKey(a);
+              const on = attachedSource.has(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={on}
+                  title={on ? cs.posta.psani.prilohaZPuvodniOdebrat : cs.posta.psani.prilohaZPuvodniPridat}
+                  onClick={() =>
+                    setAttachedSource((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    })
+                  }
+                  className={
+                    on
+                      ? "flex items-center gap-1.5 rounded-md border border-secondary bg-secondary/10 px-2 py-1 text-secondary"
+                      : "flex items-center gap-1.5 rounded-md border border-dashed border-border px-2 py-1 text-muted-foreground hover:border-secondary hover:text-foreground"
+                  }
+                >
+                  {on ? <Check className="h-3.5 w-3.5" /> : <Paperclip className="h-3.5 w-3.5" />}
+                  <span className="max-w-[150px] truncate">{a.name}</span>
+                  <span className="opacity-70">({formatFileSize(a.size)})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className="mt-2 flex flex-shrink-0 flex-wrap gap-2">
             {attachments.map((att) => (
@@ -667,19 +710,17 @@ export function EmailCompose({
           {sending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
           {cs.posta.psani.odeslat}
         </Button>
-        {!forwardOf && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={!onUploadAttachment}
-            title={onUploadAttachment ? cs.posta.psani.pridatPrilohu : cs.posta.psani.prilohyNejsouKDispozici}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!onUploadAttachment}
+          title={onUploadAttachment ? cs.posta.psani.pridatPrilohu : cs.posta.psani.prilohyNejsouKDispozici}
+        >
+          <Paperclip className="h-4 w-4" />
+        </Button>
         {onSaveTemplate && (
           <Button
             type="button"
