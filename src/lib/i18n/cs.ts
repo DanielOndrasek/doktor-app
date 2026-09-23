@@ -407,6 +407,12 @@ export const cs = {
       presunoutVseNaDnes: "přesunout vše na dnes",
       potvrditPresunVse: (n: number) => `Přesunout všech ${n} úkolů po termínu na dnešek?`,
       dalsich: (n: number, zbyva: number) => `Dalších ${n} z ${zbyva}`,
+      /** „Smazat" = stav `zruseno`; nic se nemaže, jde vrátit zpět. */
+      smazat: "Smazat úkol",
+      smazano: "Úkol zrušen",
+      smazanoPopis: "Zůstává v databázi jako zrušený; tabule ani seznam ho už neukazují.",
+      vratitZpet: "Vrátit zpět",
+      smazaniSelhalo: "Úkol se nepodařilo zrušit.",
     },
     /** Kalendář týden / měsíc (`src/components/tasks/TaskCalendar.tsx`). */
     kalendar: {

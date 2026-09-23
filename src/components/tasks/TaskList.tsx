@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
-import { CalendarDays, Check, Clock, ListTodo, Plus } from "lucide-react";
+import { CalendarDays, Check, Clock, ListTodo, Plus, Trash2 } from "lucide-react";
 
 import type { KanbanCardData } from "@/components/kanban";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ interface TaskListProps {
   /** Kolečko vlevo: hotovo ↔ zpět do TODO (zapisuje `stav_zdroj = klik`). */
   onToggleDone: (card: KanbanCardData, done: boolean) => void;
   onReschedule: (card: KanbanCardData, dueDate: string, message: string) => void;
+  /** Koš vpravo: úkol dostane `zruseno` (nemaže se) a jde vrátit z toastu. */
+  onCancel: (card: KanbanCardData) => void;
   onAdd: () => void;
 }
 
@@ -41,10 +43,10 @@ const DONE_DAYS = 14;
  * a poznámkou na dva řádky, „přesunout vše na dnes" u víc než tří po
  * termínu. Odstřižené: typy aktivit (ikony), škola / osoba / obchod
  * s hodnotou, místo, Meet, kolega (`assigned_to`), AI návrh řešení
- * (`DealSummaryDialog`) a mazání — úkol se nemaže, dostane stav `zruseno`
- * v detailu.
+ * (`DealSummaryDialog`). Mazání z CRM je tu jako koš, ale úkol se nemaže —
+ * dostane stav `zruseno` a jde vrátit zpět.
  */
-export function TaskList({ cards, today, onOpen, onToggleDone, onReschedule, onAdd }: TaskListProps) {
+export function TaskList({ cards, today, onOpen, onToggleDone, onReschedule, onCancel, onAdd }: TaskListProps) {
   const t = cs.ukoly.seznam;
   const [bucket, setBucket] = useState<TaskBucket | "open">("open");
   const [shown, setShown] = useState<Record<string, number>>({});
@@ -110,8 +112,8 @@ export function TaskList({ cards, today, onOpen, onToggleDone, onReschedule, onA
           </div>
           {card.description ? <div className="mt-1 line-clamp-2 rounded-md bg-warning/10 px-2 py-1 text-[12.5px] text-foreground/80">{card.description}</div> : null}
         </div>
-        {!done ? (
-          <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+          {!done ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button type="button" title={t.preplanovat} aria-label={t.preplanovat} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
@@ -126,8 +128,17 @@ export function TaskList({ cards, today, onOpen, onToggleDone, onReschedule, onA
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        ) : null}
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onCancel(card)}
+            title={t.smazat}
+            aria-label={t.smazat}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </li>
     );
   };

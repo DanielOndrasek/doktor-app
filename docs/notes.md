@@ -396,3 +396,8 @@ v migraci. Nová obrazovka Pacienti (`/pacienti`, `src/lib/cases.ts`): návrhy �
 úprava jména a shrnutí, ruční karta, zprávy k případu přes `polozky.pripad_id` s prokliky. Typy
 v `src/types/database.ts` doplněny ručně (CLI `supabase gen types` tu není a MCP generátor schéma
 `doktor` nevidí) — po vystavení schématu přegenerovat. Rodné číslo nikam, viz `most-claude.md`.
+
+**23. 9. 2026 — „Smazat úkol" v seznamu.** Koš u řádku seznamu úkolů (na přání). Úkol se nemaže
+(pravidlo 3): dostane `stav = zruseno`, `stav_zdroj = klik`, zmizí z tabule i seznamu a toast
+nabídne „Vrátit zpět" (`TaskSource.cancel` / `uncancel`, vrací původní stav). Kanban koš nemá —
+tam je zrušení v detailu karty.

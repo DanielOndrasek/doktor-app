@@ -5,6 +5,7 @@ import { CalendarDays, Columns3, List, Plus, Search } from "lucide-react";
 import { KanbanBoard, type KanbanCardData, type KanbanState } from "@/components/kanban";
 import { TaskCalendar, TaskDialog, TaskList, type TaskDialogTarget } from "@/components/tasks";
 import { Button } from "@/components/ui/button";
+import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { iso } from "@/lib/taskDue";
@@ -133,6 +134,35 @@ export default function Tasks({ source }: { source: TaskSource }) {
     }
   };
 
+  // „Smazat" = `zruseno` (nic se nemaže, pravidlo 3); řádek zmizí hned a toast nabídne návrat.
+  const cancelTask = async (card: KanbanCardData) => {
+    setCards((prev) => prev.filter((c) => c.id !== card.id));
+    try {
+      await source.cancel(card);
+      toast({
+        title: cs.ukoly.seznam.smazano,
+        description: cs.ukoly.seznam.smazanoPopis,
+        action: (
+          <ToastAction
+            altText={cs.ukoly.seznam.vratitZpet}
+            onClick={() => {
+              setCards((prev) => (prev.some((c) => c.id === card.id) ? prev : [...prev, card]));
+              source.uncancel(card).catch((err: unknown) => {
+                toast({ title: cs.ukoly.kanban.chybaPresunu, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+                void load();
+              });
+            }}
+          >
+            {cs.ukoly.seznam.vratitZpet}
+          </ToastAction>
+        ),
+      });
+    } catch (err) {
+      toast({ title: cs.ukoly.seznam.smazaniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      void load();
+    }
+  };
+
   const reschedule = async (card: KanbanCardData, dueDate: string, message: string) => {
     const time = card.due && card.due.length > 10 ? card.due.slice(10) : "";
     setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, due: `${dueDate}${time}` } : c)));
@@ -193,7 +223,7 @@ export default function Tasks({ source }: { source: TaskSource }) {
               ))}
             </div>
           ) : view === "list" ? (
-            <TaskList cards={filtered} today={today} onOpen={(card) => openTask(card.id)} onToggleDone={toggleDone} onReschedule={reschedule} onAdd={() => addNew()} />
+            <TaskList cards={filtered} today={today} onOpen={(card) => openTask(card.id)} onToggleDone={toggleDone} onReschedule={reschedule} onCancel={cancelTask} onAdd={() => addNew()} />
           ) : (
             <TaskCalendar cards={filtered} today={today} onOpen={(card) => openTask(card.id)} onReschedule={reschedule} onAddOn={(dueDate) => addNew("todo", dueDate)} />
           )}

@@ -74,6 +74,13 @@ export interface TaskSource {
   /** Přeplánování ze seznamu nebo přetažením v kalendáři: jen `termin`, čas zůstává. */
   reschedule: (card: KanbanCardData, dueDate: string) => Promise<void>;
   /**
+   * „Smazat" ze seznamu: úkol se nemaže (pravidlo 3), dostane `stav = zruseno`
+   * (`stav_zdroj = klik`) a zmizí z tabule i seznamu. `uncancel` ho vrátí do
+   * stavu, ve kterém byl — lišta „Vrátit zpět" v toastu.
+   */
+  cancel: (card: KanbanCardData) => Promise<void>;
+  uncancel: (card: KanbanCardData) => Promise<void>;
+  /**
    * Úkol → iCloud „Pracovní se Simčou" (K3.6). Volá se **jen** z kliknutí; engine
    * `cal_pridat` založí událost a `ukoly.kal_uid` si ji zapamatuje. `undefined`
    * = engine není propojený, tlačítko se neukáže.
@@ -105,6 +112,8 @@ export function draftOf(task: TaskDetail): TaskDraft {
 export const EMPTY_TASK_SOURCE: TaskSource = {
   load: async () => [],
   move: async () => {},
+  cancel: async () => {},
+  uncancel: async () => {},
   get: async () => null,
   create: async () => {
     throw new Error(cs.ukoly.detail.bezZdroje);
@@ -277,6 +286,16 @@ export function createSupabaseTaskSource(client: typeof supabase = supabase, opt
         .from("ukoly")
         .update({ stav: to, stav_zdroj: "klik" })
         .eq("id", card.id);
+      if (error) throw new Error(error.message);
+    },
+
+    async cancel(card) {
+      const { error } = await client.from("ukoly").update({ stav: "zruseno", stav_zdroj: "klik" }).eq("id", card.id);
+      if (error) throw new Error(error.message);
+    },
+
+    async uncancel(card) {
+      const { error } = await client.from("ukoly").update({ stav: card.state, stav_zdroj: "klik" }).eq("id", card.id);
       if (error) throw new Error(error.message);
     },
 
