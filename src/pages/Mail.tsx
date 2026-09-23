@@ -27,6 +27,8 @@ const MAILBOX_STORAGE_KEY = "doktor:posta-schranka";
 const MAILBOXES: EngineMailboxId[] = ["all", "uvn", "gmail"];
 /** `/posta?polozka=<id>` — odkaz z Dnes (`dnes()`) a z přehledu běhů; otevře zprávu položky. */
 const ITEM_PARAM = "polozka";
+/** `?odpovedet=1` k `?polozka=`: po otevření zprávy rovnou rozbalit odpověď (akce „Odpovědět“ na Dnes). */
+const REPLY_PARAM = "odpovedet";
 
 function readMailbox(): EngineMailboxId {
   try {
@@ -224,12 +226,14 @@ export default function Mail({
   // Odkaz na položku (`?polozka=`): ref se dohledá v `polozky`, obrazovka zprávu otevře a parametr se uklidí.
   const [searchParams, setSearchParams] = useSearchParams();
   const itemId = searchParams.get(ITEM_PARAM);
+  const openReply = searchParams.get(REPLY_PARAM) === "1";
   const [openRef, setOpenRef] = useState<string | null>(null);
   const clearItemParam = useCallback(() => {
     setOpenRef(null);
     setSearchParams(
       (prev) => {
         prev.delete(ITEM_PARAM);
+        prev.delete(REPLY_PARAM);
         return prev;
       },
       { replace: true },
@@ -356,6 +360,7 @@ export default function Mail({
           onRestored={onRestored}
           canForward={mailbox ? (detail) => mailbox.forwardSupported(detail.id) : undefined}
           openRef={openRef}
+          openReply={openReply}
           onOpened={clearItemParam}
           onAskClaude={onAskClaude}
           onNoteForClaude={onNoteForClaude}

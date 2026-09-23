@@ -106,6 +106,8 @@ interface EmailInboxProps {
    * z Dnes nebo z přehledu běhů). Otevře se jednou, pak přijde `onOpened`.
    */
   openRef?: string | null;
+  /** S `openRef`: po načtení zprávy i její položky rovnou otevřít odpověď (Dnes → „Odpovědět“). */
+  openReply?: boolean;
   onOpened?: () => void;
   /**
    * „Zeptat se" (kontrolní seznam plánu): dotaz s kontextem hledání do fronty
@@ -153,6 +155,7 @@ export function EmailInbox({
   onRestored,
   canForward,
   openRef,
+  openReply = false,
   onOpened,
   onAskClaude,
   onNoteForClaude,
@@ -546,8 +549,11 @@ export function EmailInbox({
     [mailbox],
   );
 
-  /** Otevře detail podle refu; `unread` = zpráva je v seznamu nepřečtená a má se označit. */
-  const openById = async (id: string, unread: boolean) => {
+  /**
+   * Otevře detail podle refu; `unread` = zpráva je v seznamu nepřečtená a má se
+   * označit; `reply` = po načtení položky rovnou rozbalit odpověď (Dnes).
+   */
+  const openById = async (id: string, unread: boolean, reply = false) => {
     setSelectedId(id);
     setComposing(false);
     setReplyData(null);
@@ -562,12 +568,12 @@ export function EmailInbox({
       // Otevřeno zvenčí (bez řádku seznamu): nepřečtené se pozná až z detailu.
       if (!unread && loaded.labelIds.includes("UNREAD")) markAsRead(id);
       // Položka k detailu podle Message-ID (spolehlivější než ref); záložně z mapy seznamu.
-      setDetailItem(items.get(id) ?? null);
-      if (itemForMessage) {
-        itemForMessage(loaded)
-          .then((item) => setDetailItem((prev) => item ?? prev))
-          .catch(() => undefined);
-      }
+      const fromList = items.get(id) ?? null;
+      setDetailItem(fromList);
+      const itemPromise = itemForMessage ? itemForMessage(loaded).catch(() => null) : Promise.resolve<TriageItem | null>(null);
+      void itemPromise.then((item) => setDetailItem((prev) => item ?? prev));
+      // Odpověď z Dnes: návrh z běhu je v položce, takže se počká, až dorazí.
+      if (reply) startReply(loaded, (await itemPromise) ?? fromList);
     } catch (err) {
       console.error(cs.posta.chyby.nacteniZpravy, err);
       toast({ title: errorMessage(err, cs.posta.chyby.nacteniZpravy), variant: "destructive" });
@@ -582,18 +588,20 @@ export function EmailInbox({
   // Otevření zvenčí (`openRef`): jednou na každý nový ref; funkce jde přes ref, aby efekt nezávisel na každém renderu.
   const openByIdRef = useRef(openById);
   openByIdRef.current = openById;
+  const openReplyRef = useRef(openReply);
+  openReplyRef.current = openReply;
   useEffect(() => {
     if (!openRef || !mailbox) return;
-    void openByIdRef.current(openRef, false).finally(() => onOpened?.());
+    void openByIdRef.current(openRef, false, openReplyRef.current).finally(() => onOpened?.());
     // `onOpened` je jen oznámení; nová instance nemá zprávu otevírat znovu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRef, mailbox]);
 
-  const handleReply = () => {
-    if (!detail) return;
+  /** Okno odpovědi k `msg`; `item` = položka z běhu (návrh, rozepsaný text), když k ní je. */
+  const startReply = (msg: MailMessageDetail, item: TriageItem | null) => {
+    const detail = msg;
     const { email: fromEmail } = parseEmailFromHeader(detail.from);
     // Rozepsaný text uživatele má přednost před návrhem z běhu (E3 v kontrolním seznamu).
-    const item = detailItem?.messageId === detail.messageId ? detailItem : null;
     const body = item?.userDraft?.trim() ? item.userDraft : item?.draftBody?.trim() ? plainTextToEditorHtml(item.draftBody) : undefined;
     const subject = item?.draftSubject?.trim() || (detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`);
     setReplyData({
@@ -607,6 +615,11 @@ export function EmailInbox({
       sourceAttachments: detail.attachments.map((a) => ({ ref: detail.id, index: Number(a.attachmentId), name: a.filename, size: a.size })),
     });
     setComposing(true);
+  };
+
+  const handleReply = () => {
+    if (!detail) return;
+    startReply(detail, detailItem?.messageId === detail.messageId ? detailItem : null);
   };
 
   // Přeposlání s původními přílohami (`mail_preposlat`): tělo je jen poznámka, zbytek

@@ -15,7 +15,7 @@ import type { Database, Json } from "@/types/database";
 
 export type SignalUrgency = 1 | 2 | 3 | 4;
 
-export type SignalCategory = "p1" | "termin" | "udalost" | "odpoved";
+export type SignalCategory = "p1" | "koncept" | "termin" | "udalost" | "odpoved";
 
 export interface SignalAction {
   label: string;
@@ -60,7 +60,7 @@ export const EMPTY_TODAY_SOURCE: TodaySource = {
 type DnesRow = Database["doktor"]["Functions"]["dnes"]["Returns"][number];
 
 const URGENCIES = new Set<number>([1, 2, 3, 4]);
-const CATEGORIES = new Set<string>(["p1", "termin", "udalost", "odpoved"]);
+const CATEGORIES = new Set<string>(["p1", "koncept", "termin", "udalost", "odpoved"]);
 
 function isUrgency(value: number): value is SignalUrgency {
   return URGENCIES.has(value);

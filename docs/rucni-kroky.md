@@ -59,6 +59,8 @@ seznam říká, co musí udělat člověk, a co se tím odblokuje. Odškrtávejt
 - [x] **Pravidla pro Clauda**: jádro skillů (18 pravidel) je nahrané a schválené 22. 9.; Štěpán
   jen doplňuje, když něco chybí. Claude čte jen schválená.
 - [x] **O2** změněno 22. 9.: karty pacientů ano, navrhuje je běh, schvaluje Štěpán (obrazovka Pacienti).
+- [ ] **Skill `email-triage` v claude.ai** nahradit textem `docs/skill-email-triage-app.md`
+  (běhy pak píší do aplikace, ne do artefaktu Schránka). Totéž pro projekt, kde běží ranní chat.
 - [ ] **O6** sjednotit úkoly s „Rozdělanou prací“ do jedné tabulky — blokuje přenos dat K2.5.
 - [ ] **O7** úprava a mazání vlastních událostí v kalendáři (K5). **O9** které složky Disku
   sdílet se služebním účtem (K4.4, teď i pro zálohy). **O8** API pojistka pro spadlý ranní běh (K5).

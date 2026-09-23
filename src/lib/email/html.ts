@@ -100,7 +100,7 @@ export function sanitizeEmailHtml(html: string): string {
 const BLOCK_TAGS = new Set(["P", "DIV", "BLOCKQUOTE", "TABLE", "HR", "UL", "OL", "PRE", "SECTION", "ARTICLE"]);
 
 /** Začátek citované nebo přeposlané části podle textu prvního řádku bloku (Outlook, Apple Mail, Gmail, Thunderbird, Seznam). */
-const QUOTE_START = /^\s*(?:-{2,}\s*(?:Původní|Puvodni|Přeposlaná|Preposlana|Original|Forwarded)\b|(?:From|Od|Von|De)\s*:\s*\S[^\n]{0,240}?\s(?:Sent|Odesláno|Date|Datum|Gesendet|To|Komu)\s*:|(?:Dne|On)\s.{4,80}\s(?:napsal|wrote)\b)/i;
+const QUOTE_START = /^\s*(?:-{2,}\s*(?:Původní|Puvodni|Přeposlaná|Preposlana|Original|Forwarded)\b|(?:From|Od|Von|De)\s*:\s*\S.{0,300}?\s(?:Sent|Odesláno|Date|Datum|Gesendet|To|Komu)\s*:|(?:Dne|On)\s.{4,80}\s(?:napsal|wrote)\b)/i;
 
 function isEmptyBlock(el: Element): boolean {
   if (el.querySelector("img, table, hr, iframe, video, audio, svg")) return false;
@@ -151,11 +151,33 @@ function findQuoteStart(body: HTMLElement): Element | null {
   if (explicit) return outermostBlock(explicit, body);
   for (const el of Array.from(body.querySelectorAll("p, div, blockquote, hr"))) {
     if (el.tagName === "HR") continue;
-    const text = (el.textContent ?? "").replace(/\u00a0/g, " ");
+    const text = blockText(el);
     if (text.length < 4) continue;
     if (QUOTE_START.test(text)) return outermostBlock(el, body);
   }
   return null;
+}
+
+/**
+ * Text bloku pro detekci citace: `<br>` a vnořené bloky se počítají jako mezera
+ * (Outlook píše `From: … <br>Sent: …`, kde by `textContent` slepil řádky bez mezery
+ * nebo je rozdělil zalomením, které regex nepřekročí), všechna bílá místa se srazí.
+ */
+function blockText(el: Element): string {
+  const parts: string[] = [];
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent ?? "");
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = (node as Element).tagName;
+    if (tag === "BR" || BLOCK_TAGS.has(tag) || tag === "TR" || tag === "LI") parts.push(" ");
+    for (const child of Array.from(node.childNodes)) walk(child);
+    if (BLOCK_TAGS.has(tag) || tag === "TR" || tag === "LI") parts.push(" ");
+  };
+  walk(el);
+  return parts.join("").replace(/[\s\u00a0\u200b]+/g, " ").trim();
 }
 
 /** Blok se sbalí i s obalem (Outlook dává hlavičku do `<div style="border-top…">`), ale ne s celým tělem. */

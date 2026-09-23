@@ -461,3 +461,23 @@ s toastem „Zpráva už ve schránce není“ místo chyby. Engine: ÚKOL 56 (o
 `smazano_at`, nevracet je). Obrázky ve zprávách chybí záměrně — `html_telo.sanitizuj` nechává jen
 vložené `cid:` obrázky (sledovací pixely); ÚKOL 57 přidá `mail_get(obrazky="vse")`, aplikace pak
 pošle parametr (REST dnes neznámé parametry odmítá, takže dřív to poslat nejde).
+
+**23. 9. 2026 — data z artefaktu Schránka v aplikaci a odpověď z Dnes.** Přeneseno přímým SQL
+(nástroje enginu pro zápis v této relaci nejsou): položky 212 → v DB 226 celkem (170 ÚVN,
+56 Gmail), úkoly 213 → 242, události 34 → 39, opravy 21 (+ 4 poučení jako `navrh`). Mapování:
+`message_id` = Message-ID z artefaktu, jinak `uvn-ref:<ref>` nebo `schranka:<doc>`; Gmail
+`gmail-api:<id>` bez `ref_cache` (Pošta si ref dohledá přes `mail_najdi`); `zdroj_id`
+`schranka:<doc_id>`; stavy artefaktu `vyrizeno → hotovo`, `novy → todo`, `odmitnuto → zamitnuto`;
+`co_resit` = co + „Návrh:“ + „Souvislost:“ + „Doplnit:“; `rozepsano_telo` jen když se lišilo od
+návrhu. Generátor a dávky jsou ve scratchpadu relace, ne v repu (obsahují jména). Dnes: nová
+kategorie „Návrhy odpovědí“ (P2 ve stavu `nove` s `navrh_telo`, posledních 20) a akce „Odpovědět“
+u P1, návrhů i „čeká na odpověď“ → `/posta?polozka=<id>&odpovedet=1`; Pošta zprávu otevře, počká
+na položku a rovnou rozbalí odpověď s návrhem (migrace `20260923150000_dnes_odpovedet`).
+Do budoucna: `docs/skill-email-triage-app.md` je text skillu `email-triage` pro claude.ai —
+každý běh (Routine i chat) zapisuje do aplikace, artefakt je archiv. Proč to zatím není „tak
+chytré jako artefakt“: artefakt měl 3 týdny dat a psal do něj tentýž model; aplikace měla data
+z dvou běhů. Co ještě chybí a je to na enginu, ne na modelu: `podklady_k_odpovedi` (K4.7, po O1 —
+historie s kontaktem a wiki přímo v běhu), `kontakt_profil` a `opravy_sber` v provozu, obrázky
+ve zprávách (ÚKOL 57). Citace: detekce hlavičky Outlooku selhávala na zalomení řádku uvnitř
+„From: … ⏎ Sent:“ (`textContent` přes `<br>`); `blockText` teď bere `<br>` a bloky jako mezeru
+a regex nezná `\n` — ověřeno v headless Chromiu na skutečné zprávě IPVZ.

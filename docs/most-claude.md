@@ -12,6 +12,9 @@ nepřepisuje, idempotence přes `(schranka_id, message_id)` a `zdroj_id`, každ�
 `audit`. Přímé SQL (`mcp__Supabase__execute_sql`) zůstává jen pro **čtení**, pro `pripady`
 (nástroj zatím není) a pro nouzové opravy.
 
+Data z artefaktu „Schránka“ (212 položek, 213 úkolů, 34 událostí, 21 oprav) jsou v aplikaci od
+23. 9. 2026; artefakt je od té doby jen archiv. Text skillu pro claude.ai: `docs/skill-email-triage-app.md`.
+
 ## Dvě spojení, jeden uživatel
 
 | Spojení | K čemu | Co nikdy |

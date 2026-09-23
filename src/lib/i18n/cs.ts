@@ -573,6 +573,7 @@ export const cs = {
     },
     kategorie: {
       p1: "Priorita 1",
+      koncept: "Návrhy odpovědí",
       termin: "Úkoly po termínu",
       udalost: "Dnešní události",
       odpoved: "Čeká na odpověď",

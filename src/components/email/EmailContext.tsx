@@ -182,19 +182,17 @@ export function EmailContext({ from, to, subject, ownEmails = [], load, onCreate
           })
         )}
       </div>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-muted-foreground">
-        <span className="font-medium text-foreground/80">{cs.kontext.otevreneUkoly}:</span>
-        {openTasks.length === 0 ? (
-          <span>{cs.kontext.zadneUkoly}</span>
-        ) : (
-          openTasks.slice(0, 3).map((t, i) => (
+      {openTasks.length > 0 ? (
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-muted-foreground">
+          <span className="font-medium text-foreground/80">{cs.kontext.otevreneUkoly}:</span>
+          {openTasks.slice(0, 3).map((t, i) => (
             <span key={t.id} className="inline-flex max-w-full items-baseline gap-1">
               {i > 0 ? <span className="opacity-40">·</span> : null}
               {linkOrText(t.href, t.title, "truncate")}
             </span>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   ExternalLink,
   ListTodo,
   Mail,
+  PenLine,
   Reply,
   Sparkles,
   ThumbsDown,
@@ -29,6 +30,7 @@ const URG: Record<SignalUrgency, { label: string; bar: string; badge: string; do
 
 const CAT: Record<SignalCategory, { label: string; icon: LucideIcon }> = {
   p1: { label: cs.dnes.kategorie.p1, icon: AlertTriangle },
+  koncept: { label: cs.dnes.kategorie.koncept, icon: PenLine },
   termin: { label: cs.dnes.kategorie.termin, icon: ListTodo },
   udalost: { label: cs.dnes.kategorie.udalost, icon: CalendarClock },
   odpoved: { label: cs.dnes.kategorie.odpoved, icon: Reply },
