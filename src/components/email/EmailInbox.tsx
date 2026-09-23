@@ -15,15 +15,27 @@ import {
   MailOpen,
   MessageSquarePlus,
   Paperclip,
+  PenLine,
   PenSquare,
   RefreshCw,
   Reply,
   Search,
+  Send,
   Undo2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,6 +65,7 @@ import type {
 } from "@/lib/email/types";
 import { EmailListItem } from "./EmailListItem";
 import { EmailCompose, type EmailComposeSharedProps } from "./EmailCompose";
+import { signatureBlockHtml } from "./EmailSignatureNode";
 import { EmailSearchFilter } from "./EmailSearchFilter";
 import { EmailFolderNav, EmailFolderTabs } from "./EmailFolderNav";
 import { emailFoldersFor, type EmailFolder } from "./emailFolders";
@@ -99,6 +112,8 @@ interface EmailInboxProps {
   onArchived?: (message: MailListMessage, newRef?: string) => void;
   /** Po návratu z Vyřízeno do Doručených (stav položky `nove`). */
   onRestored?: (messageId: string) => void;
+  /** Po odeslání odpovědi na zprávu z aplikace (stav položky `odeslano`); běh to později potvrdí ze schránky. */
+  onReplied?: (message: MailListMessage) => void;
   /** Jestli jde zprávu přeposlat s přílohami (engine to umí jen nad ÚVN); bez propu se tlačítko ukazuje vždy. */
   canForward?: (detail: MailMessageDetail) => boolean;
   /**
@@ -153,6 +168,7 @@ export function EmailInbox({
   itemForMessage,
   onArchived,
   onRestored,
+  onReplied,
   canForward,
   openRef,
   openReply = false,
@@ -622,6 +638,38 @@ export function EmailInbox({
     startReply(detail, detailItem?.messageId === detail.messageId ? detailItem : null);
   };
 
+  /** Předmět odpovědi: návrh z běhu, jinak „Re: …“ nad původním předmětem. */
+  const replySubjectFor = (msg: MailMessageDetail, item: TriageItem | null) =>
+    item?.draftSubject?.trim() || (msg.subject.startsWith("Re:") ? msg.subject : `Re: ${msg.subject}`);
+
+  /**
+   * Odeslání návrhu z běhu rovnou z detailu — bez okna psaní, ale vždy až po
+   * potvrzení v `DetailView` (pravidlo 8). Skládá totéž co okno psaní: rozepsaný
+   * text má přednost před návrhem (E3), podpis podle schránky, do které zpráva přišla.
+   */
+  const sendDraft = async (msg: MailMessageDetail, item: TriageItem) => {
+    const { email: to } = parseEmailFromHeader(msg.from);
+    if (!to) throw new Error(cs.posta.triage.navrhBezAdresata);
+    const text = item.userDraft?.trim() ? item.userDraft : plainTextToEditorHtml(item.draftBody ?? "");
+    const from = arrivedAt(msg);
+    const sig = (compose.signatureFor ? compose.signatureFor(from ?? compose.defaultSender ?? "") : compose.signatureHtml)?.trim();
+    const body = sig && !text.includes(sig) ? `${text}<p></p>${signatureBlockHtml(sig)}` : text;
+    await compose.onSend({
+      to: [to],
+      cc: [],
+      bcc: [],
+      subject: replySubjectFor(msg, item),
+      body,
+      isHtml: true,
+      threadId: msg.threadId,
+      inReplyTo: msg.messageId,
+      references: msg.messageId,
+      sendFrom: from,
+    });
+    onReplied?.(asListMessage(msg));
+    void fetchEmails(activeFolder, appliedQuery, undefined, true);
+  };
+
   // Přeposlání s původními přílohami (`mail_preposlat`): tělo je jen poznámka, zbytek
   // skládá engine, který na původní zprávě nastaví `$Forwarded`. Bez `threadId`, aby
   // se okno neukazovalo jako odpověď; předmět je jen náhled, engine ho složí sám.
@@ -699,14 +747,20 @@ export function EmailInbox({
         setReplyData(null);
         if (isMobile) handleBack();
       }}
-      onSent={() => void fetchEmails(activeFolder, appliedQuery, undefined, true)}
+      onSent={() => {
+        // Odpověď z okna psaní na otevřenou zprávu: položka je „odesláno" hned, ne až po dalším běhu.
+        if (detail && replyData?.inReplyTo && replyData.inReplyTo === detail.messageId) onReplied?.(asListMessage(detail));
+        void fetchEmails(activeFolder, appliedQuery, undefined, true);
+      }}
     />
   );
 
+  const viewItem = detail ? (detailItem?.messageId === detail.messageId ? detailItem : (items.get(detail.id) ?? null)) : null;
   const detailView = detail ? (
     <DetailView
       detail={detail}
       onReply={handleReply}
+      onSendDraft={viewItem && (viewItem.draftBody?.trim() || viewItem.userDraft?.trim()) ? () => sendDraft(detail, viewItem) : undefined}
       onForward={!canForward || canForward(detail) ? handleForward : undefined}
       onMarkUnread={handleMarkUnread}
       customFolders={customFolders}
@@ -714,7 +768,7 @@ export function EmailInbox({
       folderId={activeFolder}
       onDone={activeFolder !== "archive" ? () => handleDone(asListMessage(detail)) : undefined}
       onRestore={activeFolder === "archive" ? () => handleMoveToFolder(detail.id, "inbox", cs.posta.slozky.inbox) : undefined}
-      item={detailItem?.messageId === detail.messageId ? detailItem : (items.get(detail.id) ?? null)}
+      item={viewItem}
       attachmentUrl={attachmentUrl}
       loadThread={loadThread}
       onNoteForClaude={onNoteForClaude}
@@ -978,6 +1032,7 @@ function RecipientsLine({ label, value }: { label: string; value: string }) {
 function DetailView({
   detail,
   onReply,
+  onSendDraft,
   onForward,
   onMarkUnread,
   customFolders,
@@ -993,6 +1048,8 @@ function DetailView({
 }: {
   detail: MailMessageDetail;
   onReply: () => void;
+  /** Odeslání návrhu z běhu bez okna psaní; volá se až po potvrzení (pravidlo 8). Bez propu se tlačítko neukáže. */
+  onSendDraft?: () => Promise<void>;
   /** `undefined` = přeposlání pro tuhle zprávu nejde (Gmail) a tlačítko se neukáže. */
   onForward?: () => void;
   onMarkUnread: () => void;
@@ -1017,10 +1074,32 @@ function DetailView({
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteBusy, setNoteBusy] = useState(false);
+  // „Odeslat návrh": potvrzovací dialog nad návrhem z běhu; při přepnutí zprávy se zavře.
+  const [draftConfirm, setDraftConfirm] = useState(false);
+  const [draftSending, setDraftSending] = useState(false);
   useEffect(() => {
     setNoteOpen(false);
     setNoteText("");
+    setDraftConfirm(false);
   }, [detail.id]);
+  const draftText = item?.userDraft?.trim() ? null : (item?.draftBody?.trim() ?? null);
+  const draftHtml = item?.userDraft?.trim() ? sanitizeEmailHtml(item.userDraft) : null;
+  const hasDraft = Boolean(draftText || draftHtml);
+  const canSendDraft = Boolean(onSendDraft && hasDraft && item && (item.state === "nove" || item.state === "ceka"));
+  const replySubject = item?.draftSubject?.trim() || (detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`);
+  const confirmSendDraft = async () => {
+    if (!onSendDraft) return;
+    setDraftSending(true);
+    try {
+      await onSendDraft();
+      toast({ title: cs.posta.psani.odeslano });
+      setDraftConfirm(false);
+    } catch (err) {
+      toast({ title: cs.posta.psani.chybaOdeslani, description: err instanceof Error ? err.message : String(err), variant: "destructive" });
+    } finally {
+      setDraftSending(false);
+    }
+  };
   const submitNote = async () => {
     if (!onNoteForClaude) return;
     if (!noteText.trim()) {
@@ -1209,13 +1288,55 @@ details.citace>*:not(summary){color:#444}
                 {item.toDo}
               </p>
             ) : null}
-            {item.userDraft?.trim() ? (
-              <p className="text-muted-foreground">{cs.posta.triage.rozepsano}</p>
-            ) : item.draftBody?.trim() ? (
-              <p className="text-muted-foreground">{cs.posta.triage.navrhPripraven}</p>
+            {hasDraft ? (
+              <div className="mt-2 rounded-md border border-border bg-background p-3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-foreground/80">
+                  <PenLine className="h-3.5 w-3.5" aria-hidden />
+                  {draftHtml ? cs.posta.triage.navrhRozepsany : cs.posta.triage.navrh}
+                </div>
+                {draftHtml ? (
+                  <div className="max-h-64 overflow-auto text-sm leading-relaxed text-foreground [&_p]:mb-2" dangerouslySetInnerHTML={{ __html: draftHtml }} />
+                ) : (
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{draftText}</pre>
+                )}
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  {canSendDraft ? (
+                    <Button size="sm" onClick={() => setDraftConfirm(true)}>
+                      <Send className="mr-1.5 h-4 w-4" />
+                      {cs.posta.triage.odeslatNavrh}
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" size="sm" onClick={onReply}>
+                    <Reply className="mr-1.5 h-4 w-4" />
+                    {cs.posta.triage.upravitNavrh}
+                  </Button>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : null}
+
+        <AlertDialog open={draftConfirm} onOpenChange={(open) => !draftSending && setDraftConfirm(open)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{cs.posta.triage.potvrditNadpis}</AlertDialogTitle>
+              <AlertDialogDescription>{cs.posta.triage.potvrditPopis(email || displayName, replySubject)}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={draftSending}>{cs.posta.triage.potvrditZrusit}</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={draftSending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void confirmSendDraft();
+                }}
+              >
+                {draftSending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}
+                {cs.posta.triage.potvrditOdeslat}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {renderContext && <div className="mb-3">{renderContext(detail)}</div>}
 
         <iframe

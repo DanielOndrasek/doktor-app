@@ -481,3 +481,16 @@ historie s kontaktem a wiki přímo v běhu), `kontakt_profil` a `opravy_sber` v
 ve zprávách (ÚKOL 57). Citace: detekce hlavičky Outlooku selhávala na zalomení řádku uvnitř
 „From: … ⏎ Sent:“ (`textContent` přes `<br>`); `blockText` teď bere `<br>` a bloky jako mezeru
 a regex nezná `\n` — ověřeno v headless Chromiu na skutečné zprávě IPVZ.
+
+**23. 9. 2026 — položky z importu se nedaly otevřít; návrh odpovědi rovnou v detailu.**
+Import z artefaktu dal 51 gmailovým položkám `message_id` ve tvaru `gmail-api:<id>` bez
+`ref_cache` a 42 položkám ÚVN `uvn-ref:<ref>` — Dnes → Otevřít pak hlásilo „nepodařilo se
+najít zprávu“ (`mail_najdi` takový klíč nezná, ref nebyl). Opraveno přímo v datech: podle
+předmětu, odesílatele a data dohledán skutečný ref a Message-ID z indexu enginu (68 položek),
+8 duplicit sloučeno do existujících řádků (úkoly a události přepojeny, návrh a „co řešit“
+doplněny), 16 zůstává (zprávy smazané mimo aplikaci, vlastní odeslaná pošta, ruční položky).
+Pravidlo do skillu i běhů: `message_id` je vždy RFC Message-ID z `mail_get`, nikdy syntetický
+klíč; `ref_cache` vždy vyplněný. V detailu zprávy je nově panel „Návrh odpovědi“ s celým
+textem, tlačítkem „Odeslat návrh“ (potvrzovací dialog, pak `mail_send` s podpisem podle
+schránky — pravidlo 8) a „Upravit“ (okno psaní). Po odeslání z aplikace je položka
+`odeslano` (`stav_zdroj = klik`), běh to potvrdí ze schránky.

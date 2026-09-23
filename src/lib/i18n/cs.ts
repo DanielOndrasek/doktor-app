@@ -178,6 +178,16 @@ export const cs = {
       stavy: { nove: "Nové", ceka: "Čekám", odeslano: "Odesláno", hotovo: "Vyřízeno", zamitnuto: "Zamítnuto" } as Record<string, string>,
       navrhPripraven: "Návrh odpovědi je připravený — Odpovědět ho předvyplní.",
       rozepsano: "Máš rozepsanou odpověď — Odpovědět ji otevře.",
+      /** Panel s návrhem odpovědi z běhu přímo v detailu: odeslat za potvrzením, nebo upravit v okně psaní. */
+      navrh: "Návrh odpovědi",
+      navrhRozepsany: "Rozepsaná odpověď",
+      odeslatNavrh: "Odeslat návrh",
+      upravitNavrh: "Upravit",
+      potvrditNadpis: "Odeslat tuto odpověď?",
+      potvrditPopis: (komu: string, predmet: string) => `Komu: ${komu} · Předmět: ${predmet}. Podpis se doplní podle schránky, ze které odpověď odejde.`,
+      potvrditOdeslat: "Odeslat",
+      potvrditZrusit: "Zrušit",
+      navrhBezAdresata: "U této zprávy nejde určit adresáta — použij Odpovědět.",
       rozepsaneUlozeno: "Rozepsaný text uložen",
       rozepsaneNeulozeno: "Rozepsaný text se nepodařilo uložit.",
       /** „Poznámka pro Clauda" k této zprávě — do fronty, ne na model. */

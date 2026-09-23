@@ -203,6 +203,13 @@ export default function Mail({
     },
     [itemSource],
   );
+  // Odpověď odeslaná z aplikace: položka je `odeslano` hned (klik); běh to pak potvrdí ze schránky (pravidlo 4).
+  const onReplied = useCallback(
+    (message: MailListMessage) => {
+      itemSource.setStateByRef(message.id, "odeslano").catch((err: unknown) => console.error(cs.posta.chyby.presun, err));
+    },
+    [itemSource],
+  );
 
   // Rozepsaný text (E3): ukládá se k položce podle Message-ID zprávy, na kterou se odpovídá.
   const draftItemIds = useRef(new Map<string, string | null>());
@@ -358,6 +365,7 @@ export default function Mail({
           itemForMessage={itemForMessage}
           onArchived={onArchived}
           onRestored={onRestored}
+          onReplied={onReplied}
           canForward={mailbox ? (detail) => mailbox.forwardSupported(detail.id) : undefined}
           openRef={openRef}
           openReply={openReply}

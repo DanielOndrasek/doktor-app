@@ -31,10 +31,12 @@ artefaktu, píše do prázdna — aplikace ho nečte. Tenhle text nahraď za tě
 | `udalosti` | `zdroj_id` | `email:<message_id>:<n>` |
 | `pripady` | `zdroj_id` | podle `most-claude.md` (Karty pacientů) |
 
-Data přenesená z artefaktu 23. 9. mají `message_id` ve tvaru `uvn-ref:INBOX:<uid>` nebo
-`schranka:<doc>` (kde artefakt Message-ID neměl) a `zdroj_id` `schranka:<doc_id>` — nové zápisy
-je nemají napodobovat; když běh potká tutéž zprávu znovu, upsert podle skutečného Message-ID
-založí nový řádek jen tehdy, když starý nemá pravé Message-ID (výjimečné, nevadí).
+**`message_id` je vždy skutečné RFC Message-ID** (z `mail_get`, pole `message_id`) a
+**`ref_cache` je vždy vyplněný** (`INBOX:<uid>` nebo `[Gmail]/Všechny zprávy:<uid>`). Bez
+nich aplikace zprávu k položce nedohledá („nepodařilo se najít zprávu“) a neuloží rozepsaný
+text. Syntetické klíče (`uvn-ref:…`, `gmail-api:…`) se nepíší; ty z importu 23. 9. byly
+zpětně opraveny a duplicity sloučeny. Úkoly z artefaktu mají `zdroj_id` `schranka:<doc_id>`
+— nové zápisy je nenapodobují.
 
 ## Průběh běhu
 
