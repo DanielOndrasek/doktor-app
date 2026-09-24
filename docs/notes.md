@@ -494,3 +494,9 @@ klíč; `ref_cache` vždy vyplněný. V detailu zprávy je nově panel „Návrh
 textem, tlačítkem „Odeslat návrh“ (potvrzovací dialog, pak `mail_send` s podpisem podle
 schránky — pravidlo 8) a „Upravit“ (okno psaní). Po odeslání z aplikace je položka
 `odeslano` (`stav_zdroj = klik`), běh to potvrdí ze schránky.
+
+**24. 9. 2026 — první běh přes nástroje enginu.** Routine v 07:07 už měla `beh_zacni`,
+`polozka_zapis`, `pouceni_schvalena` i `beh_ukonci` — položky šly enginem, ne SQL.
+`ukol_zaloz` ale vrací 400 (ÚKOL 58), úkoly zapsány náhradně SQL. Pozor pro běhy: názvy
+příloh mohou nést rodné číslo (skeny z nemocnic: `PRIJMENI_JMENO_<RČ>_…jpg`) — takové
+`prilohy_meta` se nezapisují, engine by je stejně odmítl.

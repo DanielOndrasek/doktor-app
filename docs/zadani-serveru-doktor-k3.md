@@ -240,6 +240,36 @@ ukazují (Gmail přes proxy). Sledovací pixely jsou skutečné riziko, proto vo
 
 ---
 
+## ÚKOL 58 — `ukol_zaloz` vrací 400 (doplněno 24. 9. 2026)
+
+**Proč:** V běhu 24. 9. 07:07 (`behy` `58d9721a-…`) každé volání `ukol_zaloz` skončilo
+`{"kod":"supabase","duvod":"HTTPError: 400 … /rest/v1/ukoly?select=id"}` — i s minimální
+sadou polí (`nazev, popis, priorita, termin, druh, oblast, zdroj, zdroj_id, polozka_id`).
+`polozka_zapis`, `beh_zacni` i `beh_ukonci` fungují. Úkoly se zapsaly náhradně přímým SQL
+(`insert … on conflict (user_id, zdroj_id) where zdroj_id is not null do nothing`), který
+projde — chyba je tedy v tom, co engine posílá na REST, ne v datech.
+
+**Pravděpodobné příčiny (ověřit v logu PostgREST, vrací text chyby v těle 400):**
+1. `on_conflict=zdroj_id` v URL — unikátní index na `ukoly` je **částečný**
+   `(user_id, zdroj_id) where zdroj_id is not null`; PostgREST umí jen prostý
+   `on_conflict=user_id,zdroj_id` a částečný index neodpovídá → 400. Řešení: místo upsertu
+   nejdřív `select id … where user_id = … and zdroj_id = …`, pak `insert` nebo `patch`.
+2. Chybí povinný sloupec: `zdroj` (NOT NULL, text) nebo `poradi` (NOT NULL, integer) —
+   engine musí doplnit `zdroj = 'email'` (podle tvaru `zdroj_id`: `email:` → email,
+   `plaud:` → plaud, jinak `claude`) a `poradi = 0`.
+3. Neznámé pole v těle (`kontakt_id`, `cas`, `odlozeno_do` jsou v tabulce; cokoli jiného
+   PostgREST odmítne).
+
+**Co:** opravit podle skutečné příčiny, vracet v `duvod` i text chyby z těla odpovědi
+PostgREST (ne jen status), a stejně zkontrolovat `udalost_navrhni` (unikátní index na
+`udalosti.zdroj_id` je také částečný).
+
+**Hotovo, když:** `ukol_zaloz({nazev, zdroj_id: "email:test-58"})` založí úkol, druhé
+volání se stejným `zdroj_id` vrátí `zalozeno: false` bez duplicity, a `duvod` u chyby nese
+text z PostgREST.
+
+---
+
 ## Co v tomhle zadání není
 
 K2.5 přenos dat ze Schránky (čeká na O6). K4.3 sklad příloh a OCR. Disk dovnitř (O9).
