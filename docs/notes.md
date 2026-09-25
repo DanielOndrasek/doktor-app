@@ -500,3 +500,10 @@ schránky — pravidlo 8) a „Upravit“ (okno psaní). Po odeslání z aplikac
 `ukol_zaloz` ale vrací 400 (ÚKOL 58), úkoly zapsány náhradně SQL. Pozor pro běhy: názvy
 příloh mohou nést rodné číslo (skeny z nemocnic: `PRIJMENI_JMENO_<RČ>_…jpg`) — takové
 `prilohy_meta` se nezapisují, engine by je stejně odmítl.
+
+**25. 9. 2026 — `udalost_navrhni` také vrací 400 (ÚKOL 58).** Běh 13:08 navrhoval událost
+(sympozium BSCI v KV 27. 11.) s `kolize` ve tvaru `[{druh, nazev, zacatek, konec, kalendar}]`
+a bez rozšiřujících polí — engine vrátil 400 z PostgREST na `udalosti`, návrh zapsán SQL.
+Routine běží ve dvou relacích současně (v 07:08 dva běhy vedle sebe, 409 na `polozka_zapis`);
+jednu z Routine je třeba vypnout. Poučení pro běhy: `polozka_zapis` volat až s Message-ID
+z `mail_get`, nikdy „na zkoušku“ — engine zapíše i neúplnou položku.
