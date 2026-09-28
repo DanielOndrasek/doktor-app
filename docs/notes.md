@@ -513,3 +513,14 @@ první dotaz s novým tokenem jako vydaný v budoucnosti (401, 14:03:10) — pos
 a PostgREST na straně Supabase, ne chyba aplikace ani klienta. Stránky přes TanStack Query
 dotaz opakují samy, ruční `source.load()` (Dnes, Rozpracováno v Claude, Úkoly, Události) ne —
 přidán `lib/supabase/retry.ts` (`withJwtRetry`: jen chyby posunu hodin, 3 pokusy 1,5/4/8 s).
+
+**28. 9. 2026 — sdílený přístup (migrace `20260928160000_sdileny_pristup.sql`).** Štěpánův účet
+suchanekstepan@gmail.com (`697f9db0…`) vidí a upravuje data vlastníka (`3a2f3732…`, pod ním
+zapisuje engine). Mechanismus: tabulka `doktor.pristup` (vlastník → člen, z aplikace jen
+čtení), `doktor.pristupne_ucty()` v politikách všech tabulek místo `user_id = auth.uid()`,
+trigger `zapis_pod_vlastnika` (zápis člena z aplikace se uloží pod vlastníka, data zůstávají
+v jedné sadě) a `signal_odlozit` pod vlastníka. Ověřeno simulací JWT: člen vidí 295 položek,
+300 úkolů, 76 signálů Dnes; zápis i odložení signálu skončily pod vlastníkem; vlastník beze
+změny. Aplikace ani engine se neměnily. Typy v `src/types/database.ts` tabulku `pristup`
+zatím nemají (MCP generátor vrací jen `public`; při příštím `supabase gen types --schema
+doktor` se doplní; aplikace ji nečte). Přidání dalšího člena = řádek v `doktor.pristup`.
