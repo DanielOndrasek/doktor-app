@@ -507,3 +507,9 @@ a bez rozšiřujících polí — engine vrátil 400 z PostgREST na `udalosti`, 
 Routine běží ve dvou relacích současně (v 07:08 dva běhy vedle sebe, 409 na `polozka_zapis`);
 jednu z Routine je třeba vypnout. Poučení pro běhy: `polozka_zapis` volat až s Message-ID
 z `mail_get`, nikdy „na zkoušku“ — engine zapíše i neúplnou položku.
+
+**28. 9. 2026 — „JWT issued at future" na Dnes.** Po obnově session (14:02:55) odmítl PostgREST
+první dotaz s novým tokenem jako vydaný v budoucnosti (401, 14:03:10) — posun hodin mezi Auth
+a PostgREST na straně Supabase, ne chyba aplikace ani klienta. Stránky přes TanStack Query
+dotaz opakují samy, ruční `source.load()` (Dnes, Rozpracováno v Claude, Úkoly, Události) ne —
+přidán `lib/supabase/retry.ts` (`withJwtRetry`: jen chyby posunu hodin, 3 pokusy 1,5/4/8 s).

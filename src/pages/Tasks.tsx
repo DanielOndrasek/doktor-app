@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
+import { withJwtRetry } from "@/lib/supabase/retry";
 import { iso } from "@/lib/taskDue";
 import type { TaskSource } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
@@ -97,7 +98,7 @@ export default function Tasks({ source }: { source: TaskSource }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setCards(await source.load());
+      setCards(await withJwtRetry(() => source.load()));
     } catch (err) {
       toast({
         title: cs.ukoly.nacteniSelhalo,

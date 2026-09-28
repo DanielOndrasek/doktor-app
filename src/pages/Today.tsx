@@ -7,6 +7,7 @@ import { TASKS_PATH } from "@/components/AppShell";
 import type { ClaudeWorkSource } from "@/lib/claudeProjects";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
+import { withJwtRetry } from "@/lib/supabase/retry";
 import type { Signal, TodaySource } from "@/lib/today";
 
 /**
@@ -31,7 +32,7 @@ export default function Today({ source, claudeWork }: { source: TodaySource; cla
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setSignals(await source.load());
+      setSignals(await withJwtRetry(() => source.load()));
     } catch (err) {
       toast({
         title: cs.dnes.nacteniSelhalo,

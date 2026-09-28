@@ -7,6 +7,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import type { ClaudeProject, ClaudeQuestion, ClaudeWorkSource } from "@/lib/claudeProjects";
+import { withJwtRetry } from "@/lib/supabase/retry";
 import { cn } from "@/lib/utils";
 
 const STATE_TONE: Record<string, string> = {
@@ -44,8 +45,8 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
 
   useEffect(() => {
     let cancelled = false;
-    source
-      .load()
+    // Po obnově tokenu může PostgREST první dotaz odmítnout (posun hodin) — zopakovat.
+    withJwtRetry(() => source.load())
       .then((work) => {
         if (cancelled) return;
         setProjects(work.projects);

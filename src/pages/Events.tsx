@@ -6,6 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import type { CalendarRef, EventProposal, EventSource, EventState } from "@/lib/events";
+import { withJwtRetry } from "@/lib/supabase/retry";
 
 const STATES: EventState[] = ["novy", "pridano", "zamitnuto"];
 /** `/udalosti?udalost=<id>` — odkaz z Dnes (`dnes()`) a z přehledu běhů; přepne záložku a kartu zvýrazní. */
@@ -55,7 +56,7 @@ export default function Events({ source }: { source: EventSource }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [items, cals] = await Promise.all([source.load(), source.calendars()]);
+      const [items, cals] = await Promise.all([withJwtRetry(() => source.load()), source.calendars()]);
       setEvents(items);
       setCalendars(cals);
     } catch (err) {
