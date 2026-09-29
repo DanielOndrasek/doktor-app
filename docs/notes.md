@@ -524,3 +524,9 @@ v jedné sadě) a `signal_odlozit` pod vlastníka. Ověřeno simulací JWT: čle
 změny. Aplikace ani engine se neměnily. Typy v `src/types/database.ts` tabulku `pristup`
 zatím nemají (MCP generátor vrací jen `public`; při příštím `supabase gen types --schema
 doktor` se doplní; aplikace ji nečte). Přidání dalšího člena = řádek v `doktor.pristup`.
+
+**29. 9. 2026 — `polozka_zapis` vrací 400 při `priorita: "P2"`.** Sloupec `polozky.priorita` je
+celé číslo 1–3 (`polozky_priorita_check`); engine hodnotu nepřevádí a PostgREST vrátí 400 bez
+záznamu v postgres_logs. V bězích posílat `priorita: 2`, nikdy „P2“. Totéž u ručních SQL úkolů:
+`ukoly.zdroj` smí být jen `email | claude | rucne | plaud` (`ukoly_zdroj_check`), ne `beh` —
+zdroj běhu se pozná ze `stav_zdroj = 'beh'` a `zdroj_id = 'beh:<id>:…'`.
