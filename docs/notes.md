@@ -530,3 +530,9 @@ celé číslo 1–3 (`polozky_priorita_check`); engine hodnotu nepřevádí a Po
 záznamu v postgres_logs. V bězích posílat `priorita: 2`, nikdy „P2“. Totéž u ručních SQL úkolů:
 `ukoly.zdroj` smí být jen `email | claude | rucne | plaud` (`ukoly_zdroj_check`), ne `beh` —
 zdroj běhu se pozná ze `stav_zdroj = 'beh'` a `zdroj_id = 'beh:<id>:…'`.
+
+**2. 10. 2026 — středník uvnitř řetězce zasekne `execute_sql` (MCP Supabase).** Nástroj dělí
+dotaz na příkazy podle `;` bez ohledu na uvozovky. Když je středník v textu (`popis = popis ||
+'…zip; obrázky…'`), volání visí až do 60s timeoutu a nic se nezapíše — řádek přitom není
+zamčený (`for update skip locked` ho vrátí). Do textů psaných přes SQL středník nedávat, místo
+něj čárku nebo tečku. Totéž platí pro `co_resit` a `popis` v bězích.
