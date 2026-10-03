@@ -552,3 +552,12 @@ jen s vlastníkem, takže Pošta, Události a Dnes padaly na 403 `cizi_uzivatel`
 vlastníka (`UZIVATEL`, uploady i podepsané odkazy nesou id vlastníka). Vyžaduje nasazení na
 Hetzneru (`git pull && docker compose up -d --build`); do té doby pomůže přidat Štěpánovo UUID
 do `DOKTOR_POVOLENI_UZIVATELE` v `.env` a `docker compose up -d`.
+
+**3. 10. 2026 — sdílený přístup nasazen na engine.** Na serveru byly necommitnuté změny druhé
+relace (`upload_listek`, `brana` pro Disk, Caddy, `stav_vlaken`); uložené do větve
+`server-zmeny-2026-10-03` a spojené s opravou do `ca639ab` na `main` enginu (lístek dostává
+i `claims["vlastnik"]`, `brana/rclone/` v `.gitignore` — `rclone.conf` nese token Disku).
+Nasazeno, testy `test_pristup_clen` a `test_upload_listek_clen` na serveru prošly,
+`DOKTOR_POVOLENI_UZIVATELE` má zase jen vlastníka. Člen se přidává jen řádkem v `doktor.pristup`.
+Na serveru se nemá upravovat kód bez commitu. Obsah `.env` se dostal do chatu — vyměnit heslo
+ÚVN pošty, hesla aplikací Gmailu a iCloudu a `MCP_SECRET_PATH`.
