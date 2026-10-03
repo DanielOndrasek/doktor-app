@@ -496,6 +496,9 @@ export const cs = {
     hesloZmeneno: "Heslo bylo změněno",
     hesloZmenenoPopis: "Přihlaste se novým heslem.",
     hesloNezmeneno: "Nepodařilo se změnit heslo. Zkuste požádat o nový odkaz.",
+    /** Účet má MFA: Supabase mění heslo jen ze session aal2, odkaz z e-mailu dává aal1. */
+    noveHesloMfaPodtitulek: "Účet má zapnuté dvoufaktorové ověření. Před nastavením nového hesla zadejte kód z autentifikátoru.",
+    hesloVyzadujeMfa: "Změna hesla vyžaduje ověření kódem z autentifikátoru.",
     hesloKratkeTitulek: "Heslo je příliš krátké",
     hesloKratke: (min: number) => `Heslo musí mít alespoň ${min} znaků.`,
     heslaSeNeshoduji: "Hesla se neshodují",

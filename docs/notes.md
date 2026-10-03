@@ -536,3 +536,19 @@ dotaz na příkazy podle `;` bez ohledu na uvozovky. Když je středník v textu
 '…zip; obrázky…'`), volání visí až do 60s timeoutu a nic se nezapíše — řádek přitom není
 zamčený (`for update skip locked` ho vrátí). Do textů psaných přes SQL středník nedávat, místo
 něj čárku nebo tečku. Totéž platí pro `co_resit` a `popis` v bězích.
+
+**3. 10. 2026 — obnova hesla u účtu s MFA selhávala (`insufficient_aal`).** Odkaz z e-mailu dává
+session jen `aal1` a Supabase u uživatele s ověřeným TOTP faktorem odmítne `updateUser({password})`
+s 401 „AAL2 session is required…“; stránka to hlásila jako neplatný odkaz. `ResetPassword.tsx`
+teď po vzniku session načte stav MFA a u účtu s faktorem napřed ukáže `MfaChallengeForm`
+(stejný jako v bráně), teprve pak formulář hesla; `insufficient_aal` z `updateUser` vrátí
+k zadání kódu místo obecné hlášky. Nouzová cesta bez nasazení: v Supabase Dashboardu dočasně
+odebrat MFA faktor, projít obnovou a MFA znovu zapnout.
+
+**3. 10. 2026 — Štěpán viděl „Tento uživatel nemá k enginu přístup“.** Sdílený přístup
+(`doktor.pristup`) řešil jen Supabase; REST enginu měl allow-list `DOKTOR_POVOLENI_UZIVATELE`
+jen s vlastníkem, takže Pošta, Události a Dnes padaly na 403 `cizi_uzivatel`. Engine (commit
+`eaaca2b` v `uvn-mail-mcp`) teď čte `doktor.pristup` přes service role a člena pustí nad data
+vlastníka (`UZIVATEL`, uploady i podepsané odkazy nesou id vlastníka). Vyžaduje nasazení na
+Hetzneru (`git pull && docker compose up -d --build`); do té doby pomůže přidat Štěpánovo UUID
+do `DOKTOR_POVOLENI_UZIVATELE` v `.env` a `docker compose up -d`.

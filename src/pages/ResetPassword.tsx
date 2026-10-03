@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/AuthShell";
+import MfaChallengeForm from "@/components/auth/MfaChallengeForm";
 import { LOGIN_PATH } from "@/components/auth/MfaGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,13 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { supabase } from "@/lib/supabase/client";
+import { loadMfaStatus, needsMfaChallenge } from "@/lib/supabase/mfa";
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from "@/lib/supabase/passwordPolicy";
+
+/** Supabase: změna hesla u účtu s MFA vyžaduje session aal2 (`insufficient_aal`). */
+function isInsufficientAal(error: { code?: string; message?: string }): boolean {
+  return error.code === "insufficient_aal" || /AAL2/i.test(error.message ?? "");
+}
 
 /**
  * Nastavení nového hesla z odkazu v e-mailu.
@@ -20,6 +27,11 @@ import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from "@/lib/supabase/
  * obou variant recovery flow (PKCE `?code=` i implicit `#access_token`).
  * Nepřebráno: nulování `profiles.must_change_password` (schéma `crm`),
  * aurora, logo, odkazy na obchodní podmínky.
+ *
+ * Navíc oproti CRM: MFA je v Doktorovi povinné, a Supabase u účtu s ověřeným
+ * faktorem odmítne změnit heslo ze session aal1 (recovery odkaz dává jen aal1).
+ * Před formulářem hesla se proto ověří kód z autentifikátoru — stejná
+ * komponenta jako v bráně MFA.
  */
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -29,6 +41,21 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  /** ID ověřeného TOTP faktoru, dokud session není aal2; `null` = heslo jde měnit rovnou. */
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+
+  /** Session z odkazu je aal1 — zjistí, zda účet chce před změnou hesla kód z autentifikátoru. */
+  const checkMfa = async (): Promise<void> => {
+    try {
+      const status = await loadMfaStatus();
+      setMfaFactorId(needsMfaChallenge(status) && status.verifiedFactorId ? status.verifiedFactorId : null);
+    } catch (e) {
+      // Stav MFA se nepodařilo načíst — zkusíme změnu hesla; případné `insufficient_aal`
+      // ji vrátí do ověření kódem.
+      console.warn("[ResetPassword] loadMfaStatus selhal:", e);
+      setMfaFactorId(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -63,8 +90,7 @@ export default function ResetPassword() {
             // (token už byl spotřebovaný a vrátil by 400).
             url.searchParams.delete("code");
             window.history.replaceState({}, "", url.toString());
-            setIsRecovery(true);
-            setIsChecking(false);
+            await ready();
             return;
           }
         }
@@ -73,21 +99,26 @@ export default function ResetPassword() {
           data: { session },
         } = await supabase.auth.getSession();
         if (cancelled) return;
-        if (session) {
-          setIsRecovery(true);
-          setIsChecking(false);
-        }
+        if (session) await ready();
       } catch (e) {
         console.warn("[ResetPassword] init selhal:", e);
       }
+    };
+
+    /* Session existuje — ještě než se ukáže formulář, zjistíme, jestli účet
+     * s MFA potřebuje napřed kód (jinak by `updateUser` skončil na aal). */
+    const ready = async () => {
+      await checkMfa();
+      if (cancelled) return;
+      setIsRecovery(true);
+      setIsChecking(false);
     };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        setIsRecovery(true);
-        setIsChecking(false);
+        void ready();
       }
     });
 
@@ -122,6 +153,12 @@ export default function ResetPassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
+        if (isInsufficientAal(error)) {
+          // Účet má MFA a session je jen aal1 — vrátíme uživatele k zadání kódu.
+          toast({ title: cs.prihlaseni.hesloVyzadujeMfa, variant: "destructive" });
+          await checkMfa();
+          return;
+        }
         toast({ title: cs.prihlaseni.hesloNezmeneno, variant: "destructive" });
         return;
       }
@@ -155,6 +192,18 @@ export default function ResetPassword() {
             {cs.prihlaseni.zpetNaPrihlaseni}
           </Button>
         </div>
+      </AuthShell>
+    );
+  }
+
+  if (mfaFactorId) {
+    return (
+      <AuthShell title={cs.prihlaseni.noveHesloTitulek} subtitle={cs.prihlaseni.noveHesloMfaPodtitulek}>
+        <MfaChallengeForm
+          factorId={mfaFactorId}
+          onVerified={() => setMfaFactorId(null)}
+          onCancel={() => navigate(LOGIN_PATH)}
+        />
       </AuthShell>
     );
   }
