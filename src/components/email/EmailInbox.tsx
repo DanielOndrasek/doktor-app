@@ -47,7 +47,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { cs } from "@/lib/i18n/cs";
-import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, sanitizeEmailHtml, splitAddressHeader, textToHtml, tidyEmailHtml } from "@/lib/email/html";
+import { avatarColorClass, emailInitials, parseEmailFromHeader, plainTextToEditorHtml, replyAllRecipients, sanitizeEmailHtml, splitAddressHeader, textToHtml, tidyEmailHtml } from "@/lib/email/html";
 import type { TriageItem } from "@/lib/items";
 import { attachmentPreviewKind, downloadFromUrl, type AttachmentPreviewKind } from "@/lib/email/attachments";
 import { activeFilterCount } from "@/lib/email/search";
@@ -214,6 +214,8 @@ export function EmailInbox({
   const [composing, setComposing] = useState(false);
   const [replyData, setReplyData] = useState<{
     to: string;
+    /** Odpověď všem: adresáti z „Kopie" původní zprávy (bez našich schránek). */
+    cc?: string[];
     subject: string;
     threadId: string;
     inReplyTo: string;
@@ -233,6 +235,10 @@ export function EmailInbox({
     const to = d.to.toLowerCase();
     return compose.senders?.find((s) => to.includes(s.address.toLowerCase()))?.address;
   };
+
+  /** Odpověď jde vždy všem (Komu i Kopie původní zprávy), bez našich vlastních schránek. */
+  const replyRecipients = (d: MailMessageDetail) =>
+    replyAllRecipients(d, (compose.senders ?? []).map((s) => s.address));
 
   // Rozložení schránky: které standardní složky server nabízí a vlastní složky.
   const [standardFolderIds, setStandardFolderIds] = useState<string[]>(["inbox"]);
@@ -616,12 +622,13 @@ export function EmailInbox({
   /** Okno odpovědi k `msg`; `item` = položka z běhu (návrh, rozepsaný text), když k ní je. */
   const startReply = (msg: MailMessageDetail, item: TriageItem | null) => {
     const detail = msg;
-    const { email: fromEmail } = parseEmailFromHeader(detail.from);
+    const recipients = replyRecipients(detail);
     // Rozepsaný text uživatele má přednost před návrhem z běhu (E3 v kontrolním seznamu).
     const body = item?.userDraft?.trim() ? item.userDraft : item?.draftBody?.trim() ? plainTextToEditorHtml(item.draftBody) : undefined;
     const subject = item?.draftSubject?.trim() || (detail.subject.startsWith("Re:") ? detail.subject : `Re: ${detail.subject}`);
     setReplyData({
-      to: fromEmail,
+      to: recipients.to.join(", "),
+      cc: recipients.cc,
       subject,
       threadId: detail.threadId,
       inReplyTo: detail.messageId,
@@ -648,15 +655,15 @@ export function EmailInbox({
    * text má přednost před návrhem (E3), podpis podle schránky, do které zpráva přišla.
    */
   const sendDraft = async (msg: MailMessageDetail, item: TriageItem) => {
-    const { email: to } = parseEmailFromHeader(msg.from);
-    if (!to) throw new Error(cs.posta.triage.navrhBezAdresata);
+    const { to, cc } = replyRecipients(msg);
+    if (!to.length) throw new Error(cs.posta.triage.navrhBezAdresata);
     const text = item.userDraft?.trim() ? item.userDraft : plainTextToEditorHtml(item.draftBody ?? "");
     const from = arrivedAt(msg);
     const sig = (compose.signatureFor ? compose.signatureFor(from ?? compose.defaultSender ?? "") : compose.signatureHtml)?.trim();
     const body = sig && !text.includes(sig) ? `${text}<p></p>${signatureBlockHtml(sig)}` : text;
     await compose.onSend({
-      to: [to],
-      cc: [],
+      to,
+      cc,
       bcc: [],
       subject: replySubjectFor(msg, item),
       body,
@@ -734,6 +741,7 @@ export function EmailInbox({
     <EmailCompose
       {...compose}
       defaultTo={replyData?.to}
+      defaultCc={replyData?.cc}
       defaultSubject={replyData?.subject}
       defaultBody={replyData?.body}
       threadId={replyData?.threadId || undefined}
@@ -760,6 +768,7 @@ export function EmailInbox({
     <DetailView
       detail={detail}
       onReply={handleReply}
+      replyTo={replyRecipients(detail)}
       onSendDraft={viewItem && (viewItem.draftBody?.trim() || viewItem.userDraft?.trim()) ? () => sendDraft(detail, viewItem) : undefined}
       onForward={!canForward || canForward(detail) ? handleForward : undefined}
       onMarkUnread={handleMarkUnread}
@@ -1045,9 +1054,12 @@ function DetailView({
   loadThread,
   onNoteForClaude,
   renderContext,
+  replyTo,
 }: {
   detail: MailMessageDetail;
   onReply: () => void;
+  /** Komu odejde odpověď (všem z Komu i Kopie, bez našich schránek) — do potvrzení „Odeslat návrh". */
+  replyTo?: { to: string[]; cc: string[] };
   /** Odeslání návrhu z běhu bez okna psaní; volá se až po potvrzení (pravidlo 8). Bez propu se tlačítko neukáže. */
   onSendDraft?: () => Promise<void>;
   /** `undefined` = přeposlání pro tuhle zprávu nejde (Gmail) a tlačítko se neukáže. */
@@ -1258,6 +1270,7 @@ details.citace>*:not(summary){color:#444}
               {email && <span className="truncate text-xs text-muted-foreground">&lt;{email}&gt;</span>}
             </div>
             <RecipientsLine label={cs.posta.detail.komu} value={detail.to} />
+            {detail.cc?.trim() ? <RecipientsLine label={cs.posta.detail.kopie} value={detail.cc} /> : null}
             <div className="mt-0.5 text-xs text-muted-foreground" title={detail.date}>
               {formatDetailDate(detail.date)}
             </div>
@@ -1320,7 +1333,9 @@ details.citace>*:not(summary){color:#444}
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{cs.posta.triage.potvrditNadpis}</AlertDialogTitle>
-              <AlertDialogDescription>{cs.posta.triage.potvrditPopis(email || displayName, replySubject)}</AlertDialogDescription>
+              <AlertDialogDescription>
+                {cs.posta.triage.potvrditPopis(replyTo?.to.join(", ") || email || displayName, replySubject, replyTo?.cc.join(", ") ?? "")}
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={draftSending}>{cs.posta.triage.potvrditZrusit}</AlertDialogCancel>

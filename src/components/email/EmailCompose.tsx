@@ -111,6 +111,8 @@ const BODY_CHANGE_DELAY_MS = 1500;
 
 interface EmailComposeProps extends EmailComposeSharedProps {
   defaultTo?: string;
+  /** Předvyplněná kopie — u odpovědi všichni z „Kopie" původní zprávy. */
+  defaultCc?: string[];
   defaultSubject?: string;
   defaultBody?: string;
   threadId?: string;
@@ -168,6 +170,7 @@ interface PendingAttachment {
  */
 export function EmailCompose({
   defaultTo = "",
+  defaultCc,
   defaultSubject = "",
   defaultBody = "",
   threadId,
@@ -199,9 +202,9 @@ export function EmailCompose({
   const sourceKey = (a: ComposeSourceAttachment) => `${a.ref}#${a.index}`;
 
   const [to, setTo] = useState<string[]>(parseEmails(defaultTo));
-  const [cc, setCc] = useState<string[]>([]);
+  const [cc, setCc] = useState<string[]>(() => defaultCc ?? []);
   const [bcc, setBcc] = useState<string[]>([]);
-  const [showCc, setShowCc] = useState(false);
+  const [showCc, setShowCc] = useState(() => Boolean(defaultCc?.length));
   const [showBcc, setShowBcc] = useState(false);
   const [subject, setSubject] = useState(defaultSubject);
   // „Odeslat z": u odpovědi schránka, kam zpráva přišla; u nové zprávy ta, ve které

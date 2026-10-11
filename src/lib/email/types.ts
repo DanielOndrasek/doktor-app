@@ -60,6 +60,8 @@ export interface MailMessageDetail {
   threadId: string;
   from: string;
   to: string;
+  /** Doktor navíc proti CRM: hlavička „Kopie" — odpověď jde všem (Komu i Kopie). */
+  cc?: string;
   subject: string;
   date: string;
   /** Hlavička `Message-ID`, potřebná pro `In-Reply-To` při odpovědi. */

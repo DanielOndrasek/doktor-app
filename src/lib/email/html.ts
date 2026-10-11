@@ -268,3 +268,26 @@ export function extractEmails(header: string | null | undefined): string[] {
   const found = header.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
   return Array.from(new Set(found.map((e) => e.toLowerCase())));
 }
+
+/**
+ * Adresáti odpovědi všem: odesílatel a ostatní z „Komu" do Komu, „Kopie" do Kopie.
+ * Naše vlastní schránky (`own`) vypadnou. Když zprávu psal Štěpán sám (je v `own`),
+ * odpověď jde původním adresátům. Kdyby po odfiltrování nezbyl nikdo, zůstane odesílatel.
+ */
+export function replyAllRecipients(
+  msg: { from: string; to: string; cc?: string },
+  own: string[],
+): { to: string[]; cc: string[] } {
+  const ownSet = new Set(own.map((a) => a.trim().toLowerCase()).filter(Boolean));
+  const sender = extractEmails(msg.from)[0] ?? "";
+  const to: string[] = [];
+  const add = (list: string[], email: string) => {
+    if (email && !ownSet.has(email) && !to.includes(email) && !list.includes(email)) list.push(email);
+  };
+  add(to, sender);
+  for (const e of extractEmails(msg.to)) add(to, e);
+  const cc: string[] = [];
+  for (const e of extractEmails(msg.cc)) add(cc, e);
+  if (!to.length && sender) to.push(sender);
+  return { to, cc };
+}

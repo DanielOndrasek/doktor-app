@@ -444,6 +444,7 @@ export function createEngineMailbox(options: EngineMailboxOptions): EngineMailbo
         : [];
       return {
         ...toListMessage(z),
+        cc: z.kopie ?? "",
         messageId: z.message_id,
         body: html || z.telo || z.uryvek || "",
         bodyType: html ? "html" : "text",

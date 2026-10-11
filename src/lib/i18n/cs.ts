@@ -83,6 +83,7 @@ export const cs = {
 
     detail: {
       komu: "Komu:",
+      kopie: "Kopie:",
       telo: "Tělo zprávy",
       /** Sbalená citace / přeposlaná část pod tělem zprávy (jako v Mailu a Gmailu). */
       citace: "Citovaná zpráva",
@@ -184,7 +185,8 @@ export const cs = {
       odeslatNavrh: "Odeslat návrh",
       upravitNavrh: "Upravit",
       potvrditNadpis: "Odeslat tuto odpověď?",
-      potvrditPopis: (komu: string, predmet: string) => `Komu: ${komu} · Předmět: ${predmet}. Podpis se doplní podle schránky, ze které odpověď odejde.`,
+      potvrditPopis: (komu: string, predmet: string, kopie = "") =>
+        `Komu: ${komu}${kopie ? ` · Kopie: ${kopie}` : ""} · Předmět: ${predmet}. Podpis se doplní podle schránky, ze které odpověď odejde.`,
       potvrditOdeslat: "Odeslat",
       potvrditZrusit: "Zrušit",
       navrhBezAdresata: "U této zprávy nejde určit adresáta — použij Odpovědět.",
