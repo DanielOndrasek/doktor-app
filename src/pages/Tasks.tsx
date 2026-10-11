@@ -6,6 +6,7 @@ import { KanbanBoard, type KanbanCardData, type KanbanState } from "@/components
 import { TaskCalendar, TaskDialog, TaskList, type TaskDialogTarget } from "@/components/tasks";
 import { Button } from "@/components/ui/button";
 import { ToastAction } from "@/components/ui/toast";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { withJwtRetry } from "@/lib/supabase/retry";
@@ -95,11 +96,12 @@ export default function Tasks({ source }: { source: TaskSource }) {
     );
   }, [setSearchParams]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setCards(await withJwtRetry(() => source.load()));
     } catch (err) {
+      if (silent) return console.error(cs.ukoly.nacteniSelhalo, err);
       toast({
         title: cs.ukoly.nacteniSelhalo,
         description: err instanceof Error ? err.message : undefined,
@@ -113,6 +115,8 @@ export default function Tasks({ source }: { source: TaskSource }) {
   useEffect(() => {
     void load();
   }, [load]);
+  // Při otevřeném dialogu se neobnovuje, ať se karta pod rukama nemění.
+  useAutoRefresh(useCallback(() => void load(true), [load]), { enabled: !dialogTarget });
 
   const move = async (card: KanbanCardData, to: KanbanState) => {
     await source.move(card, to);

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { format, formatDistanceToNowStrict, isValid, parseISO } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
 import { ArrowRight, Sparkles } from "lucide-react";
 
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import type { ClaudeProject, ClaudeQuestion, ClaudeWorkSource } from "@/lib/claudeProjects";
@@ -43,6 +44,10 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
   const [queued, setQueued] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Tiché obnovení (viz useAutoRefresh): zvýší `tick`, efekt níž data načte znovu.
+  const [tick, setTick] = useState(0);
+  useAutoRefresh(useCallback(() => setTick((n) => n + 1), []));
+
   useEffect(() => {
     let cancelled = false;
     // Po obnově tokenu může PostgREST první dotaz odmítnout (posun hodin) — zopakovat.
@@ -54,7 +59,9 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
         setQuestions(work.questions);
       })
       .catch((err: unknown) => {
-        if (!cancelled) toast({ title: t.nacteniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+        if (cancelled) return;
+        if (tick > 0) return console.error(t.nacteniSelhalo, err);
+        toast({ title: t.nacteniSelhalo, description: err instanceof Error ? err.message : undefined, variant: "destructive" });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -62,7 +69,7 @@ export function ClaudeProjects({ source, tasksHref }: { source: ClaudeWorkSource
     return () => {
       cancelled = true;
     };
-  }, [source, toast, t.nacteniSelhalo]);
+  }, [source, toast, t.nacteniSelhalo, tick]);
 
   return (
     <section className="space-y-3">

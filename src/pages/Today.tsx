@@ -5,6 +5,7 @@ import { ClaudeProjects } from "@/components/home/ClaudeProjects";
 import { TodaySignals } from "@/components/home/TodaySignals";
 import { TASKS_PATH } from "@/components/AppShell";
 import type { ClaudeWorkSource } from "@/lib/claudeProjects";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import { withJwtRetry } from "@/lib/supabase/retry";
@@ -29,11 +30,13 @@ export default function Today({ source, claudeWork }: { source: TodaySource; cla
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setSignals(await withJwtRetry(() => source.load()));
     } catch (err) {
+      // Tiché obnovení na pozadí nesmí zahlcovat hláškami; zkusí se znovu za chvíli.
+      if (silent) return console.error(cs.dnes.nacteniSelhalo, err);
       toast({
         title: cs.dnes.nacteniSelhalo,
         description: err instanceof Error ? err.message : undefined,
@@ -47,6 +50,7 @@ export default function Today({ source, claudeWork }: { source: TodaySource; cla
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(useCallback(() => void load(true), [load]));
 
   return (
     <main className="container mx-auto px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:pb-8">

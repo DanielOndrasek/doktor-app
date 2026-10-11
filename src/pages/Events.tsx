@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { EventCard } from "@/components/events/EventCard";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/hooks/use-toast";
 import { cs } from "@/lib/i18n/cs";
 import type { CalendarRef, EventProposal, EventSource, EventState } from "@/lib/events";
@@ -53,13 +54,14 @@ export default function Events({ source }: { source: EventSource }) {
     return () => window.clearTimeout(timer);
   }, [loading, highlightId, highlightDone, events, setSearchParams]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [items, cals] = await Promise.all([withJwtRetry(() => source.load()), source.calendars()]);
       setEvents(items);
       setCalendars(cals);
     } catch (err) {
+      if (silent) return console.error(cs.udalosti.nacteniSelhalo, err);
       toast({
         title: cs.udalosti.nacteniSelhalo,
         description: err instanceof Error ? err.message : undefined,
@@ -73,6 +75,7 @@ export default function Events({ source }: { source: EventSource }) {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(useCallback(() => void load(true), [load]));
 
   const counts = useMemo(
     () =>
