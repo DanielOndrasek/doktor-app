@@ -78,7 +78,7 @@ export default function App() {
                       {/* Dnes nad `dnes()`; odložení signálu jde do `signaly_odlozene`. */}
                       <Route path={TODAY_PATH} element={<Today source={todaySource} claudeWork={claudeWork} />} />
                       {/* Pošta nad enginem; kontext u e-mailu (K3.8) z kontaktů a úkolů, „Úkol z mailu" do `ukoly`. */}
-                      <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} itemSource={itemSource} claudeWork={claudeWork} />} />
+                      <Route path={MAIL_PATH} element={<Mail contactSource={contactSource} taskSource={taskSource} signatureSource={signatureSource} itemSource={itemSource} claudeWork={claudeWork} ruleSource={ruleSource} />} />
                       {/* Úkoly nad tabulkou `ukoly`; `move` zapisuje `stav` + `stav_zdroj = klik`. */}
                       <Route path={TASKS_PATH} element={<Tasks source={taskSource} />} />
                       {/* Události nad `udalosti`; zápis do kalendáře jen z tlačítka přes engine. */}

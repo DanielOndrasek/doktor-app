@@ -19,6 +19,7 @@ import type { MailAttachmentMeta, MailListMessage, MailMessageDetail, MailSearch
 import type { ClaudeWorkSource } from "@/lib/claudeProjects";
 import type { ItemSource, TriageItem } from "@/lib/items";
 import { loadMailboxes } from "@/lib/mailboxes";
+import type { RuleSource } from "@/lib/rules";
 import type { SignatureSource } from "@/lib/signatures";
 import { getAccessToken } from "@/lib/supabase/token";
 import { emptyTaskDraft, type TaskSource } from "@/lib/tasks";
@@ -61,6 +62,7 @@ export default function Mail({
   signatureSource,
   itemSource,
   claudeWork,
+  ruleSource,
 }: {
   contactSource: ContactSource;
   taskSource: TaskSource;
@@ -68,6 +70,8 @@ export default function Mail({
   itemSource: ItemSource;
   /** „Zeptat se": dotaz do fronty pro Clauda; odpověď se ukáže na Dnes. */
   claudeWork: ClaudeWorkSource;
+  /** „Odesílatel je šum": vlastní pravidlo lékaře do `pouceni` — rovnou schválené. */
+  ruleSource: RuleSource;
 }) {
   const { toast } = useToast();
   const [mailboxId, setMailboxId] = useState<EngineMailboxId>(readMailbox);
@@ -301,6 +305,14 @@ export default function Mail({
     [claudeWork, mailboxId],
   );
 
+  // „Odesílatel je šum": vlastní pravidlo lékaře, rovnou schválené — běhy ho čtou přes `pouceni_schvalena`.
+  const onNoiseSender = useCallback(
+    async (ruleText: string) => {
+      await ruleSource.create(ruleText);
+    },
+    [ruleSource],
+  );
+
   // Našeptávač adres z adresáře (kontakty s e-mailem).
   const searchRecipients = useCallback(
     async (query: string): Promise<EmailRecipientSuggestion[]> => {
@@ -372,6 +384,7 @@ export default function Mail({
           onOpened={clearItemParam}
           onAskClaude={onAskClaude}
           onNoteForClaude={onNoteForClaude}
+          onNoiseSender={onNoiseSender}
           renderContext={renderContext}
         />
       </div>

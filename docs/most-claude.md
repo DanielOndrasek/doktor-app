@@ -143,6 +143,11 @@ skillů `email-styl-suchanek` a `email-triage`. Claude před psaním návrhů č
 `pouceni_navrhni` se `stav = navrh` a `zdroj_opravy`; lékař je v Nastavení schválí nebo
 zamítne. Vlastní pravidla lékaře jsou schválená rovnou. Nic se nemaže.
 
+**Šum podle odesílatele.** Tlačítko „Šum“ v detailu zprávy zapíše schválené pravidlo
+„Zprávy od <adresa> jsou šum: …“ nebo „Zprávy z domény <doména> jsou šum: …“ a zprávu přesune
+do `_Triage/Šum`. Běh třídění zprávy od takové adresy (domény) přesune do `_Triage/Šum`
+(ÚVN i Gmail) a **nezakládá položku**. Zrušení = pravidlo v Nastavení zamítnout.
+
 ## Historie naplnění
 
 - **21. 9.** `schranky` (ÚVN, Gmail), `organizace` (44), `kontakty` (174) se `kontakt_adresy`

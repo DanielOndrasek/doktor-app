@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { cs as csLocale } from "date-fns/locale";
 import {
   ArrowLeft,
+  Ban,
   Check,
   ChevronDown,
   ChevronRight,
@@ -132,6 +133,11 @@ interface EmailInboxProps {
   /** „Poznámka pro Clauda" k otevřené zprávě (kontrolní seznam plánu) — do fronty, ne na model. */
   onNoteForClaude?: (detail: MailMessageDetail, item: TriageItem | null, text: string) => Promise<void>;
   /**
+   * „Odesílatel je šum": zapíše schválené pravidlo (`pouceni`), podle kterého běhy
+   * zprávy od adresy nebo domény přesouvají do `_Triage/Šum`. Bez propu se tlačítko neukáže.
+   */
+  onNoiseSender?: (ruleText: string) => Promise<void>;
+  /**
    * Kontext k otevřené zprávě (kontakt, historie, úkoly). Řádek „Kontext
    * u e-mailu" ho sem zapojí, aniž by tuhle obrazovku měnil.
    */
@@ -140,6 +146,19 @@ interface EmailInboxProps {
 
 /** Kolik detailů se načte předem po načtení seznamu (postupně; každý je 1–2 volání enginu). */
 const DETAIL_PREFETCH = 3;
+
+/** Triage složka pro šum — engine ji založí sám (u Gmailu je to štítek). */
+const NOISE_FOLDER = "_Triage/Šum";
+
+type NoiseScope = "adresa" | "domena";
+
+/** Adresa odesílatele, nebo jeho doména — podle toho, co lékař v nabídce vybral. */
+function noiseTarget(msg: MailMessageDetail, scope: NoiseScope): string {
+  const { email } = parseEmailFromHeader(msg.from);
+  const address = email.trim().toLowerCase();
+  if (scope === "adresa") return address;
+  return address.includes("@") ? address.split("@")[1] : "";
+}
 
 function sameLabels(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((l) => b.includes(l));
@@ -175,6 +194,7 @@ export function EmailInbox({
   onOpened,
   onAskClaude,
   onNoteForClaude,
+  onNoiseSender,
   renderContext,
 }: EmailInboxProps) {
   const isMobile = useIsMobile();
@@ -263,8 +283,9 @@ export function EmailInbox({
     void fetchFolders();
   }, [fetchFolders]);
 
-  const handleMoveToFolder = async (messageId: string, folderId: string, folderName: string) => {
-    if (!mailbox) return;
+  /** Přesun do složky; vrací, jestli se povedl (chyby hlásí sám). */
+  const handleMoveToFolder = async (messageId: string, folderId: string, folderName: string): Promise<boolean> => {
+    if (!mailbox) return false;
     try {
       await mailbox.moveToFolder(messageId, folderId);
       toast({ title: `${cs.posta.presunuto} „${folderName}"` });
@@ -277,13 +298,36 @@ export function EmailInbox({
           setDetail(null);
         }
       }
+      return true;
     } catch (err) {
       if (isMessageGone(err)) {
         dropGone(messageId);
-        return;
+        return false;
       }
       toast({ title: errorMessage(err, cs.posta.chyby.presun), variant: "destructive" });
+      return false;
     }
+  };
+
+  /**
+   * „Odesílatel je šum": nejdřív schválené pravidlo (adresa, nebo celá doména), pak
+   * přesun otevřené zprávy do `_Triage/Šum`. Položka z běhu se uzavře jako vyřízená.
+   */
+  const handleNoiseSender = async (msg: MailMessageDetail, scope: NoiseScope) => {
+    if (!onNoiseSender) return;
+    const target = noiseTarget(msg, scope);
+    if (!target) {
+      toast({ title: cs.posta.sum.bezAdresy, variant: "destructive" });
+      return;
+    }
+    try {
+      await onNoiseSender(cs.posta.sum.pravidlo(scope, target));
+    } catch (err) {
+      toast({ title: errorMessage(err, cs.posta.sum.chyba), variant: "destructive" });
+      return;
+    }
+    toast({ title: cs.posta.sum.ulozeno(target), description: cs.posta.sum.ulozenoPopis });
+    if (await handleMoveToFolder(msg.id, NOISE_FOLDER, NOISE_FOLDER)) onArchived?.(asListMessage(msg));
   };
 
   /** Zpráva je v indexu enginu, ale ve schránce už ne (smazaná v Mailu): ze seznamu pryč, bez chyby. */
@@ -781,6 +825,7 @@ export function EmailInbox({
       attachmentUrl={attachmentUrl}
       loadThread={loadThread}
       onNoteForClaude={onNoteForClaude}
+      onNoiseSender={onNoiseSender ? (scope) => void handleNoiseSender(detail, scope) : undefined}
       renderContext={renderContext}
     />
   ) : null;
@@ -1055,9 +1100,12 @@ function DetailView({
   onNoteForClaude,
   renderContext,
   replyTo,
+  onNoiseSender,
 }: {
   detail: MailMessageDetail;
   onReply: () => void;
+  /** „Odesílatel je šum" — pravidlo pro adresu, nebo celou doménu; bez propu se nabídka neukáže. */
+  onNoiseSender?: (scope: NoiseScope) => void;
   /** Komu odejde odpověď (všem z Komu i Kopie, bez našich schránek) — do potvrzení „Odeslat návrh". */
   replyTo?: { to: string[]; cc: string[] };
   /** Odeslání návrhu z běhu bez okna psaní; volá se až po potvrzení (pravidlo 8). Bez propu se tlačítko neukáže. */
@@ -1066,11 +1114,11 @@ function DetailView({
   onForward?: () => void;
   onMarkUnread: () => void;
   customFolders: MailFolderRef[];
-  onMoveToFolder: (messageId: string, folderId: string, folderName: string) => Promise<void>;
+  onMoveToFolder: (messageId: string, folderId: string, folderName: string) => Promise<unknown>;
   /** Složka, ve které je zpráva otevřená — ve Vyřízeno je místo ✓ „Vrátit mezi otevřené". */
   folderId: string;
   onDone?: () => void;
-  onRestore?: () => Promise<void>;
+  onRestore?: () => Promise<unknown>;
   /** Položka z běhu (priorita, kategorie, co řešit, návrh) — `null`, když běh zprávu ještě neviděl. */
   item?: TriageItem | null;
   attachmentUrl?: (message: MailMessageDetail, attachment: MailAttachmentMeta) => Promise<string>;
@@ -1575,6 +1623,24 @@ details.citace>*:not(summary){color:#444}
           <MailOpen className="mr-1.5 h-4 w-4" />
           {cs.posta.detail.neprectene}
         </Button>
+        {onNoiseSender && noiseTarget(detail, "adresa") && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Ban className="mr-1.5 h-4 w-4" />
+                {cs.posta.sum.tlacitko}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => onNoiseSender("adresa")}>
+                {cs.posta.sum.adresa(noiseTarget(detail, "adresa"))}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onNoiseSender("domena")}>
+                {cs.posta.sum.domena(noiseTarget(detail, "domena"))}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {customFolders.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

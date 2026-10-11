@@ -203,6 +203,20 @@ export const cs = {
       chybiPoznamka: "Napište poznámku.",
     },
 
+    /** „Odesílatel je šum": schválené pravidlo pro běhy + přesun zprávy do `_Triage/Šum`. */
+    sum: {
+      tlacitko: "Šum",
+      adresa: (adresa: string) => `Vždy šum od ${adresa}`,
+      domena: (domena: string) => `Vždy šum z celé domény ${domena}`,
+      pravidlo: (rozsah: "adresa" | "domena", cil: string) =>
+        rozsah === "domena"
+          ? `Zprávy z domény ${cil} jsou šum: přesouvat do _Triage/Šum a nezapisovat položku.`
+          : `Zprávy od ${cil} jsou šum: přesouvat do _Triage/Šum a nezapisovat položku.`,
+      ulozeno: (cil: string) => `${cil} je teď šum`,
+      ulozenoPopis: "Další běhy jeho zprávy rovnou přesunou do Šumu. Zrušit jde v Nastavení → Pravidla pro Clauda.",
+      bezAdresy: "U této zprávy nejde určit odesílatele.",
+      chyba: "Pravidlo se nepodařilo uložit.",
+    },
     /** Vyřízeno s lištou „Vrátit zpět" (kontrakt t22 v `docs/prevzato`). */
     vyrizeno: {
       tlacitko: "Vyřízeno",
